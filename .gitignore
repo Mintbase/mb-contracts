@@ -1,0 +1,5 @@
+TODO.md
+wasm/*
+tests/node_modules
+tests/downloads
+target

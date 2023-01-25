@@ -1,0 +1,9 @@
+[workspace]
+
+members = [
+  "mb-sdk",
+  "mb-store",
+  "mb-factory",
+  "mb-legacy-market",
+  "mb-interop-market",
+]

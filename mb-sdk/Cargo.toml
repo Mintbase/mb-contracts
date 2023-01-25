@@ -1,0 +1,30 @@
+[package]
+name = "mb-sdk"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+near-sdk = { version = "4.1.1" }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1.0.91", features = ["arbitrary_precision"] }
+ed25519-dalek = "1.0.0"
+
+[dependencies.near_events]
+path = "../../near-events/near-events"
+# git = "https://github.com/mintbase/near-events"
+# rev = "c4fdefbe1cb3167864fdb2cd1ff1d9058233bb76"
+features = ["ser"]
+
+[features]
+# Necessary due to implementation of `near_events`
+ser = ["near_events/ser"]
+de = ["near_events/ser"]
+# TODO: revisit if these are actually necessary
+store-wasm = []
+factory-wasm = []
+market-wasm = []
+default = ["ser"]
+all = ["near_events/de", "store-wasm", "factory-wasm", "market-wasm"]
