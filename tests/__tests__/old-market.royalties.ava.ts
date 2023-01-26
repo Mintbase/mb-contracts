@@ -16,8 +16,15 @@ import { setup } from "./setup.js";
 const test = setup(avaTest);
 
 test("market::royalties", async (test) => {
-  const { factory, store, market, alice, bob, carol, dave } =
-    test.context.accounts;
+  const {
+    factory,
+    store,
+    oldMarket: market,
+    alice,
+    bob,
+    carol,
+    dave,
+  } = test.context.accounts;
   // cannot use `prepareTokenListing`, because royalties need to be set
   // during minting
   await market

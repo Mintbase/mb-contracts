@@ -123,3 +123,12 @@ export function assertWithdrawOfferEvent(
   // const data: any[] = JSON.parse(event.data);
   test.deepEqual(event.data, expected_data, `${msg}: list_id doesn't match`);
 }
+
+// Event extraction from interop market
+export const getEvent = (event: string): any => {
+  if (!event.startsWith("EVENT_JSON:")) {
+    throw new Error("Event not starting with `EVENT_JSON:`");
+  }
+
+  return JSON.parse(event.slice(11).trim());
+};

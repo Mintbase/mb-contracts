@@ -20,7 +20,14 @@ import { setup } from "./setup.js";
 const test = setup(avaTest);
 
 test("market::buynow", async (test) => {
-  const { root, factory, store, market, alice, bob } = test.context.accounts;
+  const {
+    root,
+    factory,
+    store,
+    oldMarket: market,
+    alice,
+    bob,
+  } = test.context.accounts;
 
   await prepareTokenListing(test, { root, alice, store, market, factory });
 

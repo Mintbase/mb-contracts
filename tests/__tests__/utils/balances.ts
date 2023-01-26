@@ -1,5 +1,6 @@
 import { Gas, BN, NearAccount } from "near-workspaces";
 import * as nearWs from "near-workspaces";
+import * as nearAPI from "near-api-js";
 import { ExecutionContext } from "ava";
 
 // TODO: move from this format to `ava.NEAR.parse`
@@ -83,6 +84,15 @@ export function nNEARbn(x: number): BN {
 export function Tgasbn(x: number): BN {
   return new BN(Tgas(x));
 }
+
+// Conversion methods for interop market tests
+export const nearToYocto = nearAPI.utils.format.parseNearAmount;
+export const yoctoToNear = nearAPI.utils.format.formatNearAmount;
+export const yoctoToBn = (yocto: string): BN => new BN(yocto);
+export const bnToYocto = (bn: BN): string => bn.toString();
+export const nearToBn = (near: string): BN =>
+  yoctoToBn(nearToYocto(near) as string);
+export const bnToNear = (bn: BN): string => yoctoToNear(bnToYocto(bn));
 
 /** Maximum possible gas (will be serialized to a u64) */
 export const MAX_U64 = new BN("ffffffffffffffff", 16);
@@ -216,3 +226,23 @@ function assertBalanceDiffRange(
   test.true(now.lte(max), `${msg}: balance too high for ${account}`);
   test.true(now.gte(min), `${msg}: balance too low for ${account}`);
 }
+
+// diff checking from interop market
+export const bnInRange = (bn: BN, lower: BN, upper: BN): boolean => {
+  return bn.gte(lower) && bn.lt(upper);
+};
+
+export const diffCheck = (
+  bn: BN,
+  ref: BN,
+  diff: BN,
+  slippage?: BN
+): boolean => {
+  const upper = ref.add(diff);
+  if (slippage) {
+    const lower = upper.sub(slippage);
+    return bnInRange(bn, lower, upper);
+  } else {
+    return bn.eq(upper);
+  }
+};

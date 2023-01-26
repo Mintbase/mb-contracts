@@ -23,3 +23,14 @@ export function createPayoutNumerators(spec: [NearAccount, number][]) {
   });
   return payout;
 }
+
+// Creating payouts for interop market testing
+export const createPayouts = (
+  owners: Array<[NearAccount, number]>
+): Record<string, number> => {
+  const payouts: Record<string, number> = {};
+  owners.forEach(([account, split]) => {
+    payouts[account.accountId] = split;
+  });
+  return payouts;
+};

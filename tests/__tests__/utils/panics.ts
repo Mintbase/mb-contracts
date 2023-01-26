@@ -1,3 +1,4 @@
+import { TransactionResult } from "near-workspaces";
 import { ExecutionContext } from "ava";
 
 /** Asserts multiple panics in parallel to speed up tests */
@@ -47,3 +48,15 @@ export function assertContractPanicMsg(
     );
   };
 }
+
+// Panic extraction from interop market
+export const getPanic = (txResult: TransactionResult): string | undefined => {
+  const status = txResult.result.status as {
+    Failure?: {
+      ActionError?: {
+        kind?: { FunctionCallError?: { ExecutionError?: string } };
+      };
+    };
+  };
+  return status.Failure?.ActionError?.kind?.FunctionCallError?.ExecutionError;
+};

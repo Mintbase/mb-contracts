@@ -97,11 +97,22 @@ export const setup = (test: TestFn): TestFn<TestContext> => {
     //     },
     //   },
     // });
-    const market = await createAndDeploy(root, "market", {
-      initialBalanceNear: "10",
+    const oldMarket = await createAndDeploy(root, "market", {
+      initialBalanceNear: "20",
       codePath: "../wasm/legacy-market.wasm",
       initMethod: "new",
       initArgs: { init_allowlist: [] },
+    });
+    const newMarket = await createAndDeploy(oldMarket, "simple", {
+      initialBalanceNear: "10",
+      codePath: "../wasm/interop-market.wasm",
+      initMethod: "init",
+      initArgs: {
+        owner: root,
+        mintbase_cut: 5000,
+        fallback_cut: 250,
+        listing_lock_seconds: 0,
+      },
     });
 
     const store = await deployStore({ owner: alice, factory, name: "alice" });
@@ -115,7 +126,8 @@ export const setup = (test: TestFn): TestFn<TestContext> => {
       dave,
       factory,
       store,
-      market,
+      oldMarket,
+      newMarket,
     };
   });
 

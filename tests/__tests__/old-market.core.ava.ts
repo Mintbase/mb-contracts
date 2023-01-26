@@ -13,7 +13,13 @@ import { setup } from "./setup.js";
 const test = setup(avaTest);
 
 test("market::core", async (test) => {
-  const { root, factory, store, market, alice } = test.context.accounts;
+  const {
+    root,
+    factory,
+    store,
+    oldMarket: market,
+    alice,
+  } = test.context.accounts;
   await batchMint({ owner: alice, store, num_to_mint: 2 }).catch(
     failPromiseRejection(test, "minting")
   );
