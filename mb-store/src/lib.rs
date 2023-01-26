@@ -4,6 +4,13 @@ use mb_sdk::{
         StorageCosts,
         YOCTO_PER_BYTE,
     },
+    data::store::{
+        NFTContractMetadata,
+        Royalty,
+        Token,
+        TokenMetadata,
+        TokenMetadataCompliant,
+    },
     near_assert,
     near_sdk::{
         self,
@@ -25,13 +32,6 @@ use mb_sdk::{
         near_bindgen,
         AccountId,
         StorageUsage,
-    },
-    store_data::{
-        NFTContractMetadata,
-        Royalty,
-        Token,
-        TokenMetadata,
-        TokenMetadataCompliant,
     },
 };
 

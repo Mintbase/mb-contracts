@@ -5,7 +5,7 @@
     event = "deploy"
 )]
 pub struct MbStoreDeployData {
-    pub contract_metadata: crate::store_data::NFTContractMetadata,
+    pub contract_metadata: crate::data::store::NFTContractMetadata,
     pub owner_id: String,
     pub store_id: String,
 }

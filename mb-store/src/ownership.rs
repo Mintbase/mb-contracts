@@ -1,4 +1,5 @@
 use mb_sdk::{
+    events::store::MbStoreChangeSettingData,
     near_assert,
     near_sdk::{
         self,
@@ -6,7 +7,6 @@ use mb_sdk::{
         near_bindgen,
         AccountId,
     },
-    store_events::MbStoreChangeSettingData,
 };
 
 use crate::{

@@ -10,7 +10,11 @@ use mb_sdk::{
         storage_stake,
         YOCTO_PER_BYTE,
     },
-    factory_events::MbStoreDeployData,
+    data::store::{
+        NFTContractMetadata,
+        StoreInitArgs,
+    },
+    events::factory::MbStoreDeployData,
     interfaces::ext_factory,
     near_sdk::{
         self,
@@ -31,10 +35,6 @@ use mb_sdk::{
         PublicKey,
     },
     serde_json,
-    store_data::{
-        NFTContractMetadata,
-        StoreInitArgs,
-    },
 };
 // ------------------------------- constants -------------------------------- //
 

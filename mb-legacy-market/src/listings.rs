@@ -1,6 +1,6 @@
 use mb_sdk::{
-    market_data::TokenListing,
-    market_events::{
+    data::market_v1::TokenListing,
+    events::market_v1::{
         NftListData,
         NftListLog,
         NftUnlistLog,
@@ -40,7 +40,7 @@ impl Marketplace {
         msg: String, // try to parse into saleArgs
     ) {
         // assert!(env::attached_deposit() >= self.storage_costs.list);
-        let sale_args: mb_sdk::market_data::SaleArgs =
+        let sale_args: mb_sdk::data::market_v1::SaleArgs =
             near_sdk::serde_json::from_str(&msg).expect("Not valid SaleArgs");
         near_assert!(
             self.is_pred_mintbase_or_allowlist_and_not_banlist(),
@@ -81,7 +81,7 @@ impl Marketplace {
             env::attached_deposit() >= storage_deposit,
             "The attached deposit does not cover storage costs"
         );
-        let sale_args: mb_sdk::market_data::SaleArgs =
+        let sale_args: mb_sdk::data::market_v1::SaleArgs =
             near_sdk::serde_json::from_str(&msg)
                 .expect("Sale arguments are invalid");
         near_assert!(
@@ -187,7 +187,7 @@ impl Marketplace {
         token_id: U64,
         approval_id: U64,
         owner_id: &AccountId,
-        sale_args: &mb_sdk::market_data::SaleArgs,
+        sale_args: &mb_sdk::data::market_v1::SaleArgs,
     ) -> TokenListing {
         let approval_id: u64 = approval_id.into();
         // Create the tokens. Skip any tokens that are already listed.

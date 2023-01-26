@@ -3,6 +3,13 @@ use mb_sdk::{
     assert_token_owned_by_predecessor,
     assert_token_unloaned,
     constants::gas,
+    data::store::Token,
+    events::store::{
+        NftApproveData,
+        NftApproveLog,
+        NftRevokeAllData,
+        NftRevokeData,
+    },
     interfaces::ext_nft_on_approve,
     near_sdk::{
         self,
@@ -12,13 +19,6 @@ use mb_sdk::{
         near_bindgen,
         AccountId,
         Promise,
-    },
-    store_data::Token,
-    store_events::{
-        NftApproveData,
-        NftApproveLog,
-        NftRevokeAllData,
-        NftRevokeData,
     },
 };
 

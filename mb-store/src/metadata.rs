@@ -1,15 +1,15 @@
 use mb_sdk::{
+    data::store::{
+        NFTContractMetadata,
+        TokenMetadata,
+    },
+    events::store::MbStoreChangeSettingData,
     near_panic,
     near_sdk::{
         self,
         json_types::U64,
         near_bindgen,
     },
-    store_data::{
-        NFTContractMetadata,
-        TokenMetadata,
-    },
-    store_events::MbStoreChangeSettingData,
 };
 
 use crate::*;

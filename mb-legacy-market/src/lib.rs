@@ -5,11 +5,11 @@ use mb_sdk::{
         StorageCostsMarket,
         YOCTO_PER_BYTE,
     },
-    market_data::{
+    data::market_v1::{
         TokenListing,
         TokenOffer,
     },
-    market_events::{
+    events::market_v1::{
         UpdateAllowlistData,
         UpdateBanlistData,
     },

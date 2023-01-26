@@ -14,7 +14,7 @@ pub trait ExtOldMarket {
     fn resolve_nft_payout(
         &mut self,
         token_key: String,
-        token: crate::market_data::TokenListing,
+        token: crate::data::market_v1::TokenListing,
         others_keep: U128,
         market_keeps: U128,
     ) -> Promise;
@@ -112,7 +112,7 @@ pub trait ExtFactory {
     fn on_create(
         &mut self,
         store_creator_id: AccountId,
-        metadata: crate::store_data::NFTContractMetadata,
+        metadata: crate::data::store::NFTContractMetadata,
         owner_id: AccountId,
         store_account_id: AccountId,
         attached_deposit: U128,

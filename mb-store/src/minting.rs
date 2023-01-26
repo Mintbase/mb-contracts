@@ -3,6 +3,19 @@ use mb_sdk::{
         MAX_LEN_PAYOUT,
         MINIMUM_FREE_STORAGE_STAKE,
     },
+    data::store::{
+        Royalty,
+        RoyaltyArgs,
+        SplitBetweenUnparsed,
+        SplitOwners,
+        Token,
+        TokenMetadata,
+    },
+    events::store::{
+        MbStoreChangeSettingData,
+        NftMintLog,
+        NftMintLogMemo,
+    },
     near_assert,
     near_sdk::{
         self,
@@ -12,19 +25,6 @@ use mb_sdk::{
         serde_json,
         AccountId,
         Balance,
-    },
-    store_data::{
-        Royalty,
-        RoyaltyArgs,
-        SplitBetweenUnparsed,
-        SplitOwners,
-        Token,
-        TokenMetadata,
-    },
-    store_events::{
-        MbStoreChangeSettingData,
-        NftMintLog,
-        NftMintLogMemo,
     },
 };
 
@@ -349,8 +349,8 @@ fn log_nft_batch_mint(
     last_token_id: u64,
     minter: &str,
     owner: &str,
-    royalty: &Option<mb_sdk::store_data::Royalty>,
-    split_owners: &Option<mb_sdk::store_data::SplitOwners>,
+    royalty: &Option<mb_sdk::data::store::Royalty>,
+    split_owners: &Option<mb_sdk::data::store::SplitOwners>,
     meta_ref: &Option<String>,
     meta_extra: &Option<String>,
 ) {

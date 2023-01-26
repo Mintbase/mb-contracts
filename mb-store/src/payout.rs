@@ -5,6 +5,13 @@ use mb_sdk::{
     assert_token_owned_by_predecessor,
     assert_token_unloaned,
     constants::MAX_LEN_PAYOUT,
+    data::store::{
+        Owner,
+        Payout,
+        Royalty,
+        SplitBetweenUnparsed,
+        SplitOwners,
+    },
     near_assert,
     near_sdk::{
         self,
@@ -17,13 +24,6 @@ use mb_sdk::{
         near_bindgen,
         AccountId,
         Balance,
-    },
-    store_data::{
-        Owner,
-        Payout,
-        Royalty,
-        SplitBetweenUnparsed,
-        SplitOwners,
     },
 };
 
@@ -250,7 +250,7 @@ impl OwnershipFractions {
 
 fn log_set_split_owners(token_ids: Vec<U64>, mut split_owners: SplitOwners) {
     env::log_str(
-        &mb_sdk::store_events::NftSetSplitOwnerData {
+        &mb_sdk::events::store::NftSetSplitOwnerData {
             token_ids,
             split_owners: split_owners
                 .split_between

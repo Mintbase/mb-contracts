@@ -11,6 +11,15 @@ use mb_sdk::{
     assert_token_owned_or_approved,
     assert_token_unloaned,
     constants::gas,
+    data::store::{
+        Owner,
+        Token,
+        TokenCompliant,
+    },
+    events::store::{
+        NftTransferData,
+        NftTransferLog,
+    },
     interfaces::ext_nft_on_transfer,
     near_assert,
     near_sdk::{
@@ -21,15 +30,6 @@ use mb_sdk::{
         AccountId,
         Promise,
         PromiseResult,
-    },
-    store_data::{
-        Owner,
-        Token,
-        TokenCompliant,
-    },
-    store_events::{
-        NftTransferData,
-        NftTransferLog,
     },
 };
 

@@ -1,6 +1,7 @@
 use mb_sdk::{
     assert_token_owned_by,
     assert_token_unloaned,
+    events::store::NftBurnLog,
     near_sdk::{
         self,
         assert_one_yocto,
@@ -8,7 +9,6 @@ use mb_sdk::{
         json_types::U64,
         near_bindgen,
     },
-    store_events::NftBurnLog,
 };
 
 use crate::*;

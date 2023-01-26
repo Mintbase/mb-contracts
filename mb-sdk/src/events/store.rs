@@ -70,8 +70,8 @@ pub struct NftTransferData(pub Vec<NftTransferLog>);
     serde(crate = "near_sdk::serde")
 )]
 pub struct NftMintLogMemo {
-    pub royalty: Option<crate::store_data::Royalty>,
-    pub split_owners: Option<crate::store_data::SplitOwners>,
+    pub royalty: Option<crate::data::store::Royalty>,
+    pub split_owners: Option<crate::data::store::SplitOwners>,
     pub meta_id: Option<String>,
     pub meta_extra: Option<String>,
     pub minter: String,
@@ -155,5 +155,3 @@ impl MbStoreChangeSettingData {
         }
     }
 }
-
-// --------------------------------- Market --------------------------------- //
