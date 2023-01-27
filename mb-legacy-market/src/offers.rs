@@ -70,7 +70,7 @@ impl Marketplace {
         let mut total: Balance = 0;
         let token_offers = token_key
             .into_iter()
-            .zip(price.clone().into_iter())
+            .zip(price.into_iter())
             .zip(timeout.into_iter())
             .map(|((token_key, price), timeout)| {
                 total += price.0;

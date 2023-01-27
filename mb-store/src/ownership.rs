@@ -6,6 +6,7 @@ use mb_sdk::{
         assert_one_yocto,
         near_bindgen,
         AccountId,
+        Promise,
     },
 };
 
@@ -82,6 +83,26 @@ impl MintbaseStore {
     pub fn set_storage_price_per_byte(&mut self, new_price: U128) {
         self.assert_store_owner();
         self.storage_costs = StorageCosts::new(new_price.into())
+    }
+
+    /// Remove a key from the smart contract.
+    ///
+    /// Only the store owner may call this.
+    #[payable]
+    pub fn del_key(&mut self, key: String) -> Promise {
+        self.assert_store_owner();
+        let key: near_sdk::PublicKey = key.parse().expect("Cannot parse key");
+        Promise::new(env::current_account_id()).delete_key(key)
+    }
+
+    /// Add a key to the smart contract.
+    ///
+    /// Only the store owner may call this.
+    #[payable]
+    pub fn add_key(&mut self, key: String) -> Promise {
+        self.assert_store_owner();
+        let key: near_sdk::PublicKey = key.parse().expect("Cannot parse key");
+        Promise::new(env::current_account_id()).add_full_access_key(key)
     }
 
     // -------------------------- view methods -----------------------------
