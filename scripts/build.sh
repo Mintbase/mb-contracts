@@ -9,7 +9,15 @@ cargo check -p mb-factory || exit 1
 cargo check -p mb-legacy-market || exit 1
 cargo check -p mb-interop-market || exit 1
 
-cargo store || exit 1
-cargo factory || exit 1
-cargo legacy-market || exit 1
-cargo interop-market || exit 1
+cargo clippy -- -D warnings || exit 1
+
+build() {
+  cargo "$1" || return 1
+  mv "wasm/$1.wasm" "wasm/$1-raw.wasm"
+  wasm-opt "wasm/$1-raw.wasm" -Oz -o "wasm/$1.wasm"
+}
+
+build store || exit 1
+build factory || exit 1
+build legacy-market || exit 1
+build interop-market || exit 1
