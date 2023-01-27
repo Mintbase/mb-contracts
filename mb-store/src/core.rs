@@ -259,7 +259,6 @@ impl MintbaseStore {
     }
 
     /// Gets the token as specified by relevant NEPs.
-    // TODO: fix this abomination
     pub(crate) fn nft_token_compliant_internal(
         &self,
         token_id: u64,

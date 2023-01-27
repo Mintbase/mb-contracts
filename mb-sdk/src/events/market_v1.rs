@@ -81,13 +81,12 @@ pub struct NftSaleData {
     serde(crate = "near_sdk::serde")
 )]
 pub struct NftMakeOfferLog {
-    pub offer: crate::data::market_v1::TokenOffer, // TODO: TokenOfferJson to stringify u128?
+    pub offer: crate::data::market_v1::TokenOffer,
     pub list_id: String,
     pub token_key: String,
     pub offer_num: u64,
 }
 
-// FIXME: u128 is not supported -_____-
 #[cfg_attr(feature = "all", derive(Clone, Debug))]
 #[near_event_data(
     standard = "mb_market",

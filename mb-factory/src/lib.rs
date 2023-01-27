@@ -279,7 +279,6 @@ impl MintbaseStoreFactory {
 }
 
 // ------------------------ impls on external types ------------------------- //
-// TODO: Why the trait? -> to be able to impl it in this crate
 pub trait New {
     fn new(arg: Self) -> Self;
 }

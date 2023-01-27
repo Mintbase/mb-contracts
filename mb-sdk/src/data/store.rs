@@ -238,7 +238,6 @@ impl Serialize for Owner {
         &self,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        // TODO: create string and then clone?
         serializer.serialize_str(&format!("{}", self))
     }
 }
@@ -388,7 +387,6 @@ impl SplitOwners {
             .into_iter()
             .map(|(addr, numerator)| {
                 crate::near_assert!(
-                    // TODO: different method than royalty?
                     near_sdk::env::is_valid_account_id(addr.as_bytes()),
                     "{} is not a valid account ID on NEAR",
                     addr
@@ -454,10 +452,8 @@ impl Royalty {
         let split_between: SplitBetween = split_between
             .into_iter()
             .map(|(addr, numerator)| {
-                // TODO: different method than splits?
-
                 crate::near_assert!(
-                    AccountId::try_from(addr.to_string()).is_ok(),
+                    near_sdk::env::is_valid_account_id(addr.as_bytes()),
                     "{} is not a valid account ID on NEAR",
                     addr
                 );

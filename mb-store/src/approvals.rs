@@ -63,7 +63,11 @@ impl MintbaseStore {
     /// Revokes NFT transfer approval as specified by
     /// [NEP-178](https://nomicon.io/Standards/Tokens/NonFungibleToken/ApprovalManagement)
     #[payable]
-    pub fn nft_revoke(&mut self, token_id: U64, account_id: AccountId) {
+    pub fn nft_revoke(
+        &mut self,
+        token_id: U64,
+        account_id: AccountId,
+    ) -> Promise {
         let token_idu64 = token_id.into();
         let mut token = self.nft_token_internal(token_idu64);
         assert_token_unloaned!(token);
@@ -74,25 +78,29 @@ impl MintbaseStore {
             self.tokens.insert(&token_idu64, &token);
             log_revoke(token_idu64, &account_id);
         }
-        // TODO: refund storage deposit
+
+        Promise::new(env::predecessor_account_id())
+            .transfer(self.storage_costs.common)
     }
 
     /// Revokes all NFT transfer approvals as specified by
     /// as specified by [NEP-178](https://nomicon.io/Standards/Tokens/NonFungibleToken/ApprovalManagement)
     #[payable]
-    pub fn nft_revoke_all(&mut self, token_id: U64) {
+    pub fn nft_revoke_all(&mut self, token_id: U64) -> Promise {
         let token_idu64 = token_id.into();
         let mut token = self.nft_token_internal(token_idu64);
         assert_token_unloaned!(token);
         assert_token_owned_by_predecessor!(token);
         assert_one_yocto();
 
+        let refund = token.approvals.len() as u128 * self.storage_costs.common;
+
         if !token.approvals.is_empty() {
             token.approvals.clear();
             self.tokens.insert(&token_idu64, &token);
             log_revoke_all(token_idu64);
         }
-        // TODO: refund storage deposit
+        Promise::new(env::predecessor_account_id()).transfer(refund)
     }
 
     // -------------------------- view methods -----------------------------

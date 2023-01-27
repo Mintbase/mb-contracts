@@ -272,7 +272,6 @@ impl Marketplace {
 
     /// Get the Token with `TokenKey`.
     pub fn get_token(&self, token_key: String) -> TokenListing {
-        // TODO: convert method might not require to take ownership
         let key: TokenKey = token_key.as_str().into();
         self.listings
             .get(&key)

@@ -54,7 +54,6 @@ mod payout;
 
 // ----------------------------- smart contract ----------------------------- //
 
-// TODO: shouldn't this be PanicOnDefault?
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct MintbaseStore {

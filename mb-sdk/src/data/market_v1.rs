@@ -16,7 +16,9 @@ use serde::{
 use crate::utils::TokenKey;
 
 /// A Token for sale on the Marketplace.
-#[derive(Deserialize, Serialize, Debug, BorshDeserialize, BorshSerialize)]
+#[derive(
+    Deserialize, Serialize, Debug, Clone, BorshDeserialize, BorshSerialize,
+)]
 pub struct TokenListing {
     /// Id of this `Token`.
     pub id: u64,

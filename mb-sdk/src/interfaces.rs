@@ -20,18 +20,6 @@ pub trait ExtOldMarket {
     ) -> Promise;
 }
 
-// #[ext_contract(ext_new_market)]
-// pub trait ExtNewMarket {
-//     // FIXME: correct signature!
-//     fn resolve_nft_payout(
-//         &mut self,
-//         token_key: String,
-//         token: TokenListing,
-//         others_keep: U128,
-//         market_keeps: U128,
-//     ) -> Promise;
-// }
-
 #[ext_contract(ext_nft)]
 pub trait ExtNft {
     /// Transfer the token and get the payout data.
@@ -43,7 +31,6 @@ pub trait ExtNft {
         balance: U128,
         max_len_payout: u32,
     ) -> Promise;
-    // TODO: resolve_transfer?
 }
 
 #[ext_contract(ext_nft_on_approve)]

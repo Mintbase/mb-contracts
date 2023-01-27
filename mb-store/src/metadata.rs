@@ -50,11 +50,7 @@ impl MintbaseStore {
     /// can be retrieved by calling `get_token_uri`. The metadata structure is not
     /// stored on the token, as this would lead to duplication of Metadata across
     /// tokens. Instead, the Metadata is stored in a Contract `LookupMap`.
-    pub fn nft_token_metadata(
-        &self,
-        token_id: U64,
-        // TODO: why not `TokenMetadataCompliant`?
-    ) -> TokenMetadata {
+    pub fn nft_token_metadata(&self, token_id: U64) -> TokenMetadata {
         self.token_metadata
             .get(&self.nft_token_internal(token_id.into()).metadata_id)
             .expect("bad metadata_id")

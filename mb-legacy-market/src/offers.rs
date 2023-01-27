@@ -70,7 +70,7 @@ impl Marketplace {
         let mut total: Balance = 0;
         let token_offers = token_key
             .into_iter()
-            .zip(price.clone().into_iter()) // TODO: eliminate clone
+            .zip(price.clone().into_iter())
             .zip(timeout.into_iter())
             .map(|((token_key, price), timeout)| {
                 total += price.0;
@@ -87,7 +87,12 @@ impl Marketplace {
                 self.try_make_offer(&mut listing, offer.clone());
                 self.listings.insert(&token_key.as_str().into(), &listing);
 
-                // TODO: merge trailing loop in here
+                if listing.autotransfer && price.0 >= listing.asking_price.0 {
+                    self.help_transfer(
+                        &token_key.as_str().into(),
+                        listing.clone(),
+                    );
+                }
 
                 (offer, listing, token_key)
             })
@@ -116,15 +121,6 @@ impl Marketplace {
             .map(|(_to, tl, _tk)| tl.num_offers)
             .collect::<Vec<_>>();
         log_make_offer(offers, token_keys, listings, offer_num);
-
-        token_offers
-            .into_iter()
-            .enumerate()
-            .for_each(|(u, (_to, tl, tk))| {
-                if tl.autotransfer && price[u].0 >= tl.asking_price.into() {
-                    self.help_transfer(&tk.as_str().into(), tl);
-                }
-            });
     }
 
     /// Withdraw the escrow deposited for an `Offer`. This function may only be
@@ -286,7 +282,6 @@ impl Marketplace {
             self.owner_id != offer.from,
             "The market owner must not place offers"
         );
-        // TODO::docs: a new auction must always be listed with price 0 -> `nft_on_approve`
         near_assert!(
             offer.price >= token.asking_price.into(),
             "Cannot set offer below ask"
