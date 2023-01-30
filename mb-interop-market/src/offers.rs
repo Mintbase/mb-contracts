@@ -48,7 +48,7 @@ impl Market {
         &mut self,
         nft_contract_id: AccountId,
         token_id: String,
-        referrer_id: Option<AccountId>,
+        affiliate_id: Option<AccountId>,
     ) -> Promise {
         self.assert_not_banned(&env::predecessor_account_id());
 
@@ -63,7 +63,7 @@ impl Market {
         //     .as_ref()
         //     .and_then(|account| self.referrers.get(account));
         // new version: Inserts default cut for non-whitelisted referrers
-        let referral_cut = referrer_id.as_ref().map(|account| {
+        let affiliate_cut = affiliate_id.as_ref().map(|account| {
             self.referrers.get(account).unwrap_or(self.fallback_cut)
         });
 
@@ -96,12 +96,14 @@ impl Market {
         let offer = Offer {
             offerer_id: env::predecessor_account_id(),
             amount: env::attached_deposit(),
-            referrer_id: referrer_id.clone(),
-            referral_cut,
+            referrer_id: affiliate_id.clone(),
+            referral_cut: affiliate_cut,
         };
 
-        let (ref_earning, _) = self.get_referral_mintbase_amounts(&offer);
+        let (affiliate_earning, _) =
+            self.get_affiliate_mintbase_amounts(&offer);
         env::log_str(
+            // TODO: rename referrer -> affiliate once we can point indexer here
             &events::NftMakeOfferData {
                 nft_contract_id,
                 nft_token_id: token_id,
@@ -110,8 +112,8 @@ impl Market {
                 offerer_id: env::predecessor_account_id(),
                 currency: listing.currency.to_string(),
                 price: env::attached_deposit().into(),
-                referrer_id,
-                referral_amount: ref_earning.map(Into::into),
+                referrer_id: affiliate_id,
+                referral_amount: affiliate_earning.map(Into::into),
             }
             .serialize_event(),
         );
@@ -223,12 +225,12 @@ impl Market {
             }
         };
 
-        let (ref_earning, mb_earning) =
-            self.get_referral_mintbase_amounts(&offer);
+        let (affiliate_earning, mb_earning) =
+            self.get_affiliate_mintbase_amounts(&offer);
         let sum: u128 = payout.values().map(|x| x.0).sum();
 
         // Given payouts sum is too large
-        if sum > (offer.amount - mb_earning - ref_earning.unwrap_or(0)) {
+        if sum > (offer.amount - mb_earning - affiliate_earning.unwrap_or(0)) {
             Promise::new(offer.offerer_id).transfer(offer.amount);
             self.refund_listing_and_ban_nft_contract(
                 &token_key,
@@ -249,6 +251,7 @@ impl Market {
         }
 
         env::log_str(
+            // TODO: rename referrer -> affiliate once we can point indexer here
             &events::NftSaleData {
                 nft_contract_id: listing.nft_contract_id.clone(),
                 nft_token_id: listing.nft_token_id.clone(),
@@ -258,7 +261,7 @@ impl Market {
                 currency: listing.currency.to_string(),
                 price: offer.amount.into(),
                 referrer_id: offer.referrer_id.clone(),
-                referral_amount: ref_earning.map(Into::into),
+                referral_amount: affiliate_earning.map(Into::into),
                 mintbase_amount: Some(mb_earning.into()),
             }
             .serialize_event(),
@@ -268,7 +271,7 @@ impl Market {
             Promise::new(account).transfer(amount.0);
         }
         if let Some(referrer_id) = offer.referrer_id {
-            Promise::new(referrer_id).transfer(ref_earning.unwrap());
+            Promise::new(referrer_id).transfer(affiliate_earning.unwrap());
         }
         self.listings.remove(&token_key);
         self.refund_listings(&listing.nft_owner_id, 1);
@@ -330,7 +333,7 @@ impl Market {
         //     .as_ref()
         //     .and_then(|account| self.referrers.get(account));
         // new version: Inserts default cut for non-whitelisted referrers
-        let referral_cut = msg.referrer_id.as_ref().map(|account| {
+        let affiliate_cut = msg.affiliate_id.as_ref().map(|account| {
             self.referrers.get(account).unwrap_or(self.fallback_cut)
         });
 
@@ -369,12 +372,13 @@ impl Market {
         let offer = Offer {
             offerer_id: sender_id.clone(),
             amount: amount.0,
-            referrer_id: msg.referrer_id.clone(),
-            referral_cut,
+            referrer_id: msg.affiliate_id.clone(),
+            referral_cut: affiliate_cut,
         };
 
-        let (ref_earning, _) = self.get_referral_mintbase_amounts(&offer);
+        let (ref_earning, _) = self.get_affiliate_mintbase_amounts(&offer);
         env::log_str(
+            // TODO: rename referrer -> affiliate once open-sourced
             &events::NftMakeOfferData {
                 nft_contract_id: msg.nft_contract_id,
                 nft_token_id: msg.token_id,
@@ -383,7 +387,7 @@ impl Market {
                 offerer_id: sender_id.clone(),
                 currency: listing.currency.to_string(),
                 price: amount,
-                referrer_id: msg.referrer_id,
+                referrer_id: msg.affiliate_id,
                 referral_amount: ref_earning.map(Into::into),
             }
             .serialize_event(),
@@ -435,12 +439,12 @@ impl Market {
             }
         };
 
-        let (ref_earning, mb_earning) =
-            self.get_referral_mintbase_amounts(&offer);
+        let (affiliate_earning, mb_earning) =
+            self.get_affiliate_mintbase_amounts(&offer);
         let sum: u128 = payout.values().map(|x| x.0).sum();
 
         // Given payout is too large
-        if sum > (offer.amount - mb_earning - ref_earning.unwrap_or(0)) {
+        if sum > (offer.amount - mb_earning - affiliate_earning.unwrap_or(0)) {
             self.refund_listing_and_ban_nft_contract(
                 &token_key,
                 &listing.nft_owner_id,
@@ -459,6 +463,7 @@ impl Market {
         }
 
         env::log_str(
+            // TODO: rename referrer -> affiliate once open-sourced
             &events::NftSaleData {
                 nft_contract_id: listing.nft_contract_id.clone(),
                 nft_token_id: listing.nft_token_id.clone(),
@@ -468,7 +473,7 @@ impl Market {
                 currency: listing.currency.to_string(),
                 price: offer.amount.into(),
                 referrer_id: offer.referrer_id.clone(),
-                referral_amount: ref_earning.map(Into::into),
+                referral_amount: affiliate_earning.map(Into::into),
                 mintbase_amount: Some(mb_earning.into()),
             }
             .serialize_event(),
@@ -478,7 +483,11 @@ impl Market {
             ft_transfer(ft_contract_id.clone(), account, amount.0);
         }
         if let Some(referrer_id) = offer.referrer_id {
-            ft_transfer(ft_contract_id, referrer_id, ref_earning.unwrap());
+            ft_transfer(
+                ft_contract_id,
+                referrer_id,
+                affiliate_earning.unwrap(),
+            );
         }
         self.listings.remove(&token_key);
         self.refund_listings(&listing.nft_owner_id, 1);
@@ -489,7 +498,7 @@ impl Market {
     // ---------------------------- offers (common) ----------------------------
     /// Calculate the amount that should be transferred to the affiliate and
     /// retained by the market, based on an offer.
-    fn get_referral_mintbase_amounts(
+    fn get_affiliate_mintbase_amounts(
         &self,
         offer: &Offer,
     ) -> (Option<Balance>, Balance) {
@@ -504,14 +513,6 @@ impl Market {
             None => (None, self.fallback_cut as u128 * offer.amount / 10_000),
         }
     }
-
-    // fn get_referral_mintbase_amounts_json(
-    //     &self,
-    //     offer: &Offer,
-    // ) -> (Option<U128>, Option<U128>) {
-    //     let (mb, referrer) = self.get_referral_mintbase_amounts(offer);
-    //     (mb.map(Into::into), referrer.map(Into::into))
-    // }
 
     /// Removes a listing, refunds the storage deposit to the lister, and bans
     /// the NFT contract from using the market. This does explicitly NOT refund
