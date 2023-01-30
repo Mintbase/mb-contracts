@@ -23,7 +23,10 @@ impl MintbaseStore {
     // -------------------------- change methods ---------------------------
     /// Transfer ownership of `Store` to a new owner. Setting
     /// `keep_old_minters=true` allows all existing minters (including the
-    /// prior owner) to keep their minter status.
+    /// prior owner) to keep their minter status. This does NOT change the
+    /// private keys of the store! If you are given ownership of a store, make
+    /// sure that you add your own key and remove old keys! If you want Mintbase
+    /// to manage store upgrades, leave the Mintbase key.
     ///
     /// Only the store owner may call this function.
     #[payable]
