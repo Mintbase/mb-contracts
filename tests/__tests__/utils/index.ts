@@ -1,5 +1,6 @@
 import { NearAccount } from "near-workspaces";
 import { ExecutionContext } from "ava";
+import { mintingDeposit } from "./balances.js";
 
 // TODO::testing::low: commenting all my test utils
 
@@ -32,7 +33,9 @@ export async function batchMint({
       num_to_mint,
       metadata: {},
     },
-    { attachedDeposit: "1" }
+    {
+      attachedDeposit: mintingDeposit({ n_tokens: 4 }),
+    }
   );
 }
 

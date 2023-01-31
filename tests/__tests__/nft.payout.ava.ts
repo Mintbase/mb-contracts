@@ -1,5 +1,5 @@
 import avaTest from "ava";
-import { failPromiseRejection } from "./utils/index.js";
+import { failPromiseRejection, mintingDeposit } from "./utils/index.js";
 import { setup } from "./setup.js";
 
 const test = setup(avaTest);
@@ -24,7 +24,7 @@ test("payout::splits", async (test) => {
         num_to_mint: 1,
         split_owners,
       },
-      { attachedDeposit: "1" }
+      { attachedDeposit: mintingDeposit({ n_tokens: 1, n_splits: 2 }) }
     )
     .catch(failPromiseRejection(test, "minting"));
 
@@ -63,7 +63,7 @@ test("payout::royalties", async (test) => {
         num_to_mint: 1,
         royalty_args: { split_between, percentage: 4000 },
       },
-      { attachedDeposit: "1" }
+      { attachedDeposit: mintingDeposit({ n_tokens: 1, n_royalties: 2 }) }
     )
     .catch(failPromiseRejection(test, "minting"));
 
@@ -111,7 +111,13 @@ test("payout::royalties_splits", async (test) => {
         royalty_args: { split_between, percentage: 2000 },
         split_owners,
       },
-      { attachedDeposit: "1" }
+      {
+        attachedDeposit: mintingDeposit({
+          n_tokens: 1,
+          n_splits: 2,
+          n_royalties: 2,
+        }),
+      }
     )
     .catch(failPromiseRejection(test, "minting"));
 
@@ -152,7 +158,7 @@ test("payout::low_balance", async (test) => {
         num_to_mint: 1,
         split_owners,
       },
-      { attachedDeposit: "1" }
+      { attachedDeposit: mintingDeposit({ n_tokens: 1, n_splits: 2 }) }
     )
     .catch(failPromiseRejection(test, "minting"));
 
@@ -171,7 +177,6 @@ test("payout::low_balance", async (test) => {
   );
 });
 
-// FIXME: doesn't work
 test("payout::max_len", async (test) => {
   const { alice, store } = test.context.accounts;
 
@@ -206,7 +211,7 @@ test("payout::max_len", async (test) => {
         num_to_mint: 1,
         split_owners,
       },
-      { attachedDeposit: "1" }
+      { attachedDeposit: mintingDeposit({ n_tokens: 1, n_splits: 16 }) }
     )
     .catch(failPromiseRejection(test, "minting"));
 

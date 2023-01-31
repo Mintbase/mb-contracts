@@ -8,6 +8,7 @@ import {
   assertEventLogs,
   failPromiseRejection,
   Tgas,
+  mintingDeposit,
 } from "./utils/index.js";
 import { setup } from "./setup.js";
 
@@ -45,7 +46,13 @@ test("core", async (test) => {
       store,
       "nft_batch_mint",
       { owner_id: alice.accountId, metadata: {}, num_to_mint: 6 },
-      { attachedDeposit: "1" }
+      {
+        attachedDeposit: mintingDeposit({
+          n_tokens: 6,
+          n_royalties: 0,
+          n_splits: 0,
+        }),
+      }
     )
     .catch(failPromiseRejection(test, "minting"));
 
@@ -398,7 +405,7 @@ test("batch-mint", async (test) => {
       },
       num_to_mint: 125,
     },
-    { attachedDeposit: "1", gas: Tgas(225) }
+    { attachedDeposit: mintingDeposit({ n_tokens: 125 }), gas: Tgas(225) }
   );
 
   // @ts-ignore
