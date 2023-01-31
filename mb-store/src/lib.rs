@@ -194,51 +194,6 @@ impl MintbaseStore {
         Self { metadata, ..old }
     }
 
-    /// Intended to introduce a consistent storage scheme to all stores.
-    /// This migration is currently paused because of problems with
-    /// MyNearWallet.
-    ///
-    /// Pros for the migration:
-    ///
-    /// - More flexibility
-    /// - Enables usage of multiple storage providers
-    /// - Reduces dependence on arweave
-    /// - Current inconsistency causes a lot of confusion, but all of the NEAR
-    ///   NFT ecosystem is already fragmented in their usage of `base_uri`
-    ///
-    /// Cons for the migration:
-    ///
-    /// - Gas costs
-    /// - Permanently increased storage costs
-    /// - Very slim probability for data corruption (worked fine on testnet),
-    ///   which should also be reversible
-    /// - Will require partial reindexing
-    #[private]
-    pub fn set_reference_media(
-        &mut self,
-        specs: Vec<(String, Option<String>, Option<String>)>,
-    ) {
-        for (token_id, reference, media) in specs {
-            let metadata_id = self
-                .tokens
-                .get(&token_id.parse().unwrap())
-                .unwrap()
-                .metadata_id;
-            let (n, mut metadata) =
-                self.token_metadata.get(&metadata_id).unwrap();
-            metadata.reference = reference;
-            metadata.media = media;
-            self.token_metadata.insert(&metadata_id, &(n, metadata));
-        }
-    }
-
-    /// Drops the base_uri after successfully migration all tokens with
-    /// `prepend_base_uri`
-    #[private]
-    pub fn set_base_uri(&mut self, base_uri: Option<String>) {
-        self.metadata.base_uri = base_uri;
-    }
-
     // -------------------------- internal methods -------------------------
 
     /// Internal
