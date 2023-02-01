@@ -195,7 +195,7 @@ impl Marketplace {
         .with_static_gas(gas::NFT_TRANSFER_PAYOUT)
         .nft_transfer_payout(
             receiver_id,
-            token_id.into(),
+            token_id.to_string(),
             approval_id,
             balance.into(),
             MAX_LEN_PAYOUT as u32,

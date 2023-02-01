@@ -1,23 +1,22 @@
-use mb_sdk::near_sdk::{
-    self,
-    borsh::{
+use mb_sdk::{
+    near_assert,
+    near_sdk::{
         self,
-        BorshDeserialize,
-        BorshSerialize,
+        borsh::{
+            self,
+            BorshDeserialize,
+            BorshSerialize,
+        },
+        collections::{
+            UnorderedMap,
+            UnorderedSet,
+        },
+        env,
+        json_types::U128,
+        AccountId,
+        Balance,
+        Promise,
     },
-    collections::{
-        UnorderedMap,
-        UnorderedSet,
-    },
-    env,
-    json_types::U128,
-    serde::{
-        Deserialize,
-        Serialize,
-    },
-    AccountId,
-    Balance,
-    Promise,
 };
 
 /// Contains constants and type definitions
@@ -26,79 +25,6 @@ mod listing;
 mod offers;
 
 use data::*;
-
-// --------------------- part of mintbase-contract-sdk? --------------------- //
-
-macro_rules! require {
-    ($pred:expr, $msg:literal) => {
-        mb_sdk::near_sdk::require!($pred, $msg)
-    };
-    ($pred:expr, $msg:literal, $($fmt:expr),+) => {
-        mb_sdk::near_sdk::require!($pred, format!($msg, $($fmt),+))
-    };
-}
-// Make macro visible across modules
-pub(crate) use require;
-
-fn near_parse<'a, T: Deserialize<'a>>(s: &'a str, msg: &str) -> T {
-    match near_sdk::serde_json::from_str::<T>(s) {
-        Err(_) => near_sdk::env::panic_str(msg),
-        Ok(v) => v,
-    }
-}
-
-fn require_predecessor(account: &AccountId) {
-    require!(
-        &env::predecessor_account_id() == account,
-        "Only {} is allowed to call this!",
-        account
-    );
-    near_sdk::assert_one_yocto();
-}
-
-#[near_sdk::ext_contract(ext_ft)]
-pub trait ExtFtContract {
-    fn ft_transfer(receiver_id: AccountId, amount: U128, memo: Option<String>);
-    fn ft_resolve_transfer(
-        sender_id: AccountId,
-        receiver_id: AccountId,
-        amount: U128,
-    ) -> String;
-}
-
-pub fn ft_transfer(
-    ft_contract_id: AccountId,
-    receiver_id: AccountId,
-    amount: Balance,
-) -> Promise {
-    ext_ft::ext(ft_contract_id)
-        .with_attached_deposit(1)
-        .with_static_gas(FT_TRANSFER_GAS)
-        .ft_transfer(receiver_id, amount.into(), None)
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(crate = "near_sdk::serde")]
-pub struct Payout {
-    pub payout: std::collections::HashMap<AccountId, U128>,
-}
-
-#[near_sdk::ext_contract(ext_nft)]
-pub trait ExtNftContract {
-    fn nft_transfer_payout(
-        receiver_id: AccountId,
-        token_id: String,
-        approval_id: u64,
-        balance: U128,
-        max_len_payout: u32,
-    ) -> Payout;
-}
-
-#[near_sdk::ext_contract(ext_market)]
-pub trait ExtMarketContract {
-    fn nft_resolve_payout_near(token_key: String);
-    fn nft_resolve_payout_ft(token_key: String);
-}
 
 // ------------------------- market smart contract -------------------------- //
 /// Storage of the market contract
@@ -360,7 +286,7 @@ impl Market {
     // ---------------------------- utility methods ----------------------------
     /// Panics if the given account is banned
     fn assert_not_banned(&self, account: &AccountId) {
-        require!(
+        near_assert!(
             !self.banned_accounts.contains(account),
             "{} is banned from the market",
             account
@@ -369,7 +295,7 @@ impl Market {
 
     /// Panics if the current call is not from the market owner.
     fn assert_predecessor_is_owner(&self) {
-        require!(
+        near_assert!(
             env::predecessor_account_id() == self.owner,
             "Method is restricted to market owner"
         );

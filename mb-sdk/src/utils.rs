@@ -8,7 +8,9 @@ use near_sdk::{
         Deserialize,
         Serialize,
     },
+    AccountId,
     Balance,
+    Promise,
 };
 
 /// Split a &str on the first colon
@@ -23,6 +25,18 @@ pub const fn ntoy(near_amount: Balance) -> Balance {
     near_amount * 10u128.pow(24)
 }
 
+pub fn ft_transfer(
+    ft_contract_id: AccountId,
+    receiver_id: AccountId,
+    amount: Balance,
+) -> Promise {
+    crate::interfaces::ext_ft::ext(ft_contract_id)
+        .with_attached_deposit(1)
+        .with_static_gas(crate::constants::gas::FT_TRANSFER)
+        .ft_transfer(receiver_id, amount.into(), None)
+}
+
+// --------------------------- SafeFraction type ---------------------------- //
 /// A provisional safe fraction type, borrowed and modified from:
 /// https://github.com/near/core-contracts/blob/master/staking-pool/src/lib.rs#L127
 /// The numerator is a value between 0 and 10,000. The denominator is
@@ -61,6 +75,7 @@ impl SafeFraction {
     }
 }
 
+// ----------------------------- TokenKey type ------------------------------ //
 #[derive(
     Clone, Debug, Deserialize, Serialize, BorshDeserialize, BorshSerialize,
 )]
@@ -110,6 +125,22 @@ macro_rules! near_assert {
             $crate::near_panic!($msg, $($arg),*)
         }
     };
+}
+
+pub fn near_parse<'a, T: Deserialize<'a>>(s: &'a str, msg: &str) -> T {
+    match near_sdk::serde_json::from_str::<T>(s) {
+        Err(_) => near_sdk::env::panic_str(msg),
+        Ok(v) => v,
+    }
+}
+
+pub fn assert_predecessor(account: &AccountId) {
+    near_assert!(
+        &near_sdk::env::predecessor_account_id() == account,
+        "Only {} is allowed to call this!",
+        account
+    );
+    near_sdk::assert_one_yocto();
 }
 
 #[macro_export]

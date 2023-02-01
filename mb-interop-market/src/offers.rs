@@ -1,5 +1,11 @@
 use mb_sdk::{
+    data::store::Payout,
     events::market_v2 as events,
+    interfaces::{
+        ext_new_market,
+        ext_nft,
+    },
+    near_assert,
     near_sdk::{
         self,
         env,
@@ -9,17 +15,16 @@ use mb_sdk::{
         Promise,
         PromiseOrValue,
     },
+    utils::{
+        ft_transfer,
+        near_parse,
+    },
 };
 
 use crate::{
     data::*,
-    ext_market,
-    ext_nft,
-    ft_transfer,
-    near_parse,
     Market,
     MarketExt,
-    Payout,
 };
 
 #[near_sdk::near_bindgen]
@@ -49,6 +54,7 @@ impl Market {
         nft_contract_id: AccountId,
         token_id: String,
         referrer_id: Option<AccountId>,
+        affiliate_id: Option<AccountId>,
     ) -> Promise {
         self.assert_not_banned(&env::predecessor_account_id());
 
@@ -57,6 +63,13 @@ impl Market {
             None => env::panic_str(ERR_LISTING_NOT_FOUND),
             Some(l) => l,
         };
+
+        // Referrer/affiliate renaming with backwards compatibility
+        near_assert!(
+            referrer_id.is_none() || affiliate_id.is_none(),
+            "You can either specify a referrer_id or an affiliate_id, but not both."
+        );
+        let referrer_id = referrer_id.or(affiliate_id);
         // Insert default cut for non-whitelisted referrers
         let referral_cut = referrer_id.as_ref().map(|account| {
             self.referrers.get(account).unwrap_or(self.fallback_cut)
@@ -70,12 +83,12 @@ impl Market {
             ))
         }
         // NEAR amount needs to be at least NFT asking price
-        crate::require!(
+        near_assert!(
             env::attached_deposit() >= listing.price,
             "Deposit needs to be higher than listing price"
         );
         // There must be no other offer in progress right now
-        crate::require!(
+        near_assert!(
             listing.current_offer.is_none(),
             "Another offer currently executes on this listing"
         );
@@ -146,11 +159,11 @@ impl Market {
             );
 
         let callback = if listing.currency.is_near() {
-            ext_market::ext(env::current_account_id())
+            ext_new_market::ext(env::current_account_id())
                 .with_static_gas(NFT_RESOLVE_PAYOUT_NEAR_GAS)
                 .nft_resolve_payout_near(token_key)
         } else {
-            ext_market::ext(env::current_account_id())
+            ext_new_market::ext(env::current_account_id())
                 .with_static_gas(NFT_RESOLVE_PAYOUT_FT_GAS)
                 .nft_resolve_payout_ft(token_key)
         };
@@ -183,7 +196,7 @@ impl Market {
         let mut payout = match env::promise_result(0) {
             near_sdk::PromiseResult::NotReady => {
                 return PromiseOrValue::Promise(
-                    ext_market::ext(env::current_account_id())
+                    ext_new_market::ext(env::current_account_id())
                         .nft_resolve_payout_near(token_key),
                 );
             }
@@ -302,7 +315,7 @@ impl Market {
         }
 
         let ft_contract_id = env::predecessor_account_id();
-        let msg: BuyWithFtMessage =
+        let mut msg: BuyWithFtMessage =
             near_parse(&msg, "Invalid arguments to buy using FT");
 
         self.assert_not_banned(&sender_id);
@@ -313,13 +326,14 @@ impl Market {
             None => env::panic_str(ERR_LISTING_NOT_FOUND),
             Some(l) => l,
         };
-        // old vesion: Doesn't allow non-whitelisted referrers
-        // (see commented panic below)
-        // let referral_cut = msg.
-        //     referrer_id
-        //     .as_ref()
-        //     .and_then(|account| self.referrers.get(account));
-        // new version: Inserts default cut for non-whitelisted referrers
+
+        // Referrer/affiliate renaming with backwards compatibility
+        near_assert!(
+            msg.referrer_id.is_none() || msg.affiliate_id.is_none(),
+            "You can either specify a referrer_id or an affiliate_id, but not both."
+        );
+        msg.referrer_id = msg.referrer_id.or(msg.affiliate_id);
+        // Insert default cut for non-whitelisted referrers
         let referral_cut = msg.referrer_id.as_ref().map(|account| {
             self.referrers.get(account).unwrap_or(self.fallback_cut)
         });
@@ -401,7 +415,7 @@ impl Market {
         let mut payout = match env::promise_result(0) {
             near_sdk::PromiseResult::NotReady => {
                 return PromiseOrValue::Promise(
-                    ext_market::ext(env::current_account_id())
+                    ext_new_market::ext(env::current_account_id())
                         .nft_resolve_payout_ft(token_key),
                 );
             }
@@ -527,9 +541,9 @@ impl Market {
         // fetch listing
         let token_key = format!("{}<$>{}", nft_contract_id, token_id);
         let listing = self.get_listing_internal(&token_key);
-        crate::require!(listing.is_some(), "Listing does not exist");
+        near_assert!(listing.is_some(), "Listing does not exist");
         let mut listing = listing.unwrap();
-        crate::require!(
+        near_assert!(
             listing.current_offer.is_some(),
             "Listing does not have an offer"
         );
