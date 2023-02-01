@@ -106,18 +106,20 @@ export const mintingDeposit = ({
   n_tokens,
   n_royalties,
   n_splits,
+  metadata_bytes,
 }: {
   n_tokens: number;
   n_royalties?: number;
   n_splits?: number;
+  metadata_bytes?: number;
 }): string => {
   //80 bytes * 10e18 NEAR/byte = 0.8e21
   const common_deposit = 0.8;
-  const metadata_deposit = 10; // blanket assumption: 1kB
   // 360 bytes * 10e18 NEAR/byte = 3.6e21
   const token_deposit = 3.6;
   const minting_fee = 1;
 
+  const metadata_deposit = (metadata_bytes || 10000) * 0.001;
   const splits_deposit = (n_splits || 0) * common_deposit;
   const royalties_deposit = (n_royalties || 0) * common_deposit;
   const total =

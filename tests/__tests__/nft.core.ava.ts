@@ -405,7 +405,13 @@ test("batch-mint", async (test) => {
       },
       num_to_mint: 125,
     },
-    { attachedDeposit: mintingDeposit({ n_tokens: 125 }), gas: Tgas(225) }
+    {
+      attachedDeposit: mintingDeposit({
+        n_tokens: 125,
+        metadata_bytes: 110000,
+      }),
+      gas: Tgas(225),
+    }
   );
 
   // @ts-ignore

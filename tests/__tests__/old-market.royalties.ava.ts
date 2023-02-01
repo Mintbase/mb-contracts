@@ -10,6 +10,7 @@ import {
   Tgas,
   getBalance,
   assertBalanceChange,
+  mintingDeposit,
 } from "./utils/index.js";
 import { setup } from "./setup.js";
 
@@ -53,7 +54,7 @@ test("market::royalties", async (test) => {
           percentage: 5000, // this is 50 %
         },
       },
-      { attachedDeposit: "1" }
+      { attachedDeposit: mintingDeposit({ n_tokens: 1, n_royalties: 2 }) }
     )
     .catch(failPromiseRejection(test, "minting with royalties"));
 
