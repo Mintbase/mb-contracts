@@ -207,47 +207,6 @@ impl MintbaseStore {
         Promise::new(factory).transfer(MINTING_FEE)
     }
 
-    /// Modify the minting privileges of `account_id`. Minters are able to
-    /// mint tokens on this `Store`.
-    ///
-    /// Only the store owner may call this function.
-    ///
-    /// This method increases storage costs of the contract, but covering them
-    /// is optional.
-    // TODO: deprecate in favor of batch_change_minters
-    #[payable]
-    pub fn grant_minter(&mut self, account_id: AccountId) {
-        self.assert_store_owner();
-        self.grant_minter_internal(&account_id)
-    }
-
-    /// Adds an account ID to the minters list and logs the corresponding event.
-    fn grant_minter_internal(&mut self, account_id: &AccountId) {
-        // does nothing if account_id is already a minter
-        if self.minters.insert(account_id) {
-            log_grant_minter(account_id);
-        }
-    }
-
-    /// Modify the minting privileges of `account_id`. Minters are able to
-    /// mint tokens on this `Store`. The current `Store` owner cannot revoke
-    /// themselves.
-    ///
-    /// Only the store owner may call this function.
-    // TODO: deprecate in favor of batch_change_minters
-    #[payable]
-    pub fn revoke_minter(&mut self, account_id: AccountId) {
-        assert_one_yocto();
-        near_assert!(
-            env::predecessor_account_id() == self.owner_id
-                || env::predecessor_account_id() == account_id,
-            "Only the store owner or  {} can revoke minting rights for {}",
-            account_id,
-            account_id
-        );
-        self.revoke_minter_internal(&account_id);
-    }
-
     /// Tries to remove an acount ID from the minters list, will only fail
     /// if the owner should be removed from the minters list.
     fn revoke_minter_internal(&mut self, account_id: &AccountId) {
@@ -283,7 +242,10 @@ impl MintbaseStore {
 
         if let Some(grant_ids) = grant {
             for account_id in grant_ids {
-                self.grant_minter_internal(&account_id)
+                // does nothing if account_id is already a minter
+                if self.minters.insert(&account_id) {
+                    log_grant_minter(&account_id);
+                }
             }
         }
 

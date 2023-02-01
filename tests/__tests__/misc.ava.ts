@@ -87,7 +87,12 @@ test("ownership::transfer-store", async (test) => {
   const { alice, bob, carol, store } = test.context.accounts;
 
   await alice
-    .call(store, "grant_minter", { account_id: bob }, { attachedDeposit: "1" })
+    .call(
+      store,
+      "batch_change_minters",
+      { grant: [bob] },
+      { attachedDeposit: "1" }
+    )
     .catch(failPromiseRejection(test, "granting minter rights"));
 
   // ---------------------------- remove minters -----------------------------

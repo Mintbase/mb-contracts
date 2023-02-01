@@ -422,8 +422,8 @@ test("approvals::minting", async (test) => {
   const grantMinterCall = await alice
     .callRaw(
       store,
-      "grant_minter",
-      { account_id: bob.accountId },
+      "batch_change_minters",
+      { grant: [bob.accountId] },
       { attachedDeposit: "1" }
     )
     .catch(failPromiseRejection("grant minting rights"));
@@ -449,8 +449,8 @@ test("approvals::minting", async (test) => {
       async () =>
         bob.call(
           store,
-          "grant_minter",
-          { account_id: bob.accountId },
+          "batch_change_minters",
+          { grant: [bob.accountId] },
           { attachedDeposit: "1" }
         ),
       "This method can only be called by the store owner",
@@ -459,7 +459,7 @@ test("approvals::minting", async (test) => {
     //  require deposit
     [
       async () =>
-        alice.call(store, "grant_minter", { account_id: bob.accountId }),
+        alice.call(store, "batch_change_minters", { grant: [bob.accountId] }),
       "Requires attached deposit of exactly 1 yoctoNEAR",
       "Alice tried to grant minting rights without yoctoNEAR deposit",
     ],
@@ -535,8 +535,8 @@ test("approvals::minting", async (test) => {
   const revokeMinterCall = await alice
     .callRaw(
       store,
-      "revoke_minter",
-      { account_id: bob.accountId },
+      "batch_change_minters",
+      { revoke: [bob.accountId] },
       { attachedDeposit: "1" }
     )
     .catch(failPromiseRejection("revoke minting rights"));
@@ -560,7 +560,7 @@ test("approvals::minting", async (test) => {
     // requires yoctoNEAR deposit
     [
       async () =>
-        alice.call(store, "revoke_minter", { account_id: bob.accountId }),
+        alice.call(store, "batch_change_minters", { revoke: [bob.accountId] }),
       "Requires attached deposit of exactly 1 yoctoNEAR",
       "Alice tried to revoke minting rights without yoctoNEAR deposit",
     ],
@@ -569,8 +569,8 @@ test("approvals::minting", async (test) => {
       async () =>
         alice.call(
           store,
-          "revoke_minter",
-          { account_id: alice.accountId },
+          "batch_change_minters",
+          { revoke: [alice.accountId] },
           { attachedDeposit: "1" }
         ),
       "Owner cannot be removed from minters",
@@ -626,7 +626,7 @@ test("approvals::minting", async (test) => {
     "Bad minters list after batch granting minter rights"
   );
 
-  // TODO: batch_change_minters: change carol to dave
+  // batch_change_minters: change carol to dave
   const batchChangeMinterCall = await alice
     .callRaw(
       store,
