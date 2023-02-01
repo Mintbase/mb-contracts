@@ -29,6 +29,7 @@ use data::*;
 
 // --------------------- part of mintbase-contract-sdk? --------------------- //
 
+// TODO: dedup to near_assert
 macro_rules! require {
     ($pred:expr, $msg:literal) => {
         mb_sdk::near_sdk::require!($pred, $msg)
@@ -40,6 +41,7 @@ macro_rules! require {
 // Make macro visible across modules
 pub(crate) use require;
 
+// TODO: move to SDK
 fn near_parse<'a, T: Deserialize<'a>>(s: &'a str, msg: &str) -> T {
     match near_sdk::serde_json::from_str::<T>(s) {
         Err(_) => near_sdk::env::panic_str(msg),
@@ -47,6 +49,7 @@ fn near_parse<'a, T: Deserialize<'a>>(s: &'a str, msg: &str) -> T {
     }
 }
 
+// TODO: use SDK
 fn require_predecessor(account: &AccountId) {
     require!(
         &env::predecessor_account_id() == account,
@@ -56,6 +59,7 @@ fn require_predecessor(account: &AccountId) {
     near_sdk::assert_one_yocto();
 }
 
+// TODO: use SDK
 #[near_sdk::ext_contract(ext_ft)]
 pub trait ExtFtContract {
     fn ft_transfer(receiver_id: AccountId, amount: U128, memo: Option<String>);
@@ -66,6 +70,7 @@ pub trait ExtFtContract {
     ) -> String;
 }
 
+// TODO: use sdk
 pub fn ft_transfer(
     ft_contract_id: AccountId,
     receiver_id: AccountId,
@@ -77,12 +82,14 @@ pub fn ft_transfer(
         .ft_transfer(receiver_id, amount.into(), None)
 }
 
+// TODO: use sdk
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "near_sdk::serde")]
 pub struct Payout {
     pub payout: std::collections::HashMap<AccountId, U128>,
 }
 
+// TODO: use sdk
 #[near_sdk::ext_contract(ext_nft)]
 pub trait ExtNftContract {
     fn nft_transfer_payout(
@@ -94,6 +101,7 @@ pub trait ExtNftContract {
     ) -> Payout;
 }
 
+// TODO: use sdk
 #[near_sdk::ext_contract(ext_market)]
 pub trait ExtMarketContract {
     fn nft_resolve_payout_near(token_key: String);

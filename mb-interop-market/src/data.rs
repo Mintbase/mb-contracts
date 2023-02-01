@@ -250,4 +250,5 @@ pub struct BuyWithFtMessage {
     pub nft_contract_id: AccountId,
     pub token_id: String,
     pub referrer_id: Option<AccountId>,
+    pub affiliate_id: Option<AccountId>,
 }

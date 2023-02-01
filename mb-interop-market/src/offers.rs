@@ -49,6 +49,7 @@ impl Market {
         nft_contract_id: AccountId,
         token_id: String,
         referrer_id: Option<AccountId>,
+        affiliate_id: Option<AccountId>,
     ) -> Promise {
         self.assert_not_banned(&env::predecessor_account_id());
 
@@ -57,6 +58,13 @@ impl Market {
             None => env::panic_str(ERR_LISTING_NOT_FOUND),
             Some(l) => l,
         };
+
+        // Referrer/affiliate renaming with backwards compatibility
+        crate::require!(
+            referrer_id.is_none() || affiliate_id.is_none(),
+            "You can either specify a referrer_id or an affiliate_id, but not both."
+        );
+        let referrer_id = referrer_id.or(affiliate_id);
         // Insert default cut for non-whitelisted referrers
         let referral_cut = referrer_id.as_ref().map(|account| {
             self.referrers.get(account).unwrap_or(self.fallback_cut)
@@ -302,7 +310,7 @@ impl Market {
         }
 
         let ft_contract_id = env::predecessor_account_id();
-        let msg: BuyWithFtMessage =
+        let mut msg: BuyWithFtMessage =
             near_parse(&msg, "Invalid arguments to buy using FT");
 
         self.assert_not_banned(&sender_id);
@@ -313,13 +321,14 @@ impl Market {
             None => env::panic_str(ERR_LISTING_NOT_FOUND),
             Some(l) => l,
         };
-        // old vesion: Doesn't allow non-whitelisted referrers
-        // (see commented panic below)
-        // let referral_cut = msg.
-        //     referrer_id
-        //     .as_ref()
-        //     .and_then(|account| self.referrers.get(account));
-        // new version: Inserts default cut for non-whitelisted referrers
+
+        // Referrer/affiliate renaming with backwards compatibility
+        crate::require!(
+            msg.referrer_id.is_none() || msg.affiliate_id.is_none(),
+            "You can either specify a referrer_id or an affiliate_id, but not both."
+        );
+        msg.referrer_id = msg.referrer_id.or(msg.affiliate_id);
+        // Insert default cut for non-whitelisted referrers
         let referral_cut = msg.referrer_id.as_ref().map(|account| {
             self.referrers.get(account).unwrap_or(self.fallback_cut)
         });

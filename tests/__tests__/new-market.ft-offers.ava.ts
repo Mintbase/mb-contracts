@@ -334,7 +334,7 @@ test("Offers above ask are executed (FT)", async (test) => {
 });
 
 // // ----------------------- checking referral support ------------------------ //
-test("Referrals work (FT)", async (test) => {
+test("Affiliations work (FT)", async (test) => {
   const {
     root,
     alice,
@@ -371,7 +371,7 @@ test("Referrals work (FT)", async (test) => {
       msg: JSON.stringify({
         nft_contract_id: store.accountId,
         token_id: "0",
-        referrer_id: bob.accountId,
+        affiliate_id: bob.accountId,
       }),
     },
     { attachedDeposit: "1", gas: Gas.parse("299 Tgas") }

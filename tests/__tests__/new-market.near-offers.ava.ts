@@ -175,7 +175,72 @@ test("Offers below ask are rejected (NEAR)", async (test) => {
 // });
 
 // // ----------------------- checking referral support ------------------------ //
-test("Referrals work (NEAR)", async (test) => {
+test("Affiliations work (NEAR)", async (test) => {
+  const {
+    root,
+    alice,
+    bob,
+    carol,
+    newMarket: market,
+    store,
+  } = test.context.accounts;
+  await mintAndList({ alice, market, store });
+  await root.call(
+    market,
+    "add_referrer",
+    { account_id: bob.accountId, cut: 200 },
+    { attachedDeposit: "1" }
+  );
+
+  const preMarketBalance = await getBalance(market);
+  const preAliceBalance = await getBalance(alice);
+  const preBobBalance = await getBalance(bob);
+  const preCarolBalance = await getBalance(carol);
+
+  await carol.call(
+    market,
+    "buy",
+    {
+      nft_contract_id: store.accountId,
+      token_id: "0",
+      affiliate_id: bob.accountId,
+    },
+    { attachedDeposit: nearToYocto("10") as string, gas: Gas.parse("225 Tgas") }
+  );
+
+  const postMarketBalance = await getBalance(market);
+  const postAliceBalance = await getBalance(alice);
+  const postBobBalance = await getBalance(bob);
+  const postCarolBalance = await getBalance(carol);
+
+  // test.log(`market: ${preMarketBalance} -> ${postMarketBalance}`);
+  // test.log(`alice: ${preAliceBalance} -> ${postAliceBalance}`);
+  // test.log(`bob: ${preBobBalance} -> ${postBobBalance}`);
+  // test.log(`carol: ${preCarolBalance} -> ${postCarolBalance}`);
+  // Market should loose the storage deposit and gain its fee
+  test.true(
+    diffCheck(
+      postMarketBalance,
+      preMarketBalance,
+      nearToBn("0.10"),
+      nearToBn("0.01") // -> storage + yocto + something else (not exact)
+    )
+  );
+  // 9.80 for the sale, 0.01 storage refund
+  test.true(postAliceBalance.eq(preAliceBalance.add(nearToBn("9.81"))));
+  // Bob get's 1
+  test.true(postBobBalance.eq(preBobBalance.add(nearToBn("0.1"))));
+  test.true(
+    diffCheck(
+      postCarolBalance,
+      preCarolBalance,
+      nearToBn("10").neg(),
+      nearToBn("0.05")
+    )
+  );
+});
+
+test("Affiliations work (NEAR, referrer interface)", async (test) => {
   const {
     root,
     alice,
