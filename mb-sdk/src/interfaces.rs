@@ -26,7 +26,7 @@ pub trait ExtNft {
     fn nft_transfer_payout(
         &mut self,
         receiver_id: AccountId,
-        token_id: U64,
+        token_id: String,
         approval_id: u64,
         balance: U128,
         max_len_payout: u32,
@@ -104,4 +104,31 @@ pub trait ExtFactory {
         store_account_id: AccountId,
         attached_deposit: U128,
     );
+}
+
+#[near_sdk::ext_contract(ext_ft)]
+pub trait ExtFt {
+    fn ft_transfer(receiver_id: AccountId, amount: U128, memo: Option<String>);
+    fn ft_resolve_transfer(
+        sender_id: AccountId,
+        receiver_id: AccountId,
+        amount: U128,
+    ) -> String;
+}
+
+// #[near_sdk::ext_contract(ext_nft)]
+// pub trait ExtNftContract {
+//     fn nft_transfer_payout(
+//         receiver_id: AccountId,
+//         token_id: String,
+//         approval_id: u64,
+//         balance: U128,
+//         max_len_payout: u32,
+//     ) -> Payout;
+// }
+
+#[near_sdk::ext_contract(ext_new_market)]
+pub trait ExtNewMarket {
+    fn nft_resolve_payout_near(token_key: String);
+    fn nft_resolve_payout_ft(token_key: String);
 }

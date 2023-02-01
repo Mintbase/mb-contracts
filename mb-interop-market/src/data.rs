@@ -29,7 +29,6 @@ pub const TEN_MILLINEAR: Balance = 10_000_000_000_000_000_000_000;
 pub const MAX_LEN_PAYOUT_NEAR: u32 = 50;
 pub const MAX_LEN_PAYOUT_FT: u32 = 10;
 pub const LISTING_KIND_SIMPLE: &str = "simple";
-pub const FT_TRANSFER_GAS: Gas = Gas(15_000_000_000_000);
 pub const NFT_TRANSFER_PAYOUT_GAS: Gas = Gas(10_000_000_000_000);
 pub const NFT_RESOLVE_PAYOUT_NEAR_GAS: Gas = Gas(175_000_000_000_000);
 pub const NFT_RESOLVE_PAYOUT_FT_GAS: Gas = Gas(235_000_000_000_000);

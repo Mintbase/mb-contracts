@@ -53,6 +53,8 @@ pub mod gas {
 
     /// Gas requirements for `nft_transfer_call`
     pub const NFT_ON_APPROVE: Gas = tgas(25);
+
+    pub const FT_TRANSFER: Gas = tgas(15);
 }
 
 pub mod storage_bytes {

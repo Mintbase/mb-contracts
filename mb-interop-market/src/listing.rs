@@ -1,16 +1,19 @@
 use mb_sdk::{
     events::market_v2 as events,
+    near_assert,
     near_sdk::{
         self,
         env,
         AccountId,
     },
+    utils::{
+        assert_predecessor,
+        near_parse,
+    },
 };
 
 use crate::{
     data::*,
-    near_parse,
-    require_predecessor,
     Market,
     MarketExt,
 };
@@ -46,12 +49,12 @@ impl Market {
         }
         // Token IDs must not be longer than 128 bytes to guard against the
         // million cheap data additions attack
-        crate::require!(
+        near_assert!(
             listing.nft_token_id.len() <= 128,
             "Cannot process token IDs with more than 128 bytes"
         );
         // Lister must have purchased storage for processing
-        crate::require!(
+        near_assert!(
             self.free_storage_deposit(&listing.nft_owner_id)
                 >= self.listing_storage_deposit,
             "Storage for listing not covered"
@@ -135,8 +138,8 @@ impl Market {
         let minimum_withdrawal_timestamp =
             listing.created_at + self.listing_lock_seconds * 1_000_000_000;
 
-        require_predecessor(&listing.nft_owner_id);
-        crate::require!(
+        assert_predecessor(&listing.nft_owner_id);
+        near_assert!(
             env::block_timestamp() > minimum_withdrawal_timestamp,
             "Listing cannot be withdrawn before timestamp {}",
             minimum_withdrawal_timestamp / 1_000_000_000
