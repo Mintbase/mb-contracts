@@ -73,18 +73,18 @@ test("Owner can set config", async (test) => {
 
   await root.call(
     market,
-    "add_referrer",
+    "add_affiliate",
     { account_id: alice.accountId, cut: 200 },
     { attachedDeposit: "1" }
   );
-  test.deepEqual(await market.view("referrers"), [[alice.accountId, 200]]);
+  test.deepEqual(await market.view("affiliates"), [[alice.accountId, 200]]);
   await root.call(
     market,
-    "del_referrer",
+    "del_affiliate",
     { account_id: alice.accountId },
     { attachedDeposit: "1" }
   );
-  test.deepEqual(await market.view("referrers"), []);
+  test.deepEqual(await market.view("affiliates"), []);
 
   await root.call(
     market,

@@ -187,7 +187,7 @@ test("Affiliations work (NEAR)", async (test) => {
   await mintAndList({ alice, market, store });
   await root.call(
     market,
-    "add_referrer",
+    "add_affiliate",
     { account_id: bob.accountId, cut: 200 },
     { attachedDeposit: "1" }
   );
@@ -252,7 +252,7 @@ test("Affiliations work (NEAR, referrer interface)", async (test) => {
   await mintAndList({ alice, market, store });
   await root.call(
     market,
-    "add_referrer",
+    "add_affiliate",
     { account_id: bob.accountId, cut: 200 },
     { attachedDeposit: "1" }
   );

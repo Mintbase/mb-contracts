@@ -171,23 +171,23 @@ impl Market {
         self.banned_accounts.iter().collect()
     }
 
-    // -------- referrers whitelist
+    // -------- affiliates whitelist
     /// Add a registered affiliate. This allows to set a custom fee whereas
     /// non-registered affiliates will share the fallback with the market.
     /// Only the owner can call this.
     #[payable]
-    pub fn add_referrer(&mut self, account_id: AccountId, cut: u16) {
+    pub fn add_affiliate(&mut self, account_id: AccountId, cut: u16) {
         self.assert_predecessor_is_owner();
         self.referrers.insert(&account_id, &cut);
     }
     /// Remove a registered affiliate. Only the owner can call this.
     #[payable]
-    pub fn del_referrer(&mut self, account_id: AccountId) {
+    pub fn del_affiliate(&mut self, account_id: AccountId) {
         self.assert_predecessor_is_owner();
         self.referrers.remove(&account_id);
     }
     /// Show all registered affiliates together with their custom fees.
-    pub fn referrers(&self) -> Vec<(AccountId, u16)> {
+    pub fn affiliates(&self) -> Vec<(AccountId, u16)> {
         self.referrers.iter().collect()
     }
 
