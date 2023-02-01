@@ -5,6 +5,7 @@ import {
   getBalance,
   diffCheck,
   nearToBn,
+  mintingDeposit,
 } from "./utils/balances.js";
 import { getEvent } from "./utils/events.js";
 import { getPanic } from "./utils/panics.js";
@@ -19,7 +20,7 @@ test("Approvals create listings", async (test) => {
     store,
     "nft_batch_mint",
     { owner_id: alice, metadata: {}, num_to_mint: 1 },
-    { attachedDeposit: "1" }
+    { attachedDeposit: mintingDeposit({ n_tokens: 1 }) }
   );
 
   await alice.call(
@@ -156,7 +157,7 @@ test("Cannot list without deposit", async (test) => {
     store,
     "nft_batch_mint",
     { owner_id: alice, metadata: {}, num_to_mint: 1 },
-    { attachedDeposit: "1" }
+    { attachedDeposit: mintingDeposit({ n_tokens: 1 }) }
   );
 
   const approveCall = await alice.callRaw(

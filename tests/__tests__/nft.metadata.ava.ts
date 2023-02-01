@@ -1,5 +1,5 @@
 import avaTest from "ava";
-import { failPromiseRejection } from "./utils/index.js";
+import { failPromiseRejection, mintingDeposit } from "./utils/index.js";
 import { setup } from "./setup.js";
 
 const test = setup(avaTest);
@@ -35,7 +35,7 @@ test("metadata", async (test) => {
         },
         num_to_mint: 2,
       },
-      { attachedDeposit: "1" }
+      { attachedDeposit: mintingDeposit({ n_tokens: 2 }) }
     )
     .catch(failPromiseRejection(test, "minting"));
 

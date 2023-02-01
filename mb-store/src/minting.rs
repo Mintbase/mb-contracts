@@ -1,7 +1,10 @@
+use std::convert::TryInto;
+
 use mb_sdk::{
     constants::{
         MAX_LEN_PAYOUT,
         MINIMUM_FREE_STORAGE_STAKE,
+        MINTING_FEE,
     },
     data::store::{
         Royalty,
@@ -25,6 +28,7 @@ use mb_sdk::{
         serde_json,
         AccountId,
         Balance,
+        Promise,
     },
 };
 
@@ -56,7 +60,7 @@ impl MintbaseStore {
         num_to_mint: u64,
         royalty_args: Option<RoyaltyArgs>,
         split_owners: Option<SplitBetweenUnparsed>,
-    ) {
+    ) -> Promise {
         near_assert!(num_to_mint > 0, "No tokens to mint");
         near_assert!(
             num_to_mint <= 125,
@@ -98,9 +102,7 @@ impl MintbaseStore {
 
         // Calculating storage consuption upfront saves gas if the transaction
         // were to fail later.
-        let covered_storage = env::account_balance()
-            - (env::storage_usage() as u128
-                * self.storage_costs.storage_price_per_byte);
+        let covered_storage = env::attached_deposit() - MINTING_FEE;
         metadata.copies = metadata.copies.or(Some(num_to_mint as u16));
         let md_size = borsh::to_vec(&metadata).unwrap().len() as u64;
         let roy_len = royalty_args
@@ -192,6 +194,17 @@ impl MintbaseStore {
             &meta_ref,
             &meta_extra,
         );
+
+        // Transfer minting fee, this assumes the parent account is a factory
+        let factory = env::current_account_id()
+            .as_str()
+            .split_once('.')
+            .unwrap()
+            .1
+            .to_string()
+            .try_into()
+            .unwrap();
+        Promise::new(factory).transfer(MINTING_FEE)
     }
 
     /// Modify the minting privileges of `account_id`. Minters are able to

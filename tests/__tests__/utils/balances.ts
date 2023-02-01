@@ -100,6 +100,36 @@ export const MAX_U64 = new BN("ffffffffffffffff", 16);
 export const DEPLOY_STORE_GAS = Tgas(200);
 /** Storage rent for deploying a store (taken from mintbase-js) */
 export const DEPLOY_STORE_RENT = NEAR(7);
+/** Storage rent for deploying a store (taken from mintbase-js) */
+
+export const mintingDeposit = ({
+  n_tokens,
+  n_royalties,
+  n_splits,
+  metadata_bytes,
+}: {
+  n_tokens: number;
+  n_royalties?: number;
+  n_splits?: number;
+  metadata_bytes?: number;
+}): string => {
+  //80 bytes * 10e18 NEAR/byte = 0.8e21
+  const common_deposit = 0.8;
+  // 360 bytes * 10e18 NEAR/byte = 3.6e21
+  const token_deposit = 3.6;
+  const minting_fee = 1;
+
+  const metadata_deposit = (metadata_bytes || 10000) * 0.001;
+  const splits_deposit = (n_splits || 0) * common_deposit;
+  const royalties_deposit = (n_royalties || 0) * common_deposit;
+  const total =
+    common_deposit +
+    metadata_deposit +
+    royalties_deposit +
+    n_tokens * (token_deposit + splits_deposit) +
+    minting_fee;
+  return mNEAR(Math.ceil(total)).toString();
+};
 
 /**
  * Mostly a wrapper for getting total balance of an account, might change to

@@ -5,6 +5,7 @@ import {
   getBalance,
   diffCheck,
   nearToBn,
+  mintingDeposit,
 } from "./utils/balances.js";
 import { createPayouts } from "./utils/payouts.js";
 import { getPanic } from "./utils/panics.js";
@@ -21,7 +22,7 @@ const mintAndList = async ({
     store,
     "nft_batch_mint",
     { owner_id: alice, metadata: {}, num_to_mint: 1 },
-    { attachedDeposit: "1" }
+    { attachedDeposit: mintingDeposit({ n_tokens: 1 }) }
   );
 
   await alice.call(
@@ -212,13 +213,15 @@ test("Referrals work (NEAR)", async (test) => {
   const postBobBalance = await getBalance(bob);
   const postCarolBalance = await getBalance(carol);
 
-  // Market should loose the storage deposit, gain
+  // test.log(`market: ${preMarketBalance} -> ${postMarketBalance}`);
+  // test.log(`alice: ${preAliceBalance} -> ${postAliceBalance}`);
+  // test.log(`bob: ${preBobBalance} -> ${postBobBalance}`);
+  // test.log(`carol: ${preCarolBalance} -> ${postCarolBalance}`);
+  // Market should loose the storage deposit and gain its fee
   test.true(
     diffCheck(
       postMarketBalance,
       preMarketBalance,
-      // nearToBn("1"),
-      // nearToBn("2") // -> storage + yocto + something else (not exact)
       nearToBn("0.10"),
       nearToBn("0.01") // -> storage + yocto + something else (not exact)
     )

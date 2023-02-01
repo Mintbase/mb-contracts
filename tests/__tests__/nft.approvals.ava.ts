@@ -10,6 +10,7 @@ import {
   getBalance,
   assertContractTokenOwners,
   assertNoApproval,
+  mintingDeposit,
 } from "./utils/index.js";
 import { setup } from "./setup.js";
 
@@ -489,7 +490,7 @@ test("approvals::minting", async (test) => {
       store,
       "nft_batch_mint",
       { owner_id: bob.accountId, num_to_mint: 2, metadata: {} },
-      { attachedDeposit: "1" }
+      { attachedDeposit: mintingDeposit({ n_tokens: 1, n_splits: 2 }) }
     )
     .catch(failPromiseRejection("approved minting"));
 

@@ -18,6 +18,9 @@ pub const ONE_YOCTO: Balance = 1;
 /// ref: https://github.com/near/core-contracts/blob/master/staking-pool/src/lib.rs#L26
 pub const NO_DEPOSIT: Balance = 0;
 
+/// Miniscule minting fee (1 milliNEAR) to allow tracking by DappRadar
+pub const MINTING_FEE: Balance = 1_000_000_000_000_000_000_000;
+
 /// This module holds gas costs for common operations
 pub mod gas {
     use near_sdk::Gas;

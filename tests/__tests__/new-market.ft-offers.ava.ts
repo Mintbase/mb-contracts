@@ -5,6 +5,7 @@ import {
   getBalance,
   diffCheck,
   nearToBn,
+  mintingDeposit,
 } from "./utils/balances.js";
 import { getPanic } from "./utils/panics.js";
 import { getEvent } from "./utils/events.js";
@@ -30,7 +31,7 @@ const mintAndList = async ({
     store,
     "nft_batch_mint",
     { owner_id: alice, metadata: {}, num_to_mint: 1 },
-    { attachedDeposit: "1" }
+    { attachedDeposit: mintingDeposit({ n_tokens: 1 }) }
   );
 
   await alice.call(
