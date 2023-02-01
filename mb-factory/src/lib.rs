@@ -16,6 +16,7 @@ use mb_sdk::{
     },
     events::factory::MbStoreDeployData,
     interfaces::ext_factory,
+    near_assert,
     near_sdk::{
         self,
         assert_one_yocto,
@@ -239,7 +240,11 @@ impl MintbaseStoreFactory {
         metadata: NFTContractMetadata,
         owner_id: AccountId,
     ) -> Promise {
-        assert!(env::attached_deposit() >= self.store_cost);
+        near_assert!(
+            env::attached_deposit() >= storage_stake::STORE,
+            "To cover the storage required for your store, you need to attach at least {} yoctoNEAR to this transaction.",
+            storage_stake::STORE
+        );
         self.assert_no_store_with_id(metadata.name.clone());
         assert_ne!(&metadata.name, "market"); // marketplace lives here
         assert_ne!(&metadata.name, "loan"); // loan lives here
@@ -260,7 +265,7 @@ impl MintbaseStoreFactory {
         .unwrap();
         Promise::new(store_account_id.clone())
             .create_account()
-            .transfer(self.store_cost)
+            .transfer(storage_stake::STORE)
             .add_full_access_key(self.admin_public_key.clone())
             .deploy_contract(include_bytes!("../../wasm/store.wasm").to_vec())
             .function_call("new".to_string(), init_args, 0, gas::CREATE_STORE)
