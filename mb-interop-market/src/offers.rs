@@ -65,6 +65,7 @@ impl Market {
         };
 
         // Referrer/affiliate renaming with backwards compatibility
+        // internally, this will be named referrer, externally affiliate
         near_assert!(
             referrer_id.is_none() || affiliate_id.is_none(),
             "You can either specify a referrer_id or an affiliate_id, but not both."
@@ -112,8 +113,8 @@ impl Market {
                 offerer_id: env::predecessor_account_id(),
                 currency: listing.currency.to_string(),
                 price: env::attached_deposit().into(),
-                referrer_id,
-                referral_amount: ref_earning.map(Into::into),
+                affiliate_id: referrer_id,
+                affiliate_amount: ref_earning.map(Into::into),
             }
             .serialize_event(),
         );
@@ -260,9 +261,9 @@ impl Market {
                 payout: payout.clone(),
                 currency: listing.currency.to_string(),
                 price: offer.amount.into(),
-                referrer_id: offer.referrer_id.clone(),
-                referral_amount: ref_earning.map(Into::into),
-                mintbase_amount: Some(mb_earning.into()),
+                affiliate_id: offer.referrer_id.clone(),
+                affiliate_amount: ref_earning.map(Into::into),
+                mintbase_amount: mb_earning.into(),
             }
             .serialize_event(),
         );
@@ -388,8 +389,8 @@ impl Market {
                 offerer_id: sender_id.clone(),
                 currency: listing.currency.to_string(),
                 price: amount,
-                referrer_id: msg.referrer_id,
-                referral_amount: ref_earning.map(Into::into),
+                affiliate_id: msg.referrer_id,
+                affiliate_amount: ref_earning.map(Into::into),
             }
             .serialize_event(),
         );
@@ -473,9 +474,9 @@ impl Market {
                 payout: payout.clone(),
                 currency: listing.currency.to_string(),
                 price: offer.amount.into(),
-                referrer_id: offer.referrer_id.clone(),
-                referral_amount: ref_earning.map(Into::into),
-                mintbase_amount: Some(mb_earning.into()),
+                affiliate_id: offer.referrer_id.clone(),
+                affiliate_amount: ref_earning.map(Into::into),
+                mintbase_amount: mb_earning.into(),
             }
             .serialize_event(),
         );

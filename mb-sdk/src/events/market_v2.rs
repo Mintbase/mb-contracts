@@ -46,7 +46,7 @@ pub struct NftUnlistData {
     version = "0.2.2",
     event = "nft_sale"
 )]
-pub struct NftSaleData {
+pub struct NftSaleDataV022 {
     pub nft_contract_id: AccountId,
     pub nft_token_id: String,
     pub nft_approval_id: u64,
@@ -64,7 +64,46 @@ pub struct NftSaleData {
 #[cfg_attr(feature = "all", derive(Clone, Debug))]
 #[near_event_data(
     standard = "mb_market",
+    version = "0.3.0",
+    event = "nft_sale"
+)]
+pub struct NftSaleData {
+    pub nft_contract_id: AccountId,
+    pub nft_token_id: String,
+    pub nft_approval_id: u64,
+    pub accepted_offer_id: u64,
+    pub payout: HashMap<AccountId, U128>,
+    pub currency: String,
+    pub price: U128,
+    pub affiliate_id: Option<AccountId>,
+    pub affiliate_amount: Option<U128>,
+    // this field should always be populated, `Option` for backwards
+    // compatibility of generated JSON
+    pub mintbase_amount: U128,
+}
+
+#[cfg_attr(feature = "all", derive(Clone, Debug))]
+#[near_event_data(
+    standard = "mb_market",
     version = "0.2.1",
+    event = "nft_make_offer"
+)]
+pub struct NftMakeOfferDataV021 {
+    pub nft_contract_id: AccountId,
+    pub nft_token_id: String,
+    pub nft_approval_id: u64,
+    pub currency: String,
+    pub offer_id: u64,
+    pub offerer_id: AccountId,
+    pub price: U128,
+    pub referrer_id: Option<AccountId>,
+    pub referral_amount: Option<U128>,
+}
+
+#[cfg_attr(feature = "all", derive(Clone, Debug))]
+#[near_event_data(
+    standard = "mb_market",
+    version = "0.3.0",
     event = "nft_make_offer"
 )]
 pub struct NftMakeOfferData {
@@ -75,8 +114,8 @@ pub struct NftMakeOfferData {
     pub offer_id: u64,
     pub offerer_id: AccountId,
     pub price: U128,
-    pub referrer_id: Option<AccountId>,
-    pub referral_amount: Option<U128>,
+    pub affiliate_id: Option<AccountId>,
+    pub affiliate_amount: Option<U128>,
 }
 
 #[cfg_attr(feature = "all", derive(Clone, Debug))]

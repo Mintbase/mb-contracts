@@ -284,7 +284,7 @@ test("Offers above ask are executed (FT)", async (test) => {
   test.is(buyCall.logs.length, 5);
   test.deepEqual(getEvent(buyCall.logs[1]), {
     standard: "mb_market",
-    version: "0.2.1",
+    version: "0.3.0",
     event: "nft_make_offer",
     data: {
       nft_contract_id: store.accountId,
@@ -294,8 +294,8 @@ test("Offers above ask are executed (FT)", async (test) => {
       offerer_id: bob.accountId,
       currency: `ft::${wnear.accountId}`,
       price: nearToYocto("2"),
-      referrer_id: null,
-      referral_amount: null,
+      affiliate_id: null,
+      affiliate_amount: null,
     },
   });
 
@@ -304,7 +304,7 @@ test("Offers above ask are executed (FT)", async (test) => {
   payout[alice.accountId] = nearToYocto("1.95") as string;
   test.deepEqual(getEvent(buyCall.logs[3]), {
     standard: "mb_market",
-    version: "0.2.2",
+    version: "0.3.0",
     event: "nft_sale",
     data: {
       nft_contract_id: store.accountId,
@@ -314,8 +314,8 @@ test("Offers above ask are executed (FT)", async (test) => {
       currency: `ft::${wnear.accountId}`,
       payout,
       price: nearToYocto("2"),
-      referrer_id: null,
-      referral_amount: null,
+      affiliate_id: null,
+      affiliate_amount: null,
       mintbase_amount: "50000000000000000000000",
     },
   });
