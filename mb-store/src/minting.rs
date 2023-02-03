@@ -29,6 +29,7 @@ use mb_sdk::{
         AccountId,
         Balance,
         Promise,
+        PromiseOrValue,
     },
 };
 
@@ -60,7 +61,7 @@ impl MintbaseStore {
         num_to_mint: u64,
         royalty_args: Option<RoyaltyArgs>,
         split_owners: Option<SplitBetweenUnparsed>,
-    ) -> Promise {
+    ) -> PromiseOrValue<()> {
         near_assert!(num_to_mint > 0, "No tokens to mint");
         near_assert!(
             num_to_mint <= 125,
@@ -195,16 +196,16 @@ impl MintbaseStore {
             &meta_extra,
         );
 
-        // Transfer minting fee, this assumes the parent account is a factory
-        let factory = env::current_account_id()
-            .as_str()
-            .split_once('.')
-            .unwrap()
-            .1
-            .to_string()
-            .try_into()
-            .unwrap();
-        Promise::new(factory).transfer(MINTING_FEE)
+        // Transfer minting fee if parent is a valid account (assuming this is
+        // a factory). If parent is not valid, e.g. this contract was deployed
+        // to a random top-level account, do nothing.
+        match parent_account_id(&env::current_account_id()) {
+            Some(factory) => {
+                let p = Promise::new(factory).transfer(MINTING_FEE);
+                PromiseOrValue::Promise(p)
+            }
+            _ => PromiseOrValue::Value(()),
+        }
     }
 
     /// Tries to remove an acount ID from the minters list, will only fail
@@ -367,4 +368,15 @@ pub(crate) fn log_revoke_minter(account_id: &AccountId) {
         }
         .serialize_event(),
     );
+}
+
+fn parent_account_id(child: &AccountId) -> Option<AccountId> {
+    child
+        .as_str()
+        .split_once('.')
+        .unwrap()
+        .1
+        .to_string()
+        .try_into()
+        .ok()
 }
