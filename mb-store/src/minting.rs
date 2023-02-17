@@ -58,15 +58,22 @@ impl MintbaseStore {
         owner_id: AccountId,
         #[allow(unused_mut)] // cargo complains, but it's required
         mut metadata: TokenMetadata,
-        num_to_mint: u64,
+        token_ids_to_mint: Vec<u64>,
         royalty_args: Option<RoyaltyArgs>,
         split_owners: Option<SplitBetweenUnparsed>,
     ) -> PromiseOrValue<()> {
-        near_assert!(num_to_mint > 0, "No tokens to mint");
+        near_assert!(!token_ids_to_mint.is_empty(), "No tokens to mint");
         near_assert!(
-            num_to_mint <= 125,
+            token_ids_to_mint.len() <= 125,
             "Cannot mint more than 125 tokens due to gas limits"
         ); // upper gas limit
+        token_ids_to_mint.iter().for_each(|id| {
+            near_assert!(
+                !self.tokens.contains_key(id),
+                "Key {:?} already exists",
+                id
+            );
+        });
         near_assert!(
             env::attached_deposit() >= 1,
             "Requires deposit of at least 1 yoctoNEAR"
@@ -103,6 +110,8 @@ impl MintbaseStore {
 
         // Calculating storage consuption upfront saves gas if the transaction
         // were to fail later.
+        let num_to_mint: u64 = token_ids_to_mint.len().try_into().unwrap();
+
         let covered_storage = env::attached_deposit() - MINTING_FEE;
         metadata.copies = metadata.copies.or(Some(num_to_mint as u16));
         let md_size = borsh::to_vec(&metadata).unwrap().len() as u64;
@@ -155,23 +164,21 @@ impl MintbaseStore {
             .insert(&lookup_id, &(num_to_mint as u16, metadata));
 
         // Mint em up hot n fresh with a side of vegan bacon
-        (0..num_to_mint).for_each(|i| {
-            let token_id = self.tokens_minted + i;
+        token_ids_to_mint.iter().for_each(|i| {
+            let token_id = i;
             let token = Token::new(
                 owner_id.clone(),
-                token_id,
+                *i,
                 lookup_id,
                 royalty_id,
                 checked_split.clone(),
                 minter_id.clone(),
             );
-            owned_set.insert(&token_id);
-            self.tokens.insert(&token_id, &token);
+            owned_set.insert(token_id);
+            self.tokens.insert(token_id, &token);
         });
         self.tokens_minted += num_to_mint;
         self.tokens_per_owner.insert(&owner_id, &owned_set);
-
-        let minted = self.tokens_minted;
 
         // check if sufficient storage stake (e.g. 0.5 NEAR) remains
         let used_storage_stake: Balance =
@@ -186,8 +193,7 @@ impl MintbaseStore {
         );
 
         log_nft_batch_mint(
-            minted - num_to_mint,
-            minted - 1,
+            token_ids_to_mint,
             minter_id.as_ref(),
             owner_id.as_ref(),
             &checked_royalty,
@@ -321,8 +327,7 @@ fn option_string_is_u64(opt_s: &Option<String>) -> bool {
 
 #[allow(clippy::too_many_arguments)]
 fn log_nft_batch_mint(
-    first_token_id: u64,
-    last_token_id: u64,
+    token_ids: Vec<u64>,
     minter: &str,
     owner: &str,
     royalty: &Option<mb_sdk::data::store::Royalty>,
@@ -338,12 +343,10 @@ fn log_nft_batch_mint(
         minter: minter.to_string(),
     })
     .unwrap();
-    let token_ids = (first_token_id..=last_token_id)
-        .map(|x| x.to_string())
-        .collect::<Vec<_>>();
+
     let log = NftMintLog {
         owner_id: owner.to_string(),
-        token_ids,
+        token_ids: token_ids.into_iter().map(|i| i.to_string()).collect(),
         memo: Option::from(memo),
     };
 
