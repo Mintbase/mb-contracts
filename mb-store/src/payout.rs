@@ -39,14 +39,14 @@ impl MintbaseStore {
         &mut self,
         receiver_id: AccountId,
         token_id: U64,
-        approval_id: Option<u64>,
+        // approval_id: Option<u64>,
         memo: Option<String>,
         balance: near_sdk::json_types::U128,
         max_len_payout: Option<u32>,
     ) -> Payout {
         assert_one_yocto();
         let payout = self.nft_payout(token_id, balance, max_len_payout);
-        self.nft_transfer(receiver_id, token_id, approval_id, memo);
+        self.nft_transfer(receiver_id, token_id, memo);
         payout
     }
 

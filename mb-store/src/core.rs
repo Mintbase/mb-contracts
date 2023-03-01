@@ -46,7 +46,7 @@ impl MintbaseStore {
         &mut self,
         receiver_id: AccountId,
         token_id: U64,
-        approval_id: Option<u64>,
+        // approval_id: Option<u64>,
         memo: Option<String>,
     ) {
         assert_one_yocto();
@@ -70,7 +70,7 @@ impl MintbaseStore {
         &mut self,
         receiver_id: AccountId,
         token_id: U64,
-        approval_id: Option<u64>,
+        // approval_id: Option<u64>,
         msg: String,
     ) -> Promise {
         assert_one_yocto();

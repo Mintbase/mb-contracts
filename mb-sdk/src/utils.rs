@@ -174,23 +174,14 @@ macro_rules! assert_token_owned_or_approved {
     ($token:expr, $account:expr, $approval_id:expr) => {
         if !$token.is_owned_by($account) {
             let src = format!("{}, {}:{}", file!(), line!(), column!());
-            match ($token.approvals.get($account), $approval_id) {
-                (_, None) => {
-                    $crate::near_panic!("Disallowing approvals without approval ID! ({})", src)
-                }
-                (None, _) => {
+
+            // for no ramp, we wont be able to pass the approval_id, just asserting the account is in the apprvers list for
+            match ($token.approvals.get($account)) {
+                (None) => {
                     $crate::near_panic!(
                         "{} has no approval for token {} ({})",
                         $account,
                         $token.id,
-                        src
-                    )
-                }
-                (Some(a), Some(b)) if *a != b => {
-                    $crate::near_panic!(
-                        "The current approval ID is {}, but {} has been provided ({})",
-                        a,
-                        b,
                         src
                     )
                 }
