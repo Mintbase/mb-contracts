@@ -129,6 +129,7 @@ impl MintbaseStore {
             })
             // if there is no split map, there still is an owner, thus default to 1
             .unwrap_or(1);
+
         near_assert!(
             roy_len + split_len <= MAX_LEN_PAYOUT,
             "Number of payout addresses may not exceed {}",
@@ -188,7 +189,7 @@ impl MintbaseStore {
             env::account_balance() - used_storage_stake;
 
         near_assert!(
-            free_storage_stake != MINIMUM_FREE_STORAGE_STAKE,
+            free_storage_stake > MINIMUM_FREE_STORAGE_STAKE,
             "A minimum of {} yoctoNEAR is required as free contract balance to allow updates (currently: {})",
             MINIMUM_FREE_STORAGE_STAKE,
             free_storage_stake
