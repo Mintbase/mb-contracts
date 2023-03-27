@@ -153,11 +153,12 @@ impl MintbaseStore {
     /// type. They may be used in an implementation if the type is instead:
     ///
     /// `tokens_per_owner: LookupMap<AccountId, Vector<TokenId>>`
-    pub fn nft_tokens_for_owner_set(&self, account_id: AccountId) -> Vec<u64> {
+    pub fn nft_tokens_for_owner_set(&self, account_id: AccountId) -> Vec<U64> {
         self.tokens_per_owner
             .get(&account_id)
             .expect("no tokens")
             .iter()
+            .map(|id| id.into())
             .collect()
     }
 
