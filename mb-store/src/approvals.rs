@@ -19,6 +19,7 @@ use mb_sdk::{
         near_bindgen,
         AccountId,
         Promise,
+        PromiseOrValue,
     },
 };
 
@@ -67,7 +68,7 @@ impl MintbaseStore {
         &mut self,
         token_id: U64,
         account_id: AccountId,
-    ) -> Promise {
+    ) -> PromiseOrValue<()> {
         let token_idu64 = token_id.into();
         let mut token = self.nft_token_internal(token_idu64);
         assert_token_unloaned!(token);
@@ -77,10 +78,13 @@ impl MintbaseStore {
         if token.approvals.remove(&account_id).is_some() {
             self.tokens.insert(&token_idu64, &token);
             log_revoke(token_idu64, &account_id);
+            PromiseOrValue::Promise(
+                Promise::new(env::predecessor_account_id())
+                    .transfer(self.storage_costs.common),
+            )
+        } else {
+            PromiseOrValue::Value(())
         }
-
-        Promise::new(env::predecessor_account_id())
-            .transfer(self.storage_costs.common)
     }
 
     /// Revokes all NFT transfer approvals as specified by
