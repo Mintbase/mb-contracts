@@ -202,6 +202,7 @@ impl Market {
                 );
             }
             near_sdk::PromiseResult::Failed => {
+                // FIXME: this should emit an event!
                 Promise::new(offer.offerer_id).transfer(offer.amount);
                 self.listings.remove(&token_key);
                 self.refund_listings(&listing.nft_owner_id, 1);
