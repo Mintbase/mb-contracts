@@ -260,6 +260,7 @@ impl MintbaseStore {
     /// The calling account will try to withdraw as minter from this NFT smart
     /// contract. If the calling account is not a minter on the NFT smart
     /// contract, this will still succeed but have no effect.
+    #[payable]
     pub fn withdraw_minter(&mut self) {
         assert_one_yocto();
         self.revoke_minter_internal(&env::predecessor_account_id())
