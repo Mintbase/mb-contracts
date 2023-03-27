@@ -53,7 +53,7 @@ impl MintbaseStore {
         &self,
         account_id: AccountId,
         from_index: Option<String>,
-        limit: Option<usize>,
+        limit: Option<u32>,
     ) -> Vec<TokenCompliant> {
         self.tokens_per_owner
             .get(&account_id)
@@ -65,7 +65,7 @@ impl MintbaseStore {
                     .parse()
                     .unwrap(),
             )
-            .take(limit.unwrap_or(10))
+            .take(limit.unwrap_or(10) as usize)
             .flat_map(|x| self.nft_token_compliant_internal(x))
             .collect::<Vec<_>>()
     }
