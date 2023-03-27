@@ -209,7 +209,6 @@ impl MintbaseStoreFactory {
     /// Initialization
     #[init(ignore_state)]
     pub fn new() -> Self {
-        assert!(!env::state_exists());
         let storage_price_per_byte = YOCTO_PER_BYTE; // 10^19
         Self {
             stores: LookupSet::new(b"t".to_vec()),

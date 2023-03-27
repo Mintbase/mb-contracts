@@ -122,10 +122,6 @@ impl MintbaseStore {
     /// The `Store` is initialized with the owner as a `minter`.
     #[init]
     pub fn new(metadata: NFTContractMetadata, owner_id: AccountId) -> Self {
-        near_assert!(
-            !env::state_exists(),
-            "This store is already initialized!"
-        );
         let mut minters = UnorderedSet::new(b"a".to_vec());
         minters.insert(&owner_id);
 

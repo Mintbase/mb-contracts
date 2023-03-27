@@ -76,8 +76,6 @@ impl Marketplace {
     /// address.
     #[init]
     pub fn new(init_allowlist: Vec<AccountId>) -> Self {
-        near_assert!(!env::state_exists(), "Already initialized");
-
         let mut allowlist = UnorderedSet::new(b"a".to_vec());
         init_allowlist.iter().for_each(|account| {
             allowlist.insert(account);
