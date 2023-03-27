@@ -81,6 +81,7 @@ impl MintbaseStore {
         assert_token_owned_or_approved!(token, &pred, approval_id);
         // prevent race condition, temporarily lock-replace owner
         let owner_id = AccountId::new_unchecked(token.owner_id.to_string());
+        self.transfer_internal(&mut token, receiver_id.clone(), false);
         self.lock_token(&mut token);
 
         ext_nft_on_transfer::ext(receiver_id.clone())
