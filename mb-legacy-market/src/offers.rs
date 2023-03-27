@@ -198,7 +198,7 @@ impl Marketplace {
             token_id.to_string(),
             approval_id,
             balance.into(),
-            MAX_LEN_PAYOUT as u32,
+            MAX_LEN_PAYOUT,
         )
     }
 
