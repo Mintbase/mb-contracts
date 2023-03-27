@@ -248,7 +248,10 @@ impl OwnershipFractions {
     }
 }
 
-fn log_set_split_owners(token_ids: Vec<U64>, mut split_owners: SplitOwners) {
+pub(crate) fn log_set_split_owners(
+    token_ids: Vec<U64>,
+    mut split_owners: SplitOwners,
+) {
     env::log_str(
         &mb_sdk::events::store::NftSetSplitOwnerData {
             token_ids,

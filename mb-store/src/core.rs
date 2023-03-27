@@ -79,22 +79,26 @@ impl MintbaseStore {
         let pred = env::predecessor_account_id();
         assert_token_unloaned!(token);
         assert_token_owned_or_approved!(token, &pred, approval_id);
+
+        let old_owner_id = AccountId::new_unchecked(token.owner_id.to_string());
+        let old_approvals = token.approvals.clone();
+        let old_split_owners = token.split_owners.clone();
         // prevent race condition, temporarily lock-replace owner
-        let owner_id = AccountId::new_unchecked(token.owner_id.to_string());
         self.transfer_internal(&mut token, receiver_id.clone(), false);
         self.lock_token(&mut token);
 
         ext_nft_on_transfer::ext(receiver_id.clone())
             .with_static_gas(gas::NFT_TRANSFER_CALL)
-            .nft_on_transfer(pred, owner_id.clone(), token_id, msg)
+            .nft_on_transfer(pred, old_owner_id.clone(), token_id, msg)
             .then(
                 store_self::ext(env::current_account_id())
                     .with_static_gas(gas::NFT_TRANSFER_CALL)
                     .nft_resolve_transfer(
-                        owner_id,
+                        old_owner_id,
                         receiver_id,
                         token_id.0.to_string(),
-                        None,
+                        old_approvals,
+                        old_split_owners,
                     ),
             )
     }
@@ -112,18 +116,20 @@ impl MintbaseStore {
     #[private]
     pub fn nft_resolve_transfer(
         &mut self,
-        owner_id: AccountId,
+        old_owner_id: AccountId,
         receiver_id: AccountId,
         token_id: String,
         // NOTE: might borsh::maybestd::collections::HashMap be more appropriate?
-        approved_account_ids: Option<HashMap<AccountId, u64>>,
+        old_approvals: HashMap<AccountId, u64>,
+        old_split_owners: Option<SplitOwners>,
     ) -> bool {
         let l = format!(
-            "owner_id={} receiver_id={} token_id={} approved_ids={:?} pred={}",
-            owner_id,
+            "old_owner_id={} receiver_id={} token_id={} old_approvals={:?} old_split_owners={:?} pred={}",
+            old_owner_id,
             receiver_id,
             token_id,
-            approved_account_ids,
+            old_approvals,
+            old_split_owners,
             env::predecessor_account_id()
         );
         env::log_str(l.as_str());
@@ -151,12 +157,29 @@ impl MintbaseStore {
         if !must_revert {
             true
         } else {
-            self.transfer_internal(&mut token, receiver_id.clone(), true);
+            self.transfer_internal(&mut token, old_owner_id.clone(), true);
+            // restore approvals
+            token.approvals = old_approvals;
+            for (account_id, &approval_id) in token.approvals.iter() {
+                crate::approvals::log_approve(
+                    token.id,
+                    approval_id,
+                    account_id,
+                );
+            }
+            // restore split owners
+            token.split_owners = old_split_owners;
+            if let Some(split_owners) = token.split_owners {
+                crate::payout::log_set_split_owners(
+                    vec![token.id.into()],
+                    split_owners,
+                );
+            }
             log_nft_transfer(
                 &receiver_id,
                 token_id_u64,
                 &None,
-                owner_id.to_string(),
+                old_owner_id.to_string(),
             );
             false
         }

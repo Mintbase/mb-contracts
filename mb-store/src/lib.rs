@@ -7,6 +7,7 @@ use mb_sdk::{
     data::store::{
         NFTContractMetadata,
         Royalty,
+        SplitOwners,
         Token,
         TokenMetadata,
         TokenMetadataCompliant,
@@ -279,9 +280,10 @@ pub trait NonFungibleResolveTransfer {
     #[private]
     fn nft_resolve_transfer(
         &mut self,
-        owner_id: AccountId,
+        old_owner_id: AccountId,
         receiver_id: AccountId,
         token_id: String,
-        approved_account_ids: Option<Vec<String>>,
+        old_approvals: std::collections::HashMap<AccountId, u64>,
+        old_split_owners: Option<SplitOwners>,
     );
 }

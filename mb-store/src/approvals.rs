@@ -223,7 +223,11 @@ impl MintbaseStore {
     }
 }
 
-fn log_approve(token_id: u64, approval_id: u64, account_id: &AccountId) {
+pub(crate) fn log_approve(
+    token_id: u64,
+    approval_id: u64,
+    account_id: &AccountId,
+) {
     let data = NftApproveData(vec![NftApproveLog {
         token_id: token_id.into(),
         approval_id,
