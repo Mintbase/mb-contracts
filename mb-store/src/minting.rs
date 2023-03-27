@@ -79,11 +79,11 @@ impl MintbaseStore {
             "Requires deposit of at least 1 yoctoNEAR"
         );
         let minter_id = env::predecessor_account_id();
-        near_assert!(
-            self.minters.contains(&minter_id),
-            "{} is not allowed to mint on this store",
-            minter_id
-        );
+        // near_assert!(
+        //     self.minters.contains(&minter_id),
+        //     "{} is not allowed to mint on this store",
+        //     minter_id
+        // );
 
         near_assert!(
             !option_string_starts_with(
