@@ -104,7 +104,6 @@ impl Market {
 
         let (ref_earning, _) = self.get_affiliate_mintbase_amounts(&offer);
         env::log_str(
-            // TODO: rename referrer -> affiliate once we can point indexer here
             &events::NftMakeOfferData {
                 nft_contract_id,
                 nft_token_id: token_id,
@@ -253,7 +252,6 @@ impl Market {
         }
 
         env::log_str(
-            // TODO: rename referrer -> affiliate once we can point indexer here
             &events::NftSaleData {
                 nft_contract_id: listing.nft_contract_id.clone(),
                 nft_token_id: listing.nft_token_id.clone(),
@@ -381,7 +379,6 @@ impl Market {
 
         let (ref_earning, _) = self.get_affiliate_mintbase_amounts(&offer);
         env::log_str(
-            // TODO: rename referrer -> affiliate once open-sourced
             &events::NftMakeOfferData {
                 nft_contract_id: msg.nft_contract_id,
                 nft_token_id: msg.token_id,
@@ -466,7 +463,6 @@ impl Market {
         }
 
         env::log_str(
-            // TODO: rename referrer -> affiliate once open-sourced
             &events::NftSaleData {
                 nft_contract_id: listing.nft_contract_id.clone(),
                 nft_token_id: listing.nft_token_id.clone(),
