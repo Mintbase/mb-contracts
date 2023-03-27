@@ -295,6 +295,7 @@ impl Market {
 
     /// Panics if the current call is not from the market owner.
     fn assert_predecessor_is_owner(&self) {
+        near_sdk::assert_one_yocto();
         near_assert!(
             env::predecessor_account_id() == self.owner,
             "Method is restricted to market owner"

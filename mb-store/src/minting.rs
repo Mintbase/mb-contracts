@@ -292,6 +292,7 @@ impl MintbaseStore {
         num_royalties: u32,
         num_splits: u32,
     ) -> near_sdk::Balance {
+        // TODO: the tokens_per_owner entry needs to be 1 now and num_tokens eventually
         // create an entry in tokens_per_owner
         self.storage_costs.common
             // create a metadata record
