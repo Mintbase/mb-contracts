@@ -169,36 +169,33 @@ macro_rules! assert_token_owned_by_predecessor {
     };
 }
 
-#[macro_export]
-macro_rules! assert_token_owned_or_approved {
-    ($token:expr, $account:expr, $approval_id:expr) => {
-        if !$token.is_owned_by($account) {
-            let src = format!("{}, {}:{}", file!(), line!(), column!());
-            match ($token.approvals.get($account), $approval_id) {
-                (_, None) => {
-                    $crate::near_panic!("Disallowing approvals without approval ID! ({})", src)
-                }
-                (None, _) => {
-                    $crate::near_panic!(
-                        "{} has no approval for token {} ({})",
-                        $account,
-                        $token.id,
-                        src
-                    )
-                }
-                (Some(a), Some(b)) if *a != b => {
-                    $crate::near_panic!(
-                        "The current approval ID is {}, but {} has been provided ({})",
-                        a,
-                        b,
-                        src
-                    )
-                }
-                _ => { /* everything ok */ }
-            }
-        }
-    };
-}
+// #[macro_export]
+// macro_rules! assert_token_owned_or_approved {
+//     ($token:expr, $account:expr, $approval_id:expr) => {
+//         match ($token.approvals.get($account), $approval_id) {
+//             //
+//             _ if token.is_owned_by($account) => None
+//             (_, None) => {
+//                 $crate::near_panic!("Disallowing approvals without approval ID!")
+//             }
+//             (None, _) => {
+//                 $crate::near_panic!(
+//                     "{} has no approval for token {}",
+//                     $account,
+//                     $token.id
+//                 )
+//             }
+//             (Some(a), Some(b)) if *a != b => {
+//                 $crate::near_panic!(
+//                     "The current approval ID is {}, but {} has been provided",
+//                     a,
+//                     b
+//                 )
+//             }
+//             _ => { Some($account.to_string()) }
+//         }
+//     };
+// }
 
 #[macro_export]
 macro_rules! assert_token_unloaned {

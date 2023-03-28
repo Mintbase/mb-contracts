@@ -60,12 +60,9 @@ test("enumeration", async (test) => {
   );
 
   // call `nft_tokens` with starting index and limit
-  // FIXME::contracts::medium: according to standard, `limit` is not the
-  //  index of the last token, but the maximum number of tokens to return
   assertTokensAre(
     test,
-    // FIXME::contracts::medium: limit should be 2
-    await store.view("nft_tokens", { from_index: "1", limit: 3 }),
+    await store.view("nft_tokens", { from_index: "1", limit: 2 }),
     [
       { token_id: "1", owner_id: alice.accountId },
       { token_id: "2", owner_id: bob.accountId },

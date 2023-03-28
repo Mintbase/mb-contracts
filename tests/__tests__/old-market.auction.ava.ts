@@ -258,7 +258,7 @@ test("market::auction", async (test) => {
         event: "nft_transfer",
         data: [
           {
-            authorized_id: null, // FIXME::store::low,
+            authorized_id: market.accountId,
             old_owner_id: alice.accountId,
             new_owner_id: carol.accountId,
             token_ids: ["0"],

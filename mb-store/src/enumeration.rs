@@ -31,7 +31,7 @@ impl MintbaseStore {
             .parse()
             .unwrap();
         let to_index = match limit {
-            Some(limit) => to_index + limit,
+            Some(limit) => from_index + limit as u64,
             None => self.tokens_minted,
         };
         (from_index..to_index)
