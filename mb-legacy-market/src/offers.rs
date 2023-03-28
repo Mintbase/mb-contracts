@@ -47,9 +47,10 @@ use crate::{
 
 #[near_bindgen]
 impl Marketplace {
-    /// Make an `Offer` for `Token`. `Offer`s may be created beneath the `Token`'s
-    /// `asking_price`, but not beneath the `current_offer`'s price, unless the
-    /// current offer has timed out.
+    /// Make an `Offer` for `Token`. If the token is listed as simple sale (aka
+    /// "buy now", `autotransfer` is `true`), the offer price not be below the
+    /// asking price. If the token is listed as rolling auction (`autotransfer`
+    /// is `false`), you may place an offer below the asking price.
     ///
     /// The `price` argument MUST be >= `env::attached_deposit` on this function.
     #[payable]
@@ -283,8 +284,8 @@ impl Marketplace {
             "The market owner must not place offers"
         );
         near_assert!(
-            offer.price >= token.asking_price.into(),
-            "Cannot set offer below ask"
+            !token.autotransfer || offer.price >= token.asking_price.into(),
+            "Cannot set offer below ask for simple sales"
         );
         match &token.current_offer {
             None => {
