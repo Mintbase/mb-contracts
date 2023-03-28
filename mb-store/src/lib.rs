@@ -277,10 +277,10 @@ pub trait NonFungibleResolveTransfer {
     #[private]
     fn nft_resolve_transfer(
         &mut self,
-        old_owner_id: AccountId,
+        previous_owner_id: AccountId,
         receiver_id: AccountId,
         token_id: String,
-        old_approvals: std::collections::HashMap<AccountId, u64>,
-        old_split_owners: Option<SplitOwners>,
+        approved_account_ids: std::collections::HashMap<AccountId, u64>,
+        split_owners: Option<SplitOwners>,
     );
 }

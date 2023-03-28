@@ -70,8 +70,9 @@ impl MintbaseStore {
         &mut self,
         receiver_id: AccountId,
         token_id: U64,
-        approval_id: Option<u64>,
         msg: String,
+        approval_id: Option<u64>,
+        memo: Option<String>,
     ) -> Promise {
         assert_one_yocto();
         let token_idu64 = token_id.into();
@@ -80,25 +81,27 @@ impl MintbaseStore {
         assert_token_unloaned!(token);
         assert_token_owned_or_approved!(token, &pred, approval_id);
 
-        let old_owner_id = AccountId::new_unchecked(token.owner_id.to_string());
-        let old_approvals = token.approvals.clone();
-        let old_split_owners = token.split_owners.clone();
+        let previous_owner_id =
+            AccountId::new_unchecked(token.owner_id.to_string());
+        let approved_account_ids = token.approvals.clone();
+        let split_owners = token.split_owners.clone();
         // prevent race condition, temporarily lock-replace owner
         self.transfer_internal(&mut token, receiver_id.clone(), false);
+        log_nft_transfer(&receiver_id, token.id, &memo, previous_owner_id);
         self.lock_token(&mut token);
 
         ext_nft_on_transfer::ext(receiver_id.clone())
             .with_static_gas(gas::NFT_TRANSFER_CALL)
-            .nft_on_transfer(pred, old_owner_id.clone(), token_id, msg)
+            .nft_on_transfer(pred, previous_owner_id.clone(), token_id, msg)
             .then(
                 store_self::ext(env::current_account_id())
                     .with_static_gas(gas::NFT_TRANSFER_CALL)
                     .nft_resolve_transfer(
-                        old_owner_id,
+                        previous_owner_id,
                         receiver_id,
                         token_id.0.to_string(),
-                        old_approvals,
-                        old_split_owners,
+                        approved_account_ids,
+                        split_owners,
                     ),
             )
     }
@@ -116,20 +119,20 @@ impl MintbaseStore {
     #[private]
     pub fn nft_resolve_transfer(
         &mut self,
-        old_owner_id: AccountId,
+        previous_owner_id: AccountId,
         receiver_id: AccountId,
         token_id: String,
         // NOTE: might borsh::maybestd::collections::HashMap be more appropriate?
-        old_approvals: HashMap<AccountId, u64>,
-        old_split_owners: Option<SplitOwners>,
+        approved_account_ids: HashMap<AccountId, u64>,
+        split_owners: Option<SplitOwners>,
     ) -> bool {
         let l = format!(
-            "old_owner_id={} receiver_id={} token_id={} old_approvals={:?} old_split_owners={:?} pred={}",
-            old_owner_id,
+            "previous_owner_id={} receiver_id={} token_id={} approved_account_ids={:?} split_owners={:?} pred={}",
+            previous_owner_id,
             receiver_id,
             token_id,
-            old_approvals,
-            old_split_owners,
+            approved_account_ids,
+            split_owners,
             env::predecessor_account_id()
         );
         env::log_str(l.as_str());
@@ -157,10 +160,10 @@ impl MintbaseStore {
         if !must_revert {
             true
         } else {
-            self.transfer_internal(&mut token, old_owner_id.clone(), true);
-            log_nft_transfer(&old_owner_id, token.id, &None, receiver_id);
+            self.transfer_internal(&mut token, previous_owner_id.clone(), true);
+            log_nft_transfer(&previous_owner_id, token.id, &None, receiver_id);
             // restore approvals
-            token.approvals = old_approvals;
+            token.approvals = approved_account_ids;
             for (account_id, &approval_id) in token.approvals.iter() {
                 crate::approvals::log_approve(
                     token.id,
@@ -169,7 +172,7 @@ impl MintbaseStore {
                 );
             }
             // restore split owners
-            token.split_owners = old_split_owners;
+            token.split_owners = split_owners;
             if let Some(split_owners) = token.split_owners {
                 crate::payout::log_set_split_owners(
                     vec![token.id.into()],
