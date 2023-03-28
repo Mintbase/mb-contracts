@@ -30,7 +30,10 @@ impl MintbaseStore {
             .unwrap_or_else(|| "0".to_string())
             .parse()
             .unwrap();
-        let to_index = from_index + limit.unwrap_or(self.tokens_minted) as u64;
+        let to_index = match limit {
+            Some(limit) => to_index + limit,
+            None => self.tokens_minted,
+        };
         (from_index..to_index)
             .into_iter()
             .flat_map(|token_id| self.nft_token_compliant_internal(token_id))
