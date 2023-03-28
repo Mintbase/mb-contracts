@@ -17,6 +17,18 @@
 //!   1 $NEAR could be drained by 10e23 trades, making this extremely unlikely.
 //!   The attacker will also have to fund the gas fees for doing so, and has no
 //!   direct economical reward for doing this.
+//! - Removing an offer while it is being processed could lead to an NFT being
+//!   transferred and the payout failing because `Listing::current_offer` is
+//!   `None`, and thus the callback panicking. Thus, `remove_offer` should only
+//!   be called for offers that have ended in a failure receipt for
+//!   `nft_resolve_payout_{near,ft}`.
+//! - Additionally a `remove_offer` call might be intercepted. It is an
+//!   expansion of the case above, where another listing and another offer has
+//!   to be injected between a call to `remove_offer` and a potential delay
+//!   between the return of `nft_transfer_payout` and
+//!   `nft_resolve_payout_{near,ft}`. As with the previous error, verifying the
+//!   existence of a failure receipt for `nft_resolve_payout_{near,ft}` before
+//!   removing offers closes this attack vector.
 
 use mb_sdk::{
     data::store::Payout,
