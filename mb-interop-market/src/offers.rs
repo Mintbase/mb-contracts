@@ -1,3 +1,23 @@
+//! This module implements offer functionality for the market. You can create an
+//! offer by:
+//!
+//! - Calling the `buy` method and attaching $NEAR
+//! - Using `ft_transfer_call` on a fungible token contract
+//!
+//! In both cases, the token needs to match the token that was required when
+//! listing the NFT, and it will fail if you do not attach at least the asking
+//! price.
+//!
+//! Market operators need to consider the following:
+//!
+//! - Calls to `ft_transfer` require one yoctoNEAR to be attached, and that
+//!   yoctoNEAR is neither taken from the lister nor from the offerer. This
+//!   presents an attack vector, where NFTs could be listed for 0 $FT and
+//!   "traded", slowly draining the market of $NEAR. With 10 royalty holders,
+//!   1 $NEAR could be drained by 10e23 trades, making this extremely unlikely.
+//!   The attacker will also have to fund the gas fees for doing so, and has no
+//!   direct economical reward for doing this.
+
 use mb_sdk::{
     data::store::Payout,
     events::market_v2 as events,
