@@ -234,6 +234,7 @@ impl Marketplace {
         self.assert_owner_marketplace();
         token_keys.into_iter().for_each(|token_key| {
             let token = self.get_token(token_key.clone());
+            token.assert_not_locked();
             let key: TokenKey = token_key.as_str().into();
             self.delist_internal(&key, token);
         });
