@@ -1,4 +1,5 @@
 use mb_sdk::{
+    constants::StorageCostsJson,
     events::store::MbStoreChangeSettingData,
     near_assert,
     near_sdk::{
@@ -115,8 +116,8 @@ impl MintbaseStore {
     }
 
     /// Show the current owner of this NFT contract
-    pub fn get_storage_costs(&self) -> StorageCosts {
-        self.storage_costs.clone()
+    pub fn get_storage_costs(&self) -> StorageCostsJson {
+        (&self.storage_costs).into()
     }
 
     // -------------------------- private methods --------------------------
