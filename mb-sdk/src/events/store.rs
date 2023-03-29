@@ -77,6 +77,15 @@ pub struct NftMintLogMemo {
     pub minter: String,
 }
 
+#[near_event_data(
+    standard = "nep171",
+    version = "1.1.0",
+    event = "contract_metadata_update"
+)]
+pub struct NftContractMetadataUpdateLog {
+    pub memo: Option<String>,
+}
+
 // ------------------------------- Approvals -------------------------------- //
 #[cfg_attr(feature = "ser", derive(near_sdk::serde::Serialize))]
 #[cfg_attr(feature = "de", derive(near_sdk::serde::Deserialize))]
@@ -140,7 +149,7 @@ pub struct MbStoreChangeSettingData {
     pub granted_minter: Option<String>,
     pub revoked_minter: Option<String>,
     pub new_owner: Option<String>,
-    pub new_icon_base64: Option<String>,
+    pub new_icon_base64: Option<String>, // deprecated in favor of metadata update
     pub new_base_uri: Option<String>,
 }
 
