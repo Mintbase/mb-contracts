@@ -565,6 +565,11 @@ impl Market {
     /// can be locked by offers that were not fully processed, originating
     /// usually from gas failures in `nft_resolve_payout_near` or
     /// `nft_resolve_payout_ft`.
+    ///
+    /// As mentioned in the module description, this should only be called when
+    /// an offer "is stuck" and the listing can no longer be processed. Make
+    /// sure that the XCC originating from the call to `buy` or
+    /// `ft_transfer_call` that created the offer has terminated in a failure.
     pub fn remove_offer(
         &mut self,
         nft_contract_id: AccountId,

@@ -225,7 +225,10 @@ impl Marketplace {
         log_banlist_update(&account_id, state);
     }
 
-    /// Kick a set of tokens off the marketplace.
+    /// Kick a set of tokens off the marketplace. This should only be used
+    /// when listing processing has failed in the past and no offers are
+    /// currently in progress, as it might interfere with running XCC chains
+    /// from `make_offer`.
     #[payable]
     pub fn kick_tokens(&mut self, token_keys: Vec<String>) {
         self.assert_owner_marketplace();
