@@ -16,7 +16,7 @@ test("Properly initialized", async (t) => {
   t.is(await market.view("get_mintbase_cut"), 5000);
   t.is(await market.view("get_fallback_cut"), 250);
   t.is(await market.view("get_owner"), root.accountId);
-  t.is(await market.view("get_listing_lock_seconds"), 0);
+  t.is(await market.view("get_listing_lock_seconds"), "0");
   t.is(await market.view("get_listing_storage_deposit"), nearToYocto("0.01"));
   t.deepEqual(await market.view("banned_accounts"), []);
 });
@@ -43,10 +43,10 @@ test("Owner can set config", async (test) => {
   await root.call(
     market,
     "set_listing_lock_seconds",
-    { secs: 60 },
+    { secs: "60" },
     { attachedDeposit: "1" }
   );
-  test.is(await market.view("get_listing_lock_seconds"), 60);
+  test.is(await market.view("get_listing_lock_seconds"), "60");
 
   await root.call(
     market,

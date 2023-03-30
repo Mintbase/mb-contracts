@@ -94,9 +94,8 @@ test("market::auction", async (test) => {
   );
   // check chain state: highest offer is 1N
   test.like(
-    // FIXME::market::low: price should be a string
     await market.view("get_current_offer", { token_key: tokenKey }),
-    { id: 1, price: parseInt(NEAR(1).toString()) },
+    { id: 1, price: NEAR(1).toString() },
     "Highest offer not set correctly"
   );
   // check chain state: bob has 1N less
@@ -183,7 +182,7 @@ test("market::auction", async (test) => {
   // check chain state: highest offer is 2N
   test.like(
     await market.view("get_current_offer", { token_key: tokenKey }),
-    { id: 2, price: parseInt(NEAR(2).toString()) },
+    { id: 2, price: NEAR(2).toString() },
     "Highest offer not replaced"
   );
   await Promise.all([

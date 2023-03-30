@@ -12,7 +12,10 @@ use mb_sdk::{
             UnorderedSet,
         },
         env,
-        json_types::U128,
+        json_types::{
+            U128,
+            U64,
+        },
         AccountId,
         Balance,
         Promise,
@@ -66,7 +69,7 @@ impl Market {
         owner: AccountId,
         mintbase_cut: u16,
         fallback_cut: u16,
-        listing_lock_seconds: u64,
+        listing_lock_seconds: U64,
     ) -> Self {
         Self {
             listings: UnorderedMap::new(&b"k2l"[..]),
@@ -75,7 +78,7 @@ impl Market {
             storage_deposits_by_account: UnorderedMap::new(&b"a2d"[..]),
             listings_count_by_account: UnorderedMap::new(&b"a2l"[..]),
             listing_storage_deposit: TEN_MILLINEAR,
-            listing_lock_seconds,
+            listing_lock_seconds: listing_lock_seconds.0,
             mintbase_cut,
             fallback_cut,
             owner,
@@ -127,13 +130,13 @@ impl Market {
     /// Set the duration (in seconds) that each listing is locked after
     /// creation. Only the owner can call this.
     #[payable]
-    pub fn set_listing_lock_seconds(&mut self, secs: u64) {
+    pub fn set_listing_lock_seconds(&mut self, secs: U64) {
         self.assert_predecessor_is_owner();
-        self.listing_lock_seconds = secs;
+        self.listing_lock_seconds = secs.0;
     }
     /// Show duration (in seconds) that each listing is locked after creation.
-    pub fn get_listing_lock_seconds(&self) -> u64 {
-        self.listing_lock_seconds
+    pub fn get_listing_lock_seconds(&self) -> U64 {
+        self.listing_lock_seconds.into()
     }
 
     // -------- storage deposit for single listing
@@ -193,17 +196,20 @@ impl Market {
 
     // ---------------------- anything related to storage ----------------------
     /// Get the number of listings created by a specific account ID
-    pub fn get_listings_count(&self, account: &AccountId) -> u64 {
-        self.listings_count_by_account.get(account).unwrap_or(0)
+    pub fn get_listings_count(&self, account: &AccountId) -> U64 {
+        self.listings_count_by_account
+            .get(account)
+            .unwrap_or(0)
+            .into()
     }
     /// Increment the number of listings created by a specific account ID
     fn increase_listings_count(&mut self, account: &AccountId, n: u64) {
-        let new_count = self.get_listings_count(account) + n;
+        let new_count = self.get_listings_count(account).0 + n;
         self.listings_count_by_account.insert(account, &new_count);
     }
     /// Decrement the number of listings created by a specific account ID
     fn decrease_listings_count(&mut self, account: &AccountId, n: u64) {
-        let new_count = self.get_listings_count(account) - n;
+        let new_count = self.get_listings_count(account).0 - n;
         if new_count == 0 {
             self.listings_count_by_account.remove(account);
         } else {
@@ -238,7 +244,7 @@ impl Market {
 
         // get required amount
         let deposit = self.storage_deposit_by(&account);
-        let required = self.get_listings_count(&account) as Balance
+        let required = self.get_listings_count(&account).0 as Balance
             * self.listing_storage_deposit;
         let refund = deposit - required;
 
@@ -306,7 +312,7 @@ impl Market {
     /// needed to cover listings
     fn free_storage_deposit(&self, account: &AccountId) -> Balance {
         let deposit = self.storage_deposit_by(account);
-        let required = self.get_listings_count(account) as u128
+        let required = self.get_listings_count(account).0 as u128
             * self.listing_storage_deposit;
         deposit - required
     }

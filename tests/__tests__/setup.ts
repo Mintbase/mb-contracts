@@ -111,7 +111,7 @@ export const setup = (test: TestFn): TestFn<TestContext> => {
         owner: root,
         mintbase_cut: 5000,
         fallback_cut: 250,
-        listing_lock_seconds: 0,
+        listing_lock_seconds: "0",
       },
     });
 
