@@ -120,6 +120,7 @@ impl Market {
         self.refund_listings(
             &env::predecessor_account_id(),
             token_ids.len() as u64,
+            0,
         );
     }
 

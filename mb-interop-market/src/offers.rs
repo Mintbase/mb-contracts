@@ -236,7 +236,7 @@ impl Market {
                 // FIXME: this should emit an event!
                 Promise::new(offer.offerer_id).transfer(offer.amount);
                 self.listings.remove(&token_key);
-                self.refund_listings(&listing.nft_owner_id, 1);
+                self.refund_listings(&listing.nft_owner_id, 1, 0);
                 return PromiseOrValue::Value(());
             }
 
@@ -308,7 +308,7 @@ impl Market {
             Promise::new(referrer_id).transfer(ref_earning.unwrap());
         }
         self.listings.remove(&token_key);
-        self.refund_listings(&listing.nft_owner_id, 1);
+        self.refund_listings(&listing.nft_owner_id, 1, 0);
 
         PromiseOrValue::Value(())
     }
@@ -455,7 +455,7 @@ impl Market {
             near_sdk::PromiseResult::Failed => {
                 // FIXME: should emit event
                 self.listings.remove(&token_key);
-                self.refund_listings(&listing.nft_owner_id, 1);
+                self.refund_listings(&listing.nft_owner_id, 1, 0);
                 return PromiseOrValue::Value(offer.amount.into());
             }
 
@@ -515,6 +515,7 @@ impl Market {
             .serialize_event(),
         );
 
+        let payout_len = payout.len();
         for (account, amount) in payout.drain() {
             ft_transfer(ft_contract_id.clone(), account, amount.0);
         }
@@ -522,7 +523,7 @@ impl Market {
             ft_transfer(ft_contract_id, referrer_id, ref_earning.unwrap());
         }
         self.listings.remove(&token_key);
-        self.refund_listings(&listing.nft_owner_id, 1);
+        self.refund_listings(&listing.nft_owner_id, 1, payout_len as u128);
 
         PromiseOrValue::Value(0.into())
     }
@@ -557,7 +558,7 @@ impl Market {
         nft_contract_id: &AccountId,
     ) {
         self.listings.remove(token_key);
-        self.refund_listings(nft_owner_id, 1);
+        self.refund_listings(nft_owner_id, 1, 0);
         self.banned_accounts.insert(nft_contract_id);
     }
 

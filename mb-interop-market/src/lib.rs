@@ -249,7 +249,7 @@ impl Market {
         let refund = deposit - required;
 
         // send the refund
-        self.refund_storage_deposit(&account, refund)
+        self.refund_storage_deposit(&account, refund, 0)
     }
     /// Get the storage of a specified account.
     fn storage_deposit_by(&self, account: &AccountId) -> Balance {
@@ -261,6 +261,7 @@ impl Market {
         &mut self,
         account: &AccountId,
         refund: Balance,
+        retain: Balance, // Introduced to retain the yoctoNEAR spent on FT transfer authentication
     ) -> Promise {
         // decrease for internal usage
         let old_deposit =
@@ -274,11 +275,16 @@ impl Market {
         }
 
         // actual refund
-        Promise::new(account.to_owned()).transfer(refund)
+        Promise::new(account.to_owned()).transfer(refund - retain)
     }
 
     /// Decrease listings count and refund the lister with the deposits.
-    fn refund_listings(&mut self, account: &AccountId, n: u64) -> Promise {
+    fn refund_listings(
+        &mut self,
+        account: &AccountId,
+        n: u64,
+        retain: Balance,
+    ) -> Promise {
         // decrease listing number
         self.decrease_listings_count(account, n);
 
@@ -286,6 +292,7 @@ impl Market {
         self.refund_storage_deposit(
             account,
             self.listing_storage_deposit * n as u128,
+            retain,
         )
     }
 
