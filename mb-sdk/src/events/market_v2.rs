@@ -129,3 +129,16 @@ pub struct NftWithdrawOfferData {
     pub nft_token_id: String,
     pub offer_id: u64,
 }
+
+#[cfg_attr(feature = "all", derive(Clone, Debug))]
+#[near_event_data(
+    standard = "mb_market",
+    version = "0.2.1",
+    event = "nft_failed_listing"
+)]
+pub struct NftFailedSaleData {
+    pub nft_contract_id: AccountId,
+    pub nft_token_id: String,
+    pub nft_approval_id: u64,
+    pub offer_id: u64,
+}
