@@ -110,6 +110,10 @@ pub const ROYALTY_UPPER_LIMIT: u32 = 5000;
 /// Maximum payout (royalties + splits) participants to process
 pub const MAX_LEN_PAYOUT: u32 = 50;
 
+/// Maximum allowed approvals per token to prevent panics on revoking all, most
+/// notably during transfers.
+pub const MAX_APPROVALS_PER_TOKEN: u64 = 100;
+
 /// Minimum storage stake required to allow updates
 pub const MINIMUM_FREE_STORAGE_STAKE: near_sdk::Balance = 50 * YOCTO_PER_BYTE;
 

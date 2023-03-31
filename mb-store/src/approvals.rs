@@ -2,7 +2,10 @@ use mb_sdk::{
     assert_storage_deposit,
     assert_token_owned_by_predecessor,
     assert_token_unloaned,
-    constants::gas,
+    constants::{
+        gas,
+        MAX_APPROVALS_PER_TOKEN,
+    },
     data::store::Token,
     events::store::{
         NftApproveData,
@@ -198,6 +201,11 @@ impl MintbaseStore {
         // token.assert_owned_by_predecessor();
         assert_token_unloaned!(token);
         assert_token_owned_by_predecessor!(token);
+        near_assert!(
+            token.approvals.len() as u64 <= MAX_APPROVALS_PER_TOKEN,
+            "Cannot approve more than {} accounts for a token",
+            MAX_APPROVALS_PER_TOKEN
+        );
 
         let approval_id = self.num_approved;
         self.num_approved += 1;
