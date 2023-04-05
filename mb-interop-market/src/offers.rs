@@ -548,6 +548,7 @@ impl Market {
     /// an offer "is stuck" and the listing can no longer be processed. Make
     /// sure that the XCC originating from the call to `buy` or
     /// `ft_transfer_call` that created the offer has terminated in a failure.
+    #[payable]
     pub fn remove_offer(
         &mut self,
         nft_contract_id: AccountId,
