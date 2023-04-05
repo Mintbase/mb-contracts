@@ -292,15 +292,19 @@ impl MintbaseStore {
         num_royalties: u32,
         num_splits: u32,
     ) -> near_sdk::Balance {
-        // TODO: the tokens_per_owner entry needs to be 1 now and num_tokens eventually
-        // create an entry in tokens_per_owner
-        self.storage_costs.common
-            // create a metadata record
-            + metadata_storage as u128 * self.storage_costs.storage_price_per_byte
+        // create a metadata record
+        metadata_storage as u128 * self.storage_costs.storage_price_per_byte
             // create a royalty record
             + num_royalties as u128 * self.storage_costs.common
             // create n tokens each with splits stored on-token
-            + num_tokens as u128 * (self.storage_costs.token + num_splits as u128 * self.storage_costs.common)
+            + num_tokens as u128 * (
+                // token base storage
+                self.storage_costs.token
+                // dynamic split storage
+                + num_splits as u128 * self.storage_costs.common
+                // create an entry in tokens_per_owner
+                + self.storage_costs.common
+            )
     }
 }
 
