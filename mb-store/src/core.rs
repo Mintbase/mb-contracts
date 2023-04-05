@@ -178,10 +178,10 @@ impl MintbaseStore {
         } else {
             self.transfer_internal(&mut token, previous_owner_id.clone(), true);
             log_nft_transfer(
-                &receiver_id,
+                &previous_owner_id,
                 token_id_u64,
                 &None,
-                previous_owner_id.to_string(),
+                receiver_id.to_string(),
                 None,
             );
             // restore approvals
