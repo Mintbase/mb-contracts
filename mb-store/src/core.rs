@@ -96,7 +96,7 @@ impl MintbaseStore {
         let approved_account_ids = token.approvals.clone();
         let split_owners = token.split_owners.clone();
         // prevent race condition, temporarily lock-replace owner
-        self.transfer_internal(&mut token, receiver_id.clone(), false);
+        self.transfer_internal(&mut token, receiver_id.clone(), true);
         log_nft_transfer(
             &receiver_id,
             token.id,
