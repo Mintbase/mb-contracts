@@ -224,7 +224,7 @@ impl MintbaseStoreFactory {
     /// elements of the state should be copied over. This method may only be
     /// called by the holder of the contract private key.
     #[private]
-    #[init(ignore_state)]
+    #[init]
     pub fn migrate() -> Self {
         let old = env::state_read().expect("ohno ohno state");
         Self { ..old }
