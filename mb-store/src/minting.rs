@@ -45,7 +45,7 @@ impl MintbaseStore {
     /// Restrictions:
     /// - Only minters may call this function.
     /// - `owner_id` must be a valid Near address.
-    /// - Because of logging limits, this method may mint at most 99 tokens per call.
+    /// - Because of logging limits, this method may mint at most 125 tokens per call.
     /// - 1.0 >= `royalty_f` >= 0.0. `royalty_f` is ignored if `royalty` is `None`.
     /// - If a `royalty` is provided, percentages **must** be non-negative and add to one.
     /// - The maximum length of the royalty mapping is 50.
