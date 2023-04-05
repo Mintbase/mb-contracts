@@ -494,7 +494,7 @@ impl Market {
             ft_transfer(ft_contract_id, referrer_id, ref_earning.unwrap());
         }
         self.listings.remove(&token_key);
-        self.refund_listings(&listing.nft_owner_id, 1, payout_len as u128);
+        self.refund_listings(&listing.nft_owner_id, 1, payout_len as u128 + 1);
 
         PromiseOrValue::Value(0.into())
     }
