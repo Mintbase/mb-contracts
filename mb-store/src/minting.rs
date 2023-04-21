@@ -277,9 +277,9 @@ impl MintbaseStore {
     // -------------------------- view methods -----------------------------
 
     /// Check if `account_id` is a minter.
-    pub fn check_is_minter(&self, account_id: AccountId) -> bool {
-        self.minters.contains(&account_id)
-    }
+    // pub fn check_is_minter(&self, account_id: AccountId) -> bool {
+    //     self.minters.contains(&account_id)
+    // }
 
     /// Lists all account IDs that are currently allowed to mint on this
     /// contract.
