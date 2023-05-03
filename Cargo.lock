@@ -719,6 +719,7 @@ dependencies = [
 [[package]]
 name = "near-event-data-log-macro"
 version = "0.1.0"
+source = "git+https://github.com/mintbase/near-events?rev=c4fdefbe1cb3167864fdb2cd1ff1d9058233bb76#c4fdefbe1cb3167864fdb2cd1ff1d9058233bb76"
 dependencies = [
  "itertools",
  "proc-macro-support",
@@ -730,6 +731,7 @@ dependencies = [
 [[package]]
 name = "near-event-data-macro"
 version = "0.1.0"
+source = "git+https://github.com/mintbase/near-events?rev=c4fdefbe1cb3167864fdb2cd1ff1d9058233bb76#c4fdefbe1cb3167864fdb2cd1ff1d9058233bb76"
 dependencies = [
  "itertools",
  "proc-macro-support",
@@ -884,6 +886,7 @@ dependencies = [
 [[package]]
 name = "near_events"
 version = "0.1.0"
+source = "git+https://github.com/mintbase/near-events?rev=c4fdefbe1cb3167864fdb2cd1ff1d9058233bb76#c4fdefbe1cb3167864fdb2cd1ff1d9058233bb76"
 dependencies = [
  "near-event-data-log-macro",
  "near-event-data-macro",
@@ -1032,6 +1035,7 @@ dependencies = [
 [[package]]
 name = "proc-macro-support"
 version = "0.1.0"
+source = "git+https://github.com/mintbase/near-events?rev=c4fdefbe1cb3167864fdb2cd1ff1d9058233bb76#c4fdefbe1cb3167864fdb2cd1ff1d9058233bb76"
 dependencies = [
  "itertools",
  "proc-macro2",
