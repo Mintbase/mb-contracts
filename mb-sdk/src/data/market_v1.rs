@@ -145,7 +145,9 @@ impl From<TokenListing> for TokenListingJson {
 
 /// Type representing an offer for a `Token` the marketplace
 // TODO: clone necessary?
-#[derive(Serialize, Deserialize, Clone, BorshDeserialize, BorshSerialize)]
+#[derive(
+    Serialize, Deserialize, Clone, Debug, BorshDeserialize, BorshSerialize,
+)]
 pub struct TokenOffer {
     /// The id of this `Offer` is the num of the previous `Offer` + 1. Generated
     /// from the field `Token::num_offers`.
@@ -216,7 +218,9 @@ pub enum TimeUnit {
 }
 
 /// Time instant, the u64 is in nanoseconds since epoch.
-#[derive(Serialize, Deserialize, Clone, BorshDeserialize, BorshSerialize)]
+#[derive(
+    Serialize, Deserialize, Clone, Debug, BorshDeserialize, BorshSerialize,
+)]
 pub struct NearTime(pub u64);
 
 impl NearTime {
