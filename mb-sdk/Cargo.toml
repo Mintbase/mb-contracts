@@ -26,4 +26,11 @@ store-wasm = []
 factory-wasm = []
 market-wasm = []
 default = ["ser"]
-all = ["near_events/de", "store-wasm", "factory-wasm", "market-wasm"]
+all = [
+  "ser",
+  "de",
+  "near_events/de",
+  "store-wasm",
+  "factory-wasm",
+  "market-wasm",
+]
