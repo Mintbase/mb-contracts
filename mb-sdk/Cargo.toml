@@ -9,7 +9,7 @@ crate-type = ["rlib", "cdylib"]
 [dependencies]
 near-sdk = { version = "4.1.1" }
 serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1.0.91", features = ["arbitrary_precision"] }
+serde_json = { version = "1.0.87", features = ["arbitrary_precision"] }
 ed25519-dalek = "1.0.0"
 
 [dependencies.near_events]

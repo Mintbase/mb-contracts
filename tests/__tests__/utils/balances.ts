@@ -123,10 +123,9 @@ export const mintingDeposit = ({
   const splits_deposit = (n_splits || 0) * common_deposit;
   const royalties_deposit = (n_royalties || 0) * common_deposit;
   const total =
-    common_deposit +
     metadata_deposit +
     royalties_deposit +
-    n_tokens * (token_deposit + splits_deposit) +
+    n_tokens * (token_deposit + splits_deposit + common_deposit) +
     minting_fee;
   return mNEAR(Math.ceil(total)).toString();
 };
