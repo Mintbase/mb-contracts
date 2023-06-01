@@ -3,12 +3,12 @@ use std::{
     convert::TryFrom,
 };
 
+use mb_sdk::near_panic;
 // logging functions
 use mb_sdk::near_sdk::json_types::U64;
 // contract interface modules
 use mb_sdk::{
     assert_token_owned_by,
-    assert_token_owned_or_approved,
     assert_token_unloaned,
     constants::gas,
     data::store::{
@@ -54,14 +54,20 @@ impl MintbaseStore {
         let mut token = self.nft_token_internal(token_idu64);
         let old_owner = token.owner_id.to_string();
         assert_token_unloaned!(token);
-        assert_token_owned_or_approved!(
-            token,
+        let authorized_id = assert_token_owned_or_approved(
+            &token,
             &env::predecessor_account_id(),
-            approval_id
+            approval_id,
         );
 
         self.transfer_internal(&mut token, receiver_id.clone(), true);
-        log_nft_transfer(&receiver_id, token_idu64, &memo, old_owner);
+        log_nft_transfer(
+            &receiver_id,
+            token_idu64,
+            &memo,
+            old_owner,
+            authorized_id,
+        );
     }
 
     /// Transfer-and-call function as specified by [NEP-171](https://nomicon.io/Standards/Tokens/NonFungibleToken/Core).
@@ -70,30 +76,48 @@ impl MintbaseStore {
         &mut self,
         receiver_id: AccountId,
         token_id: U64,
-        approval_id: Option<u64>,
         msg: String,
+        approval_id: Option<u64>,
+        memo: Option<String>,
     ) -> Promise {
         assert_one_yocto();
         let token_idu64 = token_id.into();
         let mut token = self.nft_token_internal(token_idu64);
         let pred = env::predecessor_account_id();
         assert_token_unloaned!(token);
-        assert_token_owned_or_approved!(token, &pred, approval_id);
+        let authorized_id = assert_token_owned_or_approved(
+            &token,
+            &env::predecessor_account_id(),
+            approval_id,
+        );
+
+        let previous_owner_id =
+            AccountId::new_unchecked(token.owner_id.to_string());
+        let approved_account_ids = token.approvals.clone();
+        let split_owners = token.split_owners.clone();
         // prevent race condition, temporarily lock-replace owner
-        let owner_id = AccountId::new_unchecked(token.owner_id.to_string());
+        self.transfer_internal(&mut token, receiver_id.clone(), true);
+        log_nft_transfer(
+            &receiver_id,
+            token.id,
+            &memo,
+            previous_owner_id.to_string(),
+            authorized_id,
+        );
         self.lock_token(&mut token);
 
         ext_nft_on_transfer::ext(receiver_id.clone())
             .with_static_gas(gas::NFT_TRANSFER_CALL)
-            .nft_on_transfer(pred, owner_id.clone(), token_id, msg)
+            .nft_on_transfer(pred, previous_owner_id.clone(), token_id, msg)
             .then(
                 store_self::ext(env::current_account_id())
                     .with_static_gas(gas::NFT_TRANSFER_CALL)
                     .nft_resolve_transfer(
-                        owner_id,
+                        previous_owner_id,
                         receiver_id,
                         token_id.0.to_string(),
-                        None,
+                        approved_account_ids,
+                        split_owners,
                     ),
             )
     }
@@ -111,18 +135,20 @@ impl MintbaseStore {
     #[private]
     pub fn nft_resolve_transfer(
         &mut self,
-        owner_id: AccountId,
+        previous_owner_id: AccountId,
         receiver_id: AccountId,
         token_id: String,
         // NOTE: might borsh::maybestd::collections::HashMap be more appropriate?
-        approved_account_ids: Option<HashMap<AccountId, u64>>,
+        approved_account_ids: HashMap<AccountId, u64>,
+        split_owners: Option<SplitOwners>,
     ) -> bool {
         let l = format!(
-            "owner_id={} receiver_id={} token_id={} approved_ids={:?} pred={}",
-            owner_id,
+            "previous_owner_id={} receiver_id={} token_id={} approved_account_ids={:?} split_owners={:?} pred={}",
+            previous_owner_id,
             receiver_id,
             token_id,
             approved_account_ids,
+            split_owners,
             env::predecessor_account_id()
         );
         env::log_str(l.as_str());
@@ -150,13 +176,31 @@ impl MintbaseStore {
         if !must_revert {
             true
         } else {
-            self.transfer_internal(&mut token, receiver_id.clone(), true);
+            self.transfer_internal(&mut token, previous_owner_id.clone(), true);
             log_nft_transfer(
-                &receiver_id,
+                &previous_owner_id,
                 token_id_u64,
                 &None,
-                owner_id.to_string(),
+                receiver_id.to_string(),
+                None,
             );
+            // restore approvals
+            token.approvals = approved_account_ids;
+            for (account_id, &approval_id) in token.approvals.iter() {
+                crate::approvals::log_approve(
+                    token.id,
+                    approval_id,
+                    account_id,
+                );
+            }
+            // restore split owners
+            token.split_owners = split_owners;
+            if let Some(split_owners) = token.split_owners {
+                crate::payout::log_set_split_owners(
+                    vec![token.id.into()],
+                    split_owners,
+                );
+            }
             false
         }
     }
@@ -296,15 +340,46 @@ impl MintbaseStore {
     }
 }
 
+/// Checks if `account_id` is allowed to transfer the token and returns the
+/// `authorized_id` to log. Explicitly, returns `None` if token is owned by
+/// `account_id`, returns `Some(account_id)` if `account_id` was approved
+/// with the correct `approval_id`, panics otherwise.
+fn assert_token_owned_or_approved(
+    token: &Token,
+    account_id: &AccountId,
+    approval_id: Option<u64>,
+) -> Option<String> {
+    if token.is_owned_by(account_id) {
+        return None;
+    }
+
+    match (token.approvals.get(account_id), approval_id) {
+        // approval ID needs to exist
+        (_, None) => near_panic!("Disallowing approvals without approval ID"),
+        // account_id needs to be approved
+        (None, _) => {
+            near_panic!("{} has no approval for token {}", account_id, token.id)
+        }
+        // approval IDs need to match
+        (Some(a), Some(b)) if *a != b => near_panic!(
+            "The current approval ID is {}, but {} has been provided",
+            a,
+            b
+        ),
+        _ => Some(account_id.to_string()),
+    }
+}
+
 fn log_nft_transfer(
     to: &AccountId,
     token_id: u64,
     memo: &Option<String>,
-    old_owner: String,
+    old_owner_id: String,
+    authorized_id: Option<String>,
 ) {
     let data = NftTransferData(vec![NftTransferLog {
-        authorized_id: None,
-        old_owner_id: old_owner,
+        authorized_id,
+        old_owner_id,
         new_owner_id: to.to_string(),
         token_ids: vec![token_id.to_string()],
         memo: memo.clone(),

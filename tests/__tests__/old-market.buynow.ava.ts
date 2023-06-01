@@ -202,7 +202,7 @@ test("market::buynow", async (test) => {
         event: "nft_transfer",
         data: [
           {
-            authorized_id: null, // FIXME::store::low
+            authorized_id: market.accountId,
             memo: null,
             new_owner_id: bob.accountId,
             old_owner_id: alice.accountId,
@@ -228,7 +228,7 @@ test("market::buynow", async (test) => {
         event: "nft_transfer",
         data: [
           {
-            authorized_id: null, // FIXME::store::low
+            authorized_id: market.accountId,
             memo: null,
             new_owner_id: bob.accountId,
             old_owner_id: alice.accountId,

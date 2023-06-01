@@ -5,7 +5,10 @@ use near_sdk::{
         BorshSerialize,
     },
     env,
-    json_types::U128,
+    json_types::{
+        U128,
+        U64,
+    },
     AccountId,
 };
 use serde::{
@@ -16,9 +19,8 @@ use serde::{
 use crate::utils::TokenKey;
 
 /// A Token for sale on the Marketplace.
-#[derive(
-    Deserialize, Serialize, Debug, Clone, BorshDeserialize, BorshSerialize,
-)]
+// TODO: clone necessary?
+#[derive(Serialize, Deserialize, Clone, BorshDeserialize, BorshSerialize)]
 pub struct TokenListing {
     /// Id of this `Token`.
     pub id: u64,
@@ -93,10 +95,57 @@ impl TokenListing {
     }
 }
 
+/// A Token for sale on the Marketplace.
+#[derive(Serialize)]
+pub struct TokenListingJson {
+    /// Id of this `Token`.
+    pub id: U64,
+    /// Owner of this `Token`.
+    pub owner_id: AccountId,
+    /// `Store` that originated this `Token`.
+    pub store_id: AccountId,
+    /// If `autotransfer` is enabled, the Token will automatically be
+    /// transferred to an Offerer if their `Offer::price` is greater than the
+    /// `asking_price`. Note that enabling `autotransfer` does not
+    /// retroactively trigger on the presently held `current_offer`
+    pub autotransfer: bool,
+    /// The price set by the owner of this Token.
+    pub asking_price: U128,
+    /// The `approval_id` of the Token allows the Marketplace to transfer the
+    /// Token, if purchased. The `approval_id` is also used to generate
+    /// unique identifiers for Token-listings.
+    pub approval_id: u64,
+    /// The current `Offer` for this listing. This `Offer` may have timed
+    /// out; if the `Marketplace::min_offer_hours` has transpired, the
+    /// `Offer` may be withdrawn by the account in `Offer::from`.
+    pub current_offer: Option<TokenOfferJson>,
+    /// The number of `Offer`s that have been made on this listing. Used to
+    /// generate Offer `id`s.
+    pub num_offers: u64,
+    /// When the transfer process is initiated, the token is locked, and no
+    /// further changes may be made on the token.
+    pub locked: bool,
+}
+
+impl From<TokenListing> for TokenListingJson {
+    fn from(listing: TokenListing) -> TokenListingJson {
+        TokenListingJson {
+            id: listing.id.into(),
+            owner_id: listing.owner_id,
+            store_id: listing.store_id,
+            autotransfer: listing.autotransfer,
+            asking_price: listing.asking_price,
+            approval_id: listing.approval_id,
+            current_offer: listing.current_offer.map(|o| o.into()),
+            num_offers: listing.num_offers,
+            locked: listing.locked,
+        }
+    }
+}
+
 /// Type representing an offer for a `Token` the marketplace
-#[derive(
-    Serialize, Deserialize, Clone, Debug, BorshDeserialize, BorshSerialize,
-)]
+// TODO: clone necessary?
+#[derive(Serialize, Deserialize, Clone, BorshDeserialize, BorshSerialize)]
 pub struct TokenOffer {
     /// The id of this `Offer` is the num of the previous `Offer` + 1. Generated
     /// from the field `Token::num_offers`.
@@ -129,6 +178,33 @@ impl TokenOffer {
     }
 }
 
+#[derive(Serialize)]
+pub struct TokenOfferJson {
+    /// The id of this `Offer` is the num of the previous `Offer` + 1. Generated
+    /// from the field `Token::num_offers`.
+    pub id: u64,
+    /// The price the Offerer has posted.
+    pub price: U128,
+    /// The account who originated the `Offer`.
+    pub from: AccountId,
+    /// When the `Offer` was made.
+    pub timestamp: U64,
+    /// When the `Offer` will expire.
+    pub timeout: U64,
+}
+
+impl From<TokenOffer> for TokenOfferJson {
+    fn from(offer: TokenOffer) -> TokenOfferJson {
+        TokenOfferJson {
+            id: offer.id,
+            price: offer.price.into(),
+            from: offer.from,
+            timestamp: offer.timestamp.into(),
+            timeout: offer.timeout.into(),
+        }
+    }
+}
+
 /// Time duration.
 /// This enum used to support other time denominations, which were dropped
 /// for simplicity.
@@ -140,9 +216,7 @@ pub enum TimeUnit {
 }
 
 /// Time instant, the u64 is in nanoseconds since epoch.
-#[derive(
-    Debug, Serialize, Deserialize, Clone, BorshDeserialize, BorshSerialize,
-)]
+#[derive(Serialize, Deserialize, Clone, BorshDeserialize, BorshSerialize)]
 pub struct NearTime(pub u64);
 
 impl NearTime {
@@ -169,6 +243,12 @@ impl NearTime {
         let now = env::block_timestamp();
         let hour_ns = 10u64.pow(9) * 3600;
         Self(now + n * hour_ns)
+    }
+}
+
+impl From<NearTime> for U64 {
+    fn from(time: NearTime) -> U64 {
+        U64(time.0)
     }
 }
 

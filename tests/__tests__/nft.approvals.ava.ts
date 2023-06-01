@@ -741,7 +741,7 @@ test("approvals::token-actions", async (test) => {
         event: "nft_transfer",
         data: [
           {
-            authorized_id: null, // FIXME::store::medium: why null?
+            authorized_id: bob.accountId,
             old_owner_id: alice.accountId,
             new_owner_id: carol.accountId,
             token_ids: ["0"],
@@ -811,5 +811,56 @@ test("approvals::token-actions", async (test) => {
     { test, store },
     { token_id: "1", approved_account_id: bob.accountId },
     "Bob didn't loose approval after transfer"
+  );
+});
+
+test("approvals::capping", async (test) => {
+  test.timeout(300000); // 5 minutes
+  const { alice, bob, carol, store } = test.context.accounts;
+
+  const failPromiseRejection = (msg: string) => (e: any) => {
+    test.log(`Promise rejected while ${msg}:`);
+    test.log(e);
+    test.fail();
+  };
+  await batchMint({ owner: alice, store, num_to_mint: 1 }).catch(
+    failPromiseRejection("minting")
+  );
+  const token_id = "0";
+
+  const approved_account_ids: Record<string, number> = {};
+  for (let i = 0; i < 100; i++) {
+    const account_id = `account${i}.near`;
+    approved_account_ids[account_id] = i;
+    await alice
+      .call(
+        store,
+        "nft_approve",
+        { token_id, account_id },
+        { attachedDeposit: mNEAR(0.8).toString() }
+      )
+      .catch(failPromiseRejection(`approving ${i}`));
+  }
+
+  test.deepEqual(
+    ((await store.view("nft_token", { token_id })) as any).approved_account_ids,
+    approved_account_ids
+  );
+
+  await alice
+    .call(
+      store,
+      "nft_revoke_all",
+      { token_id },
+      {
+        attachedDeposit: "1",
+        gas: "5000000000000",
+      }
+    )
+    .catch(failPromiseRejection("revoking all"));
+
+  test.deepEqual(
+    ((await store.view("nft_token", { token_id })) as any).approved_account_ids,
+    {}
   );
 });

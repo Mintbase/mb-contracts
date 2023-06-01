@@ -2,7 +2,10 @@ use mb_sdk::{
     assert_storage_deposit,
     assert_token_owned_by_predecessor,
     assert_token_unloaned,
-    constants::gas,
+    constants::{
+        gas,
+        MAX_APPROVALS_PER_TOKEN,
+    },
     data::store::Token,
     events::store::{
         NftApproveData,
@@ -19,6 +22,7 @@ use mb_sdk::{
         near_bindgen,
         AccountId,
         Promise,
+        PromiseOrValue,
     },
 };
 
@@ -67,7 +71,7 @@ impl MintbaseStore {
         &mut self,
         token_id: U64,
         account_id: AccountId,
-    ) -> Promise {
+    ) -> PromiseOrValue<()> {
         let token_idu64 = token_id.into();
         let mut token = self.nft_token_internal(token_idu64);
         assert_token_unloaned!(token);
@@ -77,10 +81,13 @@ impl MintbaseStore {
         if token.approvals.remove(&account_id).is_some() {
             self.tokens.insert(&token_idu64, &token);
             log_revoke(token_idu64, &account_id);
+            PromiseOrValue::Promise(
+                Promise::new(env::predecessor_account_id())
+                    .transfer(self.storage_costs.common),
+            )
+        } else {
+            PromiseOrValue::Value(())
         }
-
-        Promise::new(env::predecessor_account_id())
-            .transfer(self.storage_costs.common)
     }
 
     /// Revokes all NFT transfer approvals as specified by
@@ -194,6 +201,11 @@ impl MintbaseStore {
         // token.assert_owned_by_predecessor();
         assert_token_unloaned!(token);
         assert_token_owned_by_predecessor!(token);
+        near_assert!(
+            token.approvals.len() as u64 <= MAX_APPROVALS_PER_TOKEN,
+            "Cannot approve more than {} accounts for a token",
+            MAX_APPROVALS_PER_TOKEN
+        );
 
         let approval_id = self.num_approved;
         self.num_approved += 1;
@@ -223,7 +235,11 @@ impl MintbaseStore {
     }
 }
 
-fn log_approve(token_id: u64, approval_id: u64, account_id: &AccountId) {
+pub(crate) fn log_approve(
+    token_id: u64,
+    approval_id: u64,
+    account_id: &AccountId,
+) {
     let data = NftApproveData(vec![NftApproveLog {
         token_id: token_id.into(),
         approval_id,

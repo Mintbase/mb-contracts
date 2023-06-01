@@ -207,9 +207,8 @@ impl MintbaseStoreFactory {
     }
 
     /// Initialization
-    #[init(ignore_state)]
+    #[init]
     pub fn new() -> Self {
-        assert!(!env::state_exists());
         let storage_price_per_byte = YOCTO_PER_BYTE; // 10^19
         Self {
             stores: LookupSet::new(b"t".to_vec()),
@@ -257,7 +256,7 @@ impl MintbaseStoreFactory {
         // StoreId is only the subaccount. store_account_id is the full near qualified name.
         // Note, validity checked in `NFTContractMetadata::new;` above.
 
-        let store_account_id = AccountId::from_str(&*format!(
+        let store_account_id = AccountId::from_str(&format!(
             "{}.{}",
             metadata.name,
             env::current_account_id()

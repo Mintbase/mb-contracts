@@ -4,6 +4,7 @@ use near_sdk::{
         BorshDeserialize,
         BorshSerialize,
     },
+    json_types::U128,
     Balance,
 };
 
@@ -109,12 +110,14 @@ pub const ROYALTY_UPPER_LIMIT: u32 = 5000;
 /// Maximum payout (royalties + splits) participants to process
 pub const MAX_LEN_PAYOUT: u32 = 50;
 
+/// Maximum allowed approvals per token to prevent panics on revoking all, most
+/// notably during transfers.
+pub const MAX_APPROVALS_PER_TOKEN: u64 = 100;
+
 /// Minimum storage stake required to allow updates
 pub const MINIMUM_FREE_STORAGE_STAKE: near_sdk::Balance = 50 * YOCTO_PER_BYTE;
 
-#[derive(
-    BorshDeserialize, BorshSerialize, near_sdk::serde::Serialize, Clone,
-)]
+#[derive(BorshDeserialize, BorshSerialize)]
 pub struct StorageCosts {
     /// The Near-denominated price-per-byte of storage. As of April 2021, the
     /// price per bytes is set by default to 10^19, but this may change in the
@@ -137,6 +140,31 @@ impl StorageCosts {
             common: storage_stake::COMMON,
             // token: storage_price_per_byte * 360_u64 as u128,
             token: storage_stake::TOKEN,
+        }
+    }
+}
+
+#[derive(near_sdk::serde::Serialize)]
+pub struct StorageCostsJson {
+    /// The Near-denominated price-per-byte of storage. As of April 2021, the
+    /// price per bytes is set by default to 10^19, but this may change in the
+    /// future, thus this future-proofing field.
+    pub storage_price_per_byte: U128,
+    /// 80 bytes as a Near price. Used for:
+    /// - a single royalty
+    /// - a single approval
+    /// - adding a new entry to the `tokens_per_account` map
+    /// - adding a new entry to the `composeables` map
+    pub common: U128,
+    pub token: U128,
+}
+
+impl From<&StorageCosts> for StorageCostsJson {
+    fn from(storage_costs: &StorageCosts) -> Self {
+        StorageCostsJson {
+            storage_price_per_byte: storage_costs.storage_price_per_byte.into(),
+            common: storage_costs.common.into(),
+            token: storage_costs.token.into(),
         }
     }
 }

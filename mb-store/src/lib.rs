@@ -7,6 +7,7 @@ use mb_sdk::{
     data::store::{
         NFTContractMetadata,
         Royalty,
+        SplitOwners,
         Token,
         TokenMetadata,
         TokenMetadataCompliant,
@@ -121,10 +122,6 @@ impl MintbaseStore {
     /// The `Store` is initialized with the owner as a `minter`.
     #[init]
     pub fn new(metadata: NFTContractMetadata, owner_id: AccountId) -> Self {
-        near_assert!(
-            !env::state_exists(),
-            "This store is already initialized!"
-        );
         let mut minters = UnorderedSet::new(b"a".to_vec());
         minters.insert(&owner_id);
 
@@ -156,11 +153,12 @@ impl MintbaseStore {
     /// type. They may be used in an implementation if the type is instead:
     ///
     /// `tokens_per_owner: LookupMap<AccountId, Vector<TokenId>>`
-    pub fn nft_tokens_for_owner_set(&self, account_id: AccountId) -> Vec<u64> {
+    pub fn nft_tokens_for_owner_set(&self, account_id: AccountId) -> Vec<U64> {
         self.tokens_per_owner
             .get(&account_id)
             .expect("no tokens")
             .iter()
+            .map(|id| id.into())
             .collect()
     }
 
@@ -279,9 +277,10 @@ pub trait NonFungibleResolveTransfer {
     #[private]
     fn nft_resolve_transfer(
         &mut self,
-        owner_id: AccountId,
+        previous_owner_id: AccountId,
         receiver_id: AccountId,
         token_id: String,
-        approved_account_ids: Option<Vec<String>>,
+        approved_account_ids: std::collections::HashMap<AccountId, u64>,
+        split_owners: Option<SplitOwners>,
     );
 }

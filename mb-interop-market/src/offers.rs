@@ -1,6 +1,41 @@
+//! This module implements offer functionality for the market. You can create an
+//! offer by:
+//!
+//! - Calling the `buy` method and attaching $NEAR
+//! - Using `ft_transfer_call` on a fungible token contract
+//!
+//! In both cases, the token needs to match the token that was required when
+//! listing the NFT, and it will fail if you do not attach at least the asking
+//! price.
+//!
+//! Market operators need to consider the following:
+//!
+//! - Calls to `ft_transfer` require one yoctoNEAR to be attached, and that
+//!   yoctoNEAR is neither taken from the lister nor from the offerer. This
+//!   presents an attack vector, where NFTs could be listed for 0 $FT and
+//!   "traded", slowly draining the market of $NEAR. With 10 royalty holders,
+//!   1 $NEAR could be drained by 10e23 trades, making this extremely unlikely.
+//!   The attacker will also have to fund the gas fees for doing so, and has no
+//!   direct economical reward for doing this.
+//! - Removing an offer while it is being processed could lead to an NFT being
+//!   transferred and the payout failing because `Listing::current_offer` is
+//!   `None`, and thus the callback panicking. Thus, `remove_offer` should only
+//!   be called for offers that have ended in a failure receipt for
+//!   `nft_resolve_payout_{near,ft}`.
+//! - Additionally a `remove_offer` call might be intercepted. It is an
+//!   expansion of the case above, where another listing and another offer has
+//!   to be injected between a call to `remove_offer` and a potential delay
+//!   between the return of `nft_transfer_payout` and
+//!   `nft_resolve_payout_{near,ft}`. As with the previous error, verifying the
+//!   existence of a failure receipt for `nft_resolve_payout_{near,ft}` before
+//!   removing offers closes this attack vector.
+
 use mb_sdk::{
     data::store::Payout,
-    events::market_v2 as events,
+    events::market_v2::{
+        self as events,
+        NftFailedSaleData,
+    },
     interfaces::{
         ext_new_market,
         ext_nft,
@@ -104,7 +139,6 @@ impl Market {
 
         let (ref_earning, _) = self.get_affiliate_mintbase_amounts(&offer);
         env::log_str(
-            // TODO: rename referrer -> affiliate once we can point indexer here
             &events::NftMakeOfferData {
                 nft_contract_id,
                 nft_token_id: token_id,
@@ -203,8 +237,7 @@ impl Market {
             }
             near_sdk::PromiseResult::Failed => {
                 Promise::new(offer.offerer_id).transfer(offer.amount);
-                self.listings.remove(&token_key);
-                self.refund_listings(&listing.nft_owner_id, 1);
+                self.fail_listing(&token_key, false);
                 return PromiseOrValue::Value(());
             }
 
@@ -215,11 +248,7 @@ impl Market {
                     // contract, then return
                     Err(_) => {
                         Promise::new(offer.offerer_id).transfer(offer.amount);
-                        self.refund_listing_and_ban_nft_contract(
-                            &token_key,
-                            &listing.nft_owner_id,
-                            &listing.nft_contract_id,
-                        );
+                        self.fail_listing(&token_key, true);
                         return PromiseOrValue::Value(());
                     }
                 }
@@ -233,26 +262,17 @@ impl Market {
         // Given payouts sum is too large
         if sum > (offer.amount - mb_earning - ref_earning.unwrap_or(0)) {
             Promise::new(offer.offerer_id).transfer(offer.amount);
-            self.refund_listing_and_ban_nft_contract(
-                &token_key,
-                &listing.nft_owner_id,
-                &listing.nft_contract_id,
-            );
+            self.fail_listing(&token_key, true);
             return PromiseOrValue::Value(());
         }
         // Given payout has too many recipients
         if payout.len() as u32 > MAX_LEN_PAYOUT_NEAR {
             Promise::new(offer.offerer_id).transfer(offer.amount);
-            self.refund_listing_and_ban_nft_contract(
-                &token_key,
-                &listing.nft_owner_id,
-                &listing.nft_contract_id,
-            );
+            self.fail_listing(&token_key, true);
             return PromiseOrValue::Value(());
         }
 
         env::log_str(
-            // TODO: rename referrer -> affiliate once we can point indexer here
             &events::NftSaleData {
                 nft_contract_id: listing.nft_contract_id.clone(),
                 nft_token_id: listing.nft_token_id.clone(),
@@ -275,7 +295,7 @@ impl Market {
             Promise::new(referrer_id).transfer(ref_earning.unwrap());
         }
         self.listings.remove(&token_key);
-        self.refund_listings(&listing.nft_owner_id, 1);
+        self.refund_listings(&listing.nft_owner_id, 1, 0);
 
         PromiseOrValue::Value(())
     }
@@ -380,7 +400,6 @@ impl Market {
 
         let (ref_earning, _) = self.get_affiliate_mintbase_amounts(&offer);
         env::log_str(
-            // TODO: rename referrer -> affiliate once open-sourced
             &events::NftMakeOfferData {
                 nft_contract_id: msg.nft_contract_id,
                 nft_token_id: msg.token_id,
@@ -421,8 +440,7 @@ impl Market {
                 );
             }
             near_sdk::PromiseResult::Failed => {
-                self.listings.remove(&token_key);
-                self.refund_listings(&listing.nft_owner_id, 1);
+                self.fail_listing(&token_key, false);
                 return PromiseOrValue::Value(offer.amount.into());
             }
 
@@ -430,11 +448,7 @@ impl Market {
                 match near_sdk::serde_json::from_slice::<Payout>(&payout) {
                     Ok(payout) => payout.payout,
                     Err(_) => {
-                        self.refund_listing_and_ban_nft_contract(
-                            &token_key,
-                            &listing.nft_owner_id,
-                            &listing.nft_contract_id,
-                        );
+                        self.fail_listing(&token_key, true);
                         return PromiseOrValue::Value(offer.amount.into());
                     }
                 }
@@ -445,27 +459,18 @@ impl Market {
             self.get_affiliate_mintbase_amounts(&offer);
         let sum: u128 = payout.values().map(|x| x.0).sum();
 
-        // Given payout is too large
+        // Given payout sum is too large
         if sum > (offer.amount - mb_earning - ref_earning.unwrap_or(0)) {
-            self.refund_listing_and_ban_nft_contract(
-                &token_key,
-                &listing.nft_owner_id,
-                &listing.nft_contract_id,
-            );
+            self.fail_listing(&token_key, true);
             return PromiseOrValue::Value(offer.amount.into());
         }
-        // Given payout is too large
+        // Given payout length is too large
         if payout.len() as u32 > MAX_LEN_PAYOUT_FT {
-            self.refund_listing_and_ban_nft_contract(
-                &token_key,
-                &listing.nft_owner_id,
-                &listing.nft_contract_id,
-            );
+            self.fail_listing(&token_key, true);
             return PromiseOrValue::Value(offer.amount.into());
         }
 
         env::log_str(
-            // TODO: rename referrer -> affiliate once open-sourced
             &events::NftSaleData {
                 nft_contract_id: listing.nft_contract_id.clone(),
                 nft_token_id: listing.nft_token_id.clone(),
@@ -481,6 +486,7 @@ impl Market {
             .serialize_event(),
         );
 
+        let payout_len = payout.len();
         for (account, amount) in payout.drain() {
             ft_transfer(ft_contract_id.clone(), account, amount.0);
         }
@@ -488,7 +494,7 @@ impl Market {
             ft_transfer(ft_contract_id, referrer_id, ref_earning.unwrap());
         }
         self.listings.remove(&token_key);
-        self.refund_listings(&listing.nft_owner_id, 1);
+        self.refund_listings(&listing.nft_owner_id, 1, payout_len as u128 + 1);
 
         PromiseOrValue::Value(0.into())
     }
@@ -516,21 +522,33 @@ impl Market {
     /// the NFT contract from using the market. This does explicitly NOT refund
     /// the offer amount, as the mechanism for differs between payments with
     /// FTs and payments with NEAR.
-    fn refund_listing_and_ban_nft_contract(
-        &mut self,
-        token_key: &String,
-        nft_owner_id: &AccountId,
-        nft_contract_id: &AccountId,
-    ) {
-        self.listings.remove(token_key);
-        self.refund_listings(nft_owner_id, 1);
-        self.banned_accounts.insert(nft_contract_id);
+    fn fail_listing(&mut self, token_key: &String, ban: bool) {
+        let listing = self.listings.remove(token_key).unwrap();
+        env::log_str(
+            &NftFailedSaleData {
+                nft_contract_id: listing.nft_contract_id.clone(),
+                nft_token_id: listing.nft_token_id,
+                nft_approval_id: listing.nft_approval_id,
+                offer_id: 0,
+            }
+            .serialize_event(),
+        );
+        self.refund_listings(&listing.nft_owner_id, 1, 0);
+        if ban {
+            self.banned_accounts.insert(&listing.nft_contract_id);
+        }
     }
 
     /// Allows the market owner to remove offers. This is necessary as listings
     /// can be locked by offers that were not fully processed, originating
     /// usually from gas failures in `nft_resolve_payout_near` or
     /// `nft_resolve_payout_ft`.
+    ///
+    /// As mentioned in the module description, this should only be called when
+    /// an offer "is stuck" and the listing can no longer be processed. Make
+    /// sure that the XCC originating from the call to `buy` or
+    /// `ft_transfer_call` that created the offer has terminated in a failure.
+    #[payable]
     pub fn remove_offer(
         &mut self,
         nft_contract_id: AccountId,

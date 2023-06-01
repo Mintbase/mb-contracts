@@ -3,7 +3,7 @@ use mb_sdk::{
         NFTContractMetadata,
         TokenMetadata,
     },
-    events::store::MbStoreChangeSettingData,
+    events::store::NftContractMetadataUpdateLog,
     near_panic,
     near_sdk::{
         self,
@@ -39,7 +39,10 @@ impl MintbaseStore {
             icon.as_ref().map(|b| b.len() <= 100).unwrap_or(true),
             "Icon URI must be less then 100 chars"
         );
-        log_set_icon_base64(&icon);
+        // log_set_icon_base64(&icon);
+        env::log_str(
+            &NftContractMetadataUpdateLog { memo: None }.serialize_event(),
+        );
         self.metadata.icon = icon;
     }
 
@@ -74,14 +77,4 @@ impl MintbaseStore {
             }
         }
     }
-}
-
-fn log_set_icon_base64(base64: &Option<String>) {
-    env::log_str(
-        &MbStoreChangeSettingData {
-            new_icon_base64: base64.clone(),
-            ..MbStoreChangeSettingData::empty()
-        }
-        .serialize_event(),
-    );
 }

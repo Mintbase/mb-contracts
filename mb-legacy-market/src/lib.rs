@@ -7,7 +7,8 @@ use mb_sdk::{
     },
     data::market_v1::{
         TokenListing,
-        TokenOffer,
+        TokenListingJson,
+        TokenOfferJson,
     },
     events::market_v1::{
         UpdateAllowlistData,
@@ -76,8 +77,6 @@ impl Marketplace {
     /// address.
     #[init]
     pub fn new(init_allowlist: Vec<AccountId>) -> Self {
-        near_assert!(!env::state_exists(), "Already initialized");
-
         let mut allowlist = UnorderedSet::new(b"a".to_vec());
         init_allowlist.iter().for_each(|account| {
             allowlist.insert(account);
@@ -139,7 +138,7 @@ impl Marketplace {
 
     /// Asserts that the function caller owns the the token with `String`.
     fn assert_caller_owns_token(&self, token_key: &str) {
-        let token = self.get_token(token_key.to_string());
+        let token = self.get_token_internal(token_key.to_string());
         let caller = env::predecessor_account_id();
         near_assert!(
             token.owner_id == caller,
@@ -227,12 +226,16 @@ impl Marketplace {
         log_banlist_update(&account_id, state);
     }
 
-    /// Kick a set of tokens off the marketplace.
+    /// Kick a set of tokens off the marketplace. This should only be used
+    /// when listing processing has failed in the past and no offers are
+    /// currently in progress, as it might interfere with running XCC chains
+    /// from `make_offer`.
     #[payable]
     pub fn kick_tokens(&mut self, token_keys: Vec<String>) {
         self.assert_owner_marketplace();
         token_keys.into_iter().for_each(|token_key| {
-            let token = self.get_token(token_key.clone());
+            let token = self.get_token_internal(token_key.clone());
+            token.assert_not_locked();
             let key: TokenKey = token_key.as_str().into();
             self.delist_internal(&key, token);
         });
@@ -271,31 +274,40 @@ impl Marketplace {
     }
 
     /// Get the Token with `TokenKey`.
-    pub fn get_token(&self, token_key: String) -> TokenListing {
+    pub(crate) fn get_token_internal(&self, token_key: String) -> TokenListing {
         let key: TokenKey = token_key.as_str().into();
         self.listings
             .get(&key)
             .unwrap_or_else(|| near_panic!("Cannot find token {}", token_key))
     }
 
+    pub fn get_token(&self, token_key: String) -> TokenListingJson {
+        self.get_token_internal(token_key).into()
+    }
+
     /// Get Token `owner_id`.
     pub fn get_token_owner_id(&self, token_key: String) -> AccountId {
-        self.get_token(token_key).owner_id
+        self.get_token_internal(token_key).owner_id
     }
 
     /// Get Token `autotransfer`.
     pub fn get_token_autotransfer(&self, token_key: String) -> bool {
-        self.get_token(token_key).autotransfer
+        self.get_token_internal(token_key).autotransfer
     }
 
     /// Get Token `asking_price`.
     pub fn get_token_asking_price(&self, token_key: String) -> U128 {
-        self.get_token(token_key).asking_price
+        self.get_token_internal(token_key).asking_price
     }
 
     /// Get the offers for token `token_key`.
-    pub fn get_current_offer(&self, token_key: String) -> Option<TokenOffer> {
-        self.get_token(token_key).current_offer
+    pub fn get_current_offer(
+        &self,
+        token_key: String,
+    ) -> Option<TokenOfferJson> {
+        self.get_token_internal(token_key)
+            .current_offer
+            .map(|o| o.into())
     }
 }
 

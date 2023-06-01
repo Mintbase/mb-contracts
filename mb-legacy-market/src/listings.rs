@@ -117,7 +117,7 @@ impl Marketplace {
     /// `autotransfer` does not retroactively trigger on currently active
     /// `Offer`s.
     pub fn set_token_autotransfer(&mut self, token_key: String, state: bool) {
-        let mut token = self.get_token(token_key.clone());
+        let mut token = self.get_token_internal(token_key.clone());
         token.assert_not_locked();
         self.assert_caller_owns_token(&token_key);
         token.autotransfer = state;
@@ -129,7 +129,7 @@ impl Marketplace {
     #[payable]
     pub fn set_token_asking_price(&mut self, token_key: String, price: U128) {
         assert_one_yocto();
-        let mut token = self.get_token(token_key.clone());
+        let mut token = self.get_token_internal(token_key.clone());
         token.assert_not_locked();
         self.assert_caller_owns_token(&token_key);
         token.asking_price = price;

@@ -45,7 +45,7 @@ impl MintbaseStore {
     /// Restrictions:
     /// - Only minters may call this function.
     /// - `owner_id` must be a valid Near address.
-    /// - Because of logging limits, this method may mint at most 99 tokens per call.
+    /// - Because of logging limits, this method may mint at most 125 tokens per call.
     /// - 1.0 >= `royalty_f` >= 0.0. `royalty_f` is ignored if `royalty` is `None`.
     /// - If a `royalty` is provided, percentages **must** be non-negative and add to one.
     /// - The maximum length of the royalty mapping is 50.
@@ -260,6 +260,7 @@ impl MintbaseStore {
     /// The calling account will try to withdraw as minter from this NFT smart
     /// contract. If the calling account is not a minter on the NFT smart
     /// contract, this will still succeed but have no effect.
+    #[payable]
     pub fn withdraw_minter(&mut self) {
         assert_one_yocto();
         self.revoke_minter_internal(&env::predecessor_account_id())
@@ -291,14 +292,19 @@ impl MintbaseStore {
         num_royalties: u32,
         num_splits: u32,
     ) -> near_sdk::Balance {
-        // create an entry in tokens_per_owner
-        self.storage_costs.common
-            // create a metadata record
-            + metadata_storage as u128 * self.storage_costs.storage_price_per_byte
+        // create a metadata record
+        metadata_storage as u128 * self.storage_costs.storage_price_per_byte
             // create a royalty record
             + num_royalties as u128 * self.storage_costs.common
             // create n tokens each with splits stored on-token
-            + num_tokens as u128 * (self.storage_costs.token + num_splits as u128 * self.storage_costs.common)
+            + num_tokens as u128 * (
+                // token base storage
+                self.storage_costs.token
+                // dynamic split storage
+                + num_splits as u128 * self.storage_costs.common
+                // create an entry in tokens_per_owner
+                + self.storage_costs.common
+            )
     }
 }
 

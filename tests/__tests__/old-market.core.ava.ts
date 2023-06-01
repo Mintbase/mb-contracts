@@ -114,7 +114,7 @@ test("market::core", async (test) => {
   test.deepEqual(
     await market.view("get_token", { token_key: `0:${store.accountId}` }),
     {
-      id: 0, // TODO::market::low: rename to token_id, use string type
+      id: "0",
       owner_id: alice.accountId,
       store_id: store.accountId,
       autotransfer: false,
@@ -208,7 +208,7 @@ test("market::core", async (test) => {
   test.deepEqual(
     await market.view("get_token", { token_key: `0:${store.accountId}` }),
     {
-      id: 0, // FIXME::market::low: rename to token_id, use string type
+      id: "0",
       owner_id: alice.accountId,
       store_id: store.accountId,
       autotransfer: true,

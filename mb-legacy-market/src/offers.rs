@@ -47,9 +47,10 @@ use crate::{
 
 #[near_bindgen]
 impl Marketplace {
-    /// Make an `Offer` for `Token`. `Offer`s may be created beneath the `Token`'s
-    /// `asking_price`, but not beneath the `current_offer`'s price, unless the
-    /// current offer has timed out.
+    /// Make an `Offer` for `Token`. If the token is listed as simple sale (aka
+    /// "buy now", `autotransfer` is `true`), the offer price not be below the
+    /// asking price. If the token is listed as rolling auction (`autotransfer`
+    /// is `false`), you may place an offer below the asking price.
     ///
     /// The `price` argument MUST be >= `env::attached_deposit` on this function.
     #[payable]
@@ -78,7 +79,7 @@ impl Marketplace {
                     TimeUnit::Hours(h) => assert!(h >= self.min_offer_hours),
                 };
 
-                let mut listing = self.get_token(token_key.clone());
+                let mut listing = self.get_token_internal(token_key.clone());
                 listing.assert_not_locked();
                 listing.num_offers += 1;
                 let offer =
@@ -127,7 +128,7 @@ impl Marketplace {
     /// called on an `Offer` that has been active for a minimum length of time,
     /// specified by `self.min_offer_hours`.
     pub fn withdraw_offer(&mut self, token_key: String) {
-        let mut token = self.get_token(token_key.clone());
+        let mut token = self.get_token_internal(token_key.clone());
         token.assert_not_locked();
         near_assert!(
             token.current_offer.as_ref().expect("no current offer").from
@@ -164,7 +165,7 @@ impl Marketplace {
     #[payable]
     pub fn accept_and_transfer(&mut self, token_key: String) {
         assert_one_yocto();
-        let token = self.get_token(token_key.clone());
+        let token = self.get_token_internal(token_key.clone());
         token.assert_not_locked();
         near_assert!(
             token.current_offer.is_some(),
@@ -198,7 +199,7 @@ impl Marketplace {
             token_id.to_string(),
             approval_id,
             balance.into(),
-            MAX_LEN_PAYOUT as u32,
+            MAX_LEN_PAYOUT,
         )
     }
 
@@ -283,8 +284,8 @@ impl Marketplace {
             "The market owner must not place offers"
         );
         near_assert!(
-            offer.price >= token.asking_price.into(),
-            "Cannot set offer below ask"
+            !token.autotransfer || offer.price >= token.asking_price.into(),
+            "Cannot set offer below ask for simple sales"
         );
         match &token.current_offer {
             None => {
