@@ -618,7 +618,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "mb-factory"
+name = "mb-factory-v1"
+version = "0.1.0"
+dependencies = [
+ "mb-sdk",
+]
+
+[[package]]
+name = "mb-factory-v2"
 version = "0.1.0"
 dependencies = [
  "mb-sdk",
@@ -650,7 +657,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "mb-store"
+name = "mb-store-v1"
+version = "0.1.0"
+dependencies = [
+ "mb-sdk",
+]
+
+[[package]]
+name = "mb-store-v2"
 version = "0.1.0"
 dependencies = [
  "mb-sdk",

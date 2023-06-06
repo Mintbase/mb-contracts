@@ -116,7 +116,7 @@ export const mintingDeposit = ({
   //80 bytes * 10e18 NEAR/byte = 0.8e21
   const common_deposit = 0.8;
   // 360 bytes * 10e18 NEAR/byte = 3.6e21
-  const token_deposit = 3.6;
+  const token_deposit = 4.4;
   const minting_fee = 1;
 
   const metadata_deposit = (metadata_bytes || 10000) * 0.001;

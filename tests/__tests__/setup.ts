@@ -3,6 +3,8 @@ import { Worker, NearAccount } from "near-workspaces";
 import * as nearAPI from "near-api-js";
 import { DEPLOY_STORE_RENT, DEPLOY_STORE_GAS } from "./utils/balances.js";
 
+export const MB_VERSION = process.env.MB_VERSION || "v1";
+
 const createSubaccount = async (
   root: NearAccount,
   name: string,
@@ -80,7 +82,7 @@ export const setup = (test: TestFn): TestFn<TestContext> => {
 
     const factory = await createAndDeploy(root, "factory", {
       initialBalanceNear: "10",
-      codePath: "../wasm/factory.wasm",
+      codePath: `../wasm/factory-${MB_VERSION}.wasm`,
       initMethod: "new",
       initArgs: {},
     });

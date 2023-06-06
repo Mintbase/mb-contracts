@@ -2,8 +2,10 @@
 
 members = [
   "mb-sdk",
-  "mb-store",
-  "mb-factory",
+  "mb-store-v1",
+  "mb-store-v2",
+  "mb-factory-v1",
+  "mb-factory-v2",
   "mb-legacy-market",
   "mb-interop-market",
 ]
