@@ -297,7 +297,7 @@ impl Market {
         for (account, amount) in payout.drain() {
             if account == listing.nft_contract_id
                 && listing.owner_pub_key.is_some()
-                && listing.nft_contract_id.to_string().contains(".keypom.")
+                && listing.nft_contract_id.to_string().contains("keypom.")
             {
                 ext_keypom_contract::ext(listing.nft_contract_id.clone())
                     .with_static_gas(KEYPOM_CREATE_SIMPLE_DROP_GAS)
