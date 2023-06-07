@@ -37,6 +37,7 @@ use mb_sdk::{
         NftFailedSaleData,
     },
     interfaces::{
+        ext_keypom_contract,
         ext_new_market,
         ext_nft,
     },
@@ -289,7 +290,19 @@ impl Market {
         );
 
         for (account, amount) in payout.drain() {
-            Promise::new(account).transfer(amount.0);
+            if account == listing.nft_contract_id
+                && listing.owner_pub_key.is_some()
+                && listing.nft_contract_id.to_string().contains(".keypom.")
+            {
+                ext_keypom_contract::ext(listing.nft_contract_id.clone())
+                    .with_static_gas(KEYPOM_CREATE_SIMPLE_DROP_GAS)
+                    .create_drop(
+                        vec![listing.owner_pub_key.clone().unwrap()],
+                        amount,
+                    );
+            } else {
+                Promise::new(account).transfer(amount.0);
+            }
         }
         if let Some(referrer_id) = offer.referrer_id {
             Promise::new(referrer_id).transfer(ref_earning.unwrap());

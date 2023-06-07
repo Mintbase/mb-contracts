@@ -7,6 +7,7 @@ use near_sdk::{
     },
     AccountId,
     Promise,
+    PublicKey,
 };
 
 #[ext_contract(ext_old_market)]
@@ -131,4 +132,9 @@ pub trait ExtFt {
 pub trait ExtNewMarket {
     fn nft_resolve_payout_near(token_key: String);
     fn nft_resolve_payout_ft(token_key: String);
+}
+
+#[near_sdk::ext_contract(ext_keypom_contract)]
+pub trait ExtKeypomContract {
+    fn create_drop(public_keys: Vec<PublicKey>, deposit_per_use: U128);
 }

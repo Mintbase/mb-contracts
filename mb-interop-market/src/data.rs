@@ -16,6 +16,7 @@ use mb_sdk::near_sdk::{
     AccountId,
     Balance,
     Gas,
+    PublicKey,
     Timestamp,
 };
 
@@ -32,6 +33,7 @@ pub const LISTING_KIND_SIMPLE: &str = "simple";
 pub const NFT_TRANSFER_PAYOUT_GAS: Gas = Gas(15_000_000_000_000);
 pub const NFT_RESOLVE_PAYOUT_NEAR_GAS: Gas = Gas(175_000_000_000_000);
 pub const NFT_RESOLVE_PAYOUT_FT_GAS: Gas = Gas(235_000_000_000_000);
+pub const KEYPOM_CREATE_SIMPLE_DROP_GAS: Gas = Gas(11_000_000_000_000);
 // const LISTING_KIND_AUCTION: &str = "auction";
 
 /// A listing as it is stored on the blockchain.
@@ -69,6 +71,8 @@ pub struct Listing {
     pub nft_owner_id: AccountId,
     /// NFT contract
     pub nft_contract_id: AccountId,
+    /// What public key was used to create the listing? Relevant for Keypom NFT sales
+    pub owner_pub_key: Option<PublicKey>,
     /// Price either in yoctoNEAR or the atomic unit of an FT contract
     pub price: Balance,
     /// Specifies if NEAR is requested for this listing or tokens of an FT
@@ -114,6 +118,7 @@ impl Listing {
             nft_approval_id,
             nft_owner_id,
             nft_contract_id,
+            owner_pub_key: msg.owner_pub_key,
             price: msg.price.into(),
             currency: msg.ft_contract.into(),
             created_at: near_sdk::env::block_timestamp(),
@@ -237,6 +242,8 @@ impl ToString for Currency {
 pub struct CreateListingMsg {
     /// Price in either yoctoNEAR or atomic units of the FT contract.
     pub price: U128,
+    /// What public key was used to create the listing? Relevant for Keypom NFT sales
+    pub owner_pub_key: Option<PublicKey>,
     /// FT contract to use. If none, the token is listed for native NEAR.
     pub ft_contract: Option<AccountId>,
 }
