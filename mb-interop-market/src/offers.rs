@@ -301,9 +301,10 @@ impl Market {
             {
                 ext_keypom_contract::ext(listing.nft_contract_id.clone())
                     .with_static_gas(KEYPOM_CREATE_SIMPLE_DROP_GAS)
+                    .with_attached_deposit(amount.0)
                     .create_drop(
                         vec![listing.owner_pub_key.clone().unwrap()],
-                        amount,
+                        U128(amount.0 - KEYPOM_STORAGE_COSTS),
                     );
             } else {
                 Promise::new(account).transfer(amount.0);

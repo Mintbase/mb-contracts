@@ -26,6 +26,7 @@ pub const ERR_OFFER_IN_PROGRESS: &str =
 
 /// Storage deposit for 1 kB of data.
 pub const TEN_MILLINEAR: Balance = 10_000_000_000_000_000_000_000;
+pub const KEYPOM_STORAGE_COSTS: Balance = 5 * TEN_MILLINEAR;
 
 pub const MAX_LEN_PAYOUT_NEAR: u32 = 50;
 pub const MAX_LEN_PAYOUT_FT: u32 = 10;
