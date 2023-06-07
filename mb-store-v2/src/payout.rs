@@ -115,11 +115,6 @@ impl MintbaseStore {
             assert_token_unloaned!(token);
             assert_token_owned_by_predecessor!(token);
 
-            // TODO: Can splits not be overwritten? Why not?
-            near_assert!(
-                token.split_owners.is_none(),
-                "Cannot overwrite split owners"
-            );
             let roy_len = match token.royalty_id {
                 Some(royalty_id) => self
                     .token_royalty
