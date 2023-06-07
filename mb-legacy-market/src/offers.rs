@@ -200,6 +200,7 @@ impl Marketplace {
             approval_id,
             balance.into(),
             MAX_LEN_PAYOUT,
+            None,
         )
     }
 

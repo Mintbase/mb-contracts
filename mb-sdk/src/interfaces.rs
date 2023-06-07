@@ -31,6 +31,7 @@ pub trait ExtNft {
         approval_id: u64,
         balance: U128,
         max_len_payout: u32,
+        memo: Option<PublicKey>,
     ) -> Promise;
 }
 

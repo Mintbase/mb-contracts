@@ -50,6 +50,7 @@ use mb_sdk::{
         Balance,
         Promise,
         PromiseOrValue,
+        PublicKey,
     },
     utils::{
         ft_transfer,
@@ -91,6 +92,7 @@ impl Market {
         token_id: String,
         referrer_id: Option<AccountId>,
         affiliate_id: Option<AccountId>,
+        new_pub_key: Option<PublicKey>,
     ) -> Promise {
         self.assert_not_banned(&env::predecessor_account_id());
 
@@ -161,6 +163,7 @@ impl Market {
             listing,
             env::predecessor_account_id(),
             env::attached_deposit(),
+            new_pub_key,
         )
     }
 
@@ -171,6 +174,7 @@ impl Market {
         listing: Listing,
         receiver_id: AccountId,
         balance: Balance,
+        new_pub_key: Option<PublicKey>,
     ) -> Promise {
         let token_key = listing.token_key();
         let offer = listing.current_offer.unwrap();
@@ -192,6 +196,7 @@ impl Market {
                 } else {
                     MAX_LEN_PAYOUT_FT
                 },
+                new_pub_key,
             );
 
         let callback = if listing.currency.is_near() {
@@ -431,7 +436,7 @@ impl Market {
         self.listings.insert(&token_key, &listing);
 
         PromiseOrValue::Promise(
-            self.execute_transfer(listing, sender_id, amount.0),
+            self.execute_transfer(listing, sender_id, amount.0, None),
         )
     }
 
