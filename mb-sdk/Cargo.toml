@@ -13,9 +13,8 @@ serde_json = { version = "1.0.91", features = ["arbitrary_precision"] }
 ed25519-dalek = "1.0.0"
 
 [dependencies.near_events]
-path = "../../near-events/near-events"
-# git = "https://github.com/mintbase/near-events"
-# rev = "c4fdefbe1cb3167864fdb2cd1ff1d9058233bb76"
+git = "https://github.com/mintbase/near-events"
+rev = "82559b1f33eb096d915e767cd521a78c112a6525"
 features = ["ser"]
 
 [features]
