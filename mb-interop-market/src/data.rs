@@ -72,8 +72,6 @@ pub struct Listing {
     pub nft_owner_id: AccountId,
     /// NFT contract
     pub nft_contract_id: AccountId,
-    /// What public key was used to create the listing? Relevant for Keypom NFT sales
-    pub owner_pub_key: Option<PublicKey>,
     /// Price either in yoctoNEAR or the atomic unit of an FT contract
     pub price: Balance,
     /// Specifies if NEAR is requested for this listing or tokens of an FT
@@ -119,7 +117,6 @@ impl Listing {
             nft_approval_id,
             nft_owner_id,
             nft_contract_id,
-            owner_pub_key: msg.owner_pub_key,
             price: msg.price.into(),
             currency: msg.ft_contract.into(),
             created_at: near_sdk::env::block_timestamp(),

@@ -8,6 +8,7 @@ use mb_sdk::{
             BorshSerialize,
         },
         collections::{
+            LookupMap,
             UnorderedMap,
             UnorderedSet,
         },
@@ -19,6 +20,7 @@ use mb_sdk::{
         AccountId,
         Balance,
         Promise,
+        PublicKey,
     },
 };
 
@@ -33,9 +35,44 @@ use data::*;
 /// Storage of the market contract
 #[derive(BorshSerialize, BorshDeserialize, near_sdk::PanicOnDefault)]
 #[near_sdk::near_bindgen]
+pub struct MarketOldState {
+    /// Contains all currently listed tokens
+    pub listings: UnorderedMap<String, Listing>,
+    /// Contains a list of accounts that we don't do business with
+    pub banned_accounts: UnorderedSet<AccountId>,
+    /// Contains a list of accounts that are allowed to set referrals
+    pub referrers: UnorderedMap<AccountId, u16>,
+    /// Contains the storage deposits of all accounts, which are needed to list
+    /// a token without being able to hold our market hostage
+    pub storage_deposits_by_account: UnorderedMap<AccountId, Balance>,
+    /// Simple counter how many listings a given account has with the market,
+    /// required for book-keeping
+    pub listings_count_by_account: UnorderedMap<AccountId, u64>,
+    /// How much storage deposit we require for a single listing
+    pub listing_storage_deposit: Balance,
+    /// How long (in seconds) a listing must be active in the market before it
+    /// can be unlisted
+    pub listing_lock_seconds: u64,
+    /// The percentage of a cut that remains with Mintbase in case that a token
+    /// is sold by referral. E.g.: Ife `referral_cut` is 10%, `mb_cut` is 40%,
+    /// and a token gets sold for 100 $NEAR, then 4 $NEAR will end up with
+    /// mintbase and 6 $NEAR will end up with the referrer.
+    pub mintbase_cut: u16,
+    /// The fallback cut that is applied for the case of no referral.
+    pub fallback_cut: u16,
+    /// The owner of the market, who is allowed to configure it.
+    pub owner: AccountId,
+}
+
+// ------------------------- market smart contract -------------------------- //
+/// Storage of the market contract
+#[derive(BorshSerialize, BorshDeserialize, near_sdk::PanicOnDefault)]
+#[near_sdk::near_bindgen]
 pub struct Market {
     /// Contains all currently listed tokens
     pub listings: UnorderedMap<String, Listing>,
+    /// Contains all currently listed tokens
+    pub owner_pk_for_listing: LookupMap<String, (AccountId, PublicKey)>,
     /// Contains a list of accounts that we don't do business with
     pub banned_accounts: UnorderedSet<AccountId>,
     /// Contains a list of accounts that are allowed to set referrals
@@ -73,6 +110,7 @@ impl Market {
     ) -> Self {
         Self {
             listings: UnorderedMap::new(&b"k2l"[..]),
+            owner_pk_for_listing: LookupMap::new(&b"k2pk"[..]),
             banned_accounts: UnorderedSet::new(&b"b"[..]),
             referrers: UnorderedMap::new(&b"r"[..]),
             storage_deposits_by_account: UnorderedMap::new(&b"a2d"[..]),
@@ -82,6 +120,28 @@ impl Market {
             mintbase_cut,
             fallback_cut,
             owner,
+        }
+    }
+
+    #[private]
+    #[init(ignore_state)]
+    pub fn migrate() -> Self {
+        // retrieve the current state from the contract
+        let old_state: MarketOldState = env::state_read().expect("failed");
+
+        // iterate through the state migrating it to the new version
+        Self {
+            listings: old_state.listings,
+            owner_pk_for_listing: LookupMap::new(&b"k2pk"[..]),
+            banned_accounts: old_state.banned_accounts,
+            referrers: old_state.referrers,
+            storage_deposits_by_account: old_state.storage_deposits_by_account,
+            listings_count_by_account: old_state.listings_count_by_account,
+            listing_storage_deposit: old_state.listing_storage_deposit,
+            listing_lock_seconds: old_state.listing_lock_seconds,
+            mintbase_cut: old_state.mintbase_cut,
+            fallback_cut: old_state.fallback_cut,
+            owner: old_state.owner,
         }
     }
 

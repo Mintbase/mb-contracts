@@ -38,8 +38,13 @@ impl Market {
         let nft_contract_id = env::predecessor_account_id();
         let msg: CreateListingMsg =
             near_parse(&msg, "Invalid arguments to create listing");
-        let listing =
-            Listing::new(token_id, approval_id, owner_id, nft_contract_id, msg);
+        let listing = Listing::new(
+            token_id,
+            approval_id,
+            owner_id.clone(),
+            nft_contract_id,
+            msg.clone(),
+        );
 
         // No involved party must be banned from using the market
         self.assert_not_banned(&listing.nft_owner_id);
@@ -59,6 +64,12 @@ impl Market {
                 >= self.listing_storage_deposit,
             "Storage for listing not covered"
         );
+
+        // If the listing data contained the owner's public key, they're coming from Keypom and don't have a wallet
+        if let Some(pk) = msg.owner_pub_key {
+            self.owner_pk_for_listing
+                .insert(&listing.token_key(), &(owner_id, pk));
+        }
 
         self.increase_listings_count(&listing.nft_owner_id, 1);
         if let Some(old_listing) =

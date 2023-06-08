@@ -294,21 +294,24 @@ impl Market {
             .serialize_event(),
         );
 
+        let owner_pk_data = self.owner_pk_for_listing.remove(&token_key);
+
         for (account, amount) in payout.drain() {
-            if account == listing.nft_contract_id
-                && listing.owner_pub_key.is_some()
-                && listing.nft_contract_id.to_string().contains("keypom.")
-            {
-                ext_keypom_contract::ext(listing.nft_contract_id.clone())
-                    .with_static_gas(KEYPOM_CREATE_SIMPLE_DROP_GAS)
-                    .with_attached_deposit(amount.0)
-                    .create_drop(
-                        vec![listing.owner_pub_key.clone().unwrap()],
-                        U128(amount.0 - KEYPOM_STORAGE_COSTS),
-                    );
-            } else {
-                Promise::new(account).transfer(amount.0);
+            // Check if the current account is equal to the first index of the optional owner pk data
+            if let Some(data) = owner_pk_data.clone() {
+                if account == data.0 {
+                    ext_keypom_contract::ext(listing.nft_contract_id.clone())
+                        .with_static_gas(KEYPOM_CREATE_SIMPLE_DROP_GAS)
+                        .with_attached_deposit(amount.0)
+                        .create_drop(
+                            vec![data.1],
+                            U128(amount.0 - KEYPOM_STORAGE_COSTS),
+                        );
+                    continue;
+                }
             }
+
+            Promise::new(account).transfer(amount.0);
         }
         if let Some(referrer_id) = offer.referrer_id {
             Promise::new(referrer_id).transfer(ref_earning.unwrap());
