@@ -107,9 +107,6 @@ pub struct MintbaseStore {
     ///
     /// If false, disallow users to call `nft_move`.
     pub allow_moves: bool,
-    /// Possibly limit minting to this number of tokens, cannot be changed once
-    /// set
-    pub minting_cap: Option<u64>,
 }
 
 impl Default for MintbaseStore {
@@ -142,7 +139,6 @@ impl MintbaseStore {
             owner_id,
             storage_costs: StorageCosts::new(YOCTO_PER_BYTE), // 10^19
             allow_moves: true,
-            minting_cap: None,
         }
     }
 
@@ -181,11 +177,6 @@ impl MintbaseStore {
     /// approval ID.
     pub fn get_num_approved(&self) -> u64 {
         self.num_approved
-    }
-
-    /// Get maximum number of minted tokens on this contract
-    pub fn get_minting_cap(&self) -> Option<u64> {
-        self.minting_cap
     }
 
     // -------------------------- private methods --------------------------

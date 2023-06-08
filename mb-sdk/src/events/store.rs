@@ -145,7 +145,7 @@ pub struct NftSetSplitOwnerData {
     version = "0.1.0",
     event = "change_setting"
 )]
-pub struct MbStoreChangeSettingData {
+pub struct MbStoreChangeSettingDataV010 {
     pub granted_minter: Option<String>,
     pub revoked_minter: Option<String>,
     pub new_owner: Option<String>,
@@ -153,14 +153,43 @@ pub struct MbStoreChangeSettingData {
     pub new_base_uri: Option<String>,
 }
 
-impl MbStoreChangeSettingData {
+impl MbStoreChangeSettingDataV010 {
     pub fn empty() -> Self {
-        MbStoreChangeSettingData {
+        MbStoreChangeSettingDataV010 {
             granted_minter: None,
             revoked_minter: None,
             new_owner: None,
             new_icon_base64: None,
             new_base_uri: None,
+        }
+    }
+}
+
+#[near_event_data(
+    standard = "mb_store",
+    version = "0.2.0",
+    event = "change_setting"
+)]
+pub struct MbStoreChangeSettingDataV020 {
+    pub granted_minter: Option<String>,
+    pub revoked_minter: Option<String>,
+    pub new_owner: Option<String>,
+    pub new_icon_base64: Option<String>, // deprecated in favor of metadata update
+    pub new_base_uri: Option<String>,
+    pub set_minting_cap: Option<U64>,
+    pub allow_open_minting: Option<bool>,
+}
+
+impl MbStoreChangeSettingDataV020 {
+    pub fn empty() -> Self {
+        MbStoreChangeSettingDataV020 {
+            granted_minter: None,
+            revoked_minter: None,
+            new_owner: None,
+            new_icon_base64: None,
+            new_base_uri: None,
+            set_minting_cap: None,
+            allow_open_minting: None,
         }
     }
 }

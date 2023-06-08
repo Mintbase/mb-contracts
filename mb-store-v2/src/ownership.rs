@@ -1,6 +1,6 @@
 use mb_sdk::{
     constants::StorageCostsJson,
-    events::store::MbStoreChangeSettingData,
+    events::store::MbStoreChangeSettingDataV020,
     near_assert,
     near_sdk::{
         self,
@@ -109,6 +109,38 @@ impl MintbaseStore {
         Promise::new(env::current_account_id()).add_full_access_key(key)
     }
 
+    /// Set maximum number of minted tokens on this contract
+    pub fn set_minting_cap(&mut self, minting_cap: u64) {
+        self.assert_store_owner();
+        near_assert!(
+            self.minting_cap.is_none(),
+            "Minting cap has already been set"
+        );
+        near_assert!(
+            self.tokens_minted > minting_cap,
+            "Cannot set minting cap lower than already minted tokens"
+        );
+        self.minting_cap = Some(minting_cap);
+        log_minting_cap(minting_cap);
+    }
+
+    /// Set maximum number of minted tokens on this contract
+    pub fn set_open_minting(&mut self, allow: bool) {
+        self.assert_store_owner();
+        near_assert!(
+            self.minting_cap.is_none(),
+            "Minting cap has already been set"
+        );
+
+        if allow {
+            self.minters.clear();
+        } else if self.minters.is_empty() {
+            self.minters.insert(&self.owner_id);
+        }
+
+        log_open_minting(allow);
+    }
+
     // -------------------------- view methods -----------------------------
     /// Show the current owner of this NFT contract
     pub fn get_owner_id(&self) -> AccountId {
@@ -135,9 +167,29 @@ impl MintbaseStore {
 
 fn log_transfer_store(account_id: &AccountId) {
     env::log_str(
-        &MbStoreChangeSettingData {
+        &MbStoreChangeSettingDataV020 {
             new_owner: Some(account_id.to_string()),
-            ..MbStoreChangeSettingData::empty()
+            ..MbStoreChangeSettingDataV020::empty()
+        }
+        .serialize_event(),
+    );
+}
+
+fn log_open_minting(allow: bool) {
+    env::log_str(
+        &MbStoreChangeSettingDataV020 {
+            allow_open_minting: Some(allow),
+            ..MbStoreChangeSettingDataV020::empty()
+        }
+        .serialize_event(),
+    );
+}
+
+fn log_minting_cap(cap: u64) {
+    env::log_str(
+        &MbStoreChangeSettingDataV020 {
+            set_minting_cap: Some(cap.into()),
+            ..MbStoreChangeSettingDataV020::empty()
         }
         .serialize_event(),
     );

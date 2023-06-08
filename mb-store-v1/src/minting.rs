@@ -15,11 +15,12 @@ use mb_sdk::{
         TokenMetadata,
     },
     events::store::{
-        MbStoreChangeSettingData,
+        MbStoreChangeSettingDataV010,
         NftMintLog,
         NftMintLogMemo,
     },
     near_assert,
+    near_panic,
     near_sdk::{
         self,
         assert_one_yocto,
@@ -58,21 +59,23 @@ impl MintbaseStore {
         owner_id: AccountId,
         #[allow(unused_mut)] // cargo complains, but it's required
         mut metadata: TokenMetadata,
-        num_to_mint: u64,
+        num_to_mint: Option<u64>,
+        token_ids: Option<Vec<U64>>,
         royalty_args: Option<RoyaltyArgs>,
         split_owners: Option<SplitBetweenUnparsed>,
     ) -> PromiseOrValue<()> {
+        let (num_to_mint, token_ids, predefined_ids) = match (num_to_mint, token_ids) {
+            (None, None) => near_panic!("Must either specify `num_to_mint` or `token_ids`"),
+            (Some(_), Some(_)) => near_panic!("Cannot specify both `num_to_mint` and `token_ids` at the same time"),
+            (Some(n), None) => (n, (self.tokens_minted..self.tokens_minted + n).collect::<Vec<u64>>(), false),
+            (None, Some(ids)) => (ids.len() as u64, ids.into_iter().map(|id| id.0).collect::<Vec<u64>>(), true),
+        };
+
         near_assert!(num_to_mint > 0, "No tokens to mint");
         near_assert!(
             num_to_mint <= 125,
             "Cannot mint more than 125 tokens due to gas limits"
         ); // upper gas limit
-        if let Some(cap) = self.minting_cap {
-            near_assert!(
-                self.tokens_minted + num_to_mint <= cap,
-                "This mint would exceed the smart contracts minting cap"
-            );
-        }
         near_assert!(
             env::attached_deposit() >= 1,
             "Requires deposit of at least 1 yoctoNEAR"
@@ -161,8 +164,16 @@ impl MintbaseStore {
             .insert(&lookup_id, &(num_to_mint as u16, metadata));
 
         // Mint em up hot n fresh with a side of vegan bacon
-        (0..num_to_mint).for_each(|i| {
-            let token_id = self.tokens_minted + i;
+        token_ids.into_iter().for_each(|mut token_id| {
+            // Check if token ID is already occupied, panic for predefined,
+            // otherwise create non-occupied ID
+            if self.tokens.contains_key(&token_id) && predefined_ids {
+                near_panic!("Predefined token ID is already in use");
+            }
+            while self.tokens.contains_key(&token_id) {
+                token_id += num_to_mint
+            }
+
             let token = Token::new(
                 owner_id.clone(),
                 token_id,
@@ -364,9 +375,9 @@ fn log_nft_batch_mint(
 
 pub(crate) fn log_grant_minter(account_id: &AccountId) {
     env::log_str(
-        &MbStoreChangeSettingData {
+        &MbStoreChangeSettingDataV010 {
             granted_minter: Some(account_id.to_string()),
-            ..MbStoreChangeSettingData::empty()
+            ..MbStoreChangeSettingDataV010::empty()
         }
         .serialize_event(),
     );
@@ -374,9 +385,9 @@ pub(crate) fn log_grant_minter(account_id: &AccountId) {
 
 pub(crate) fn log_revoke_minter(account_id: &AccountId) {
     env::log_str(
-        &MbStoreChangeSettingData {
+        &MbStoreChangeSettingDataV010 {
             revoked_minter: Some(account_id.to_string()),
-            ..MbStoreChangeSettingData::empty()
+            ..MbStoreChangeSettingDataV010::empty()
         }
         .serialize_event(),
     );
