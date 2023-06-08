@@ -109,6 +109,20 @@ impl MintbaseStore {
         Promise::new(env::current_account_id()).add_full_access_key(key)
     }
 
+    /// Set maximum number of minted tokens on this contract
+    pub fn set_minting_cap(&mut self, minting_cap: u64) {
+        self.assert_store_owner();
+        near_assert!(
+            self.minting_cap.is_none(),
+            "Minting cap has already been set"
+        );
+        near_assert!(
+            self.tokens_minted > minting_cap,
+            "Cannot set minting cap lower than already minted tokens"
+        );
+        self.minting_cap = Some(minting_cap);
+    }
+
     // -------------------------- view methods -----------------------------
     /// Show the current owner of this NFT contract
     pub fn get_owner_id(&self) -> AccountId {

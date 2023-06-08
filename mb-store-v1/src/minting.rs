@@ -67,6 +67,12 @@ impl MintbaseStore {
             num_to_mint <= 125,
             "Cannot mint more than 125 tokens due to gas limits"
         ); // upper gas limit
+        if let Some(cap) = self.minting_cap {
+            near_assert!(
+                self.tokens_minted + num_to_mint <= cap,
+                "This mint would exceed the smart contracts minting cap"
+            );
+        }
         near_assert!(
             env::attached_deposit() >= 1,
             "Requires deposit of at least 1 yoctoNEAR"
