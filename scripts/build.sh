@@ -9,6 +9,8 @@ cargo check -p mb-factory || exit 1
 cargo check -p mb-legacy-market || exit 1
 cargo check -p mb-interop-market || exit 1
 
+cargo clippy -- -D warnings || exit 1
+
 build() {
   cargo "$1" || return 1
   mv "wasm/$1.wasm" "wasm/$1-raw.wasm"
