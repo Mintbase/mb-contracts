@@ -42,7 +42,7 @@ impl Market {
             token_id,
             approval_id,
             owner_id.clone(),
-            nft_contract_id,
+            nft_contract_id.clone(),
             msg.clone(),
         );
 
@@ -67,8 +67,10 @@ impl Market {
 
         // If the listing data contained the owner's public key, they're coming from Keypom and don't have a wallet
         if let Some(pk) = msg.owner_pub_key {
-            self.owner_pk_for_listing
-                .insert(&listing.token_key(), &(owner_id, pk));
+            if owner_id == nft_contract_id {
+                self.owner_pk_for_listing
+                    .insert(&listing.token_key(), &(owner_id, pk));
+            }
         }
 
         self.increase_listings_count(&listing.nft_owner_id, 1);
