@@ -73,6 +73,9 @@ pub struct Market {
     pub listings: UnorderedMap<String, Listing>,
     /// Contains all currently listed tokens
     pub owner_pk_for_listing: LookupMap<String, (AccountId, PublicKey)>,
+    /// What is the root of the keypom contract that will be allowed to use the
+    /// public key mapping functionality
+    pub keypom_contract_root: String,
     /// Contains a list of accounts that we don't do business with
     pub banned_accounts: UnorderedSet<AccountId>,
     /// Contains a list of accounts that are allowed to set referrals
@@ -107,7 +110,16 @@ impl Market {
         mintbase_cut: u16,
         fallback_cut: u16,
         listing_lock_seconds: U64,
+        keypom_contract_root: Option<String>,
     ) -> Self {
+        let keypom_contract_root = keypom_contract_root.unwrap_or_else(|| {
+            if env::current_account_id().as_str().ends_with("testnet") {
+                "keypom.testnet".to_string()
+            } else {
+                "keypom.near".to_string()
+            }
+        });
+
         Self {
             listings: UnorderedMap::new(&b"k2l"[..]),
             owner_pk_for_listing: LookupMap::new(&b"k2pk"[..]),
@@ -119,15 +131,26 @@ impl Market {
             listing_lock_seconds: listing_lock_seconds.0,
             mintbase_cut,
             fallback_cut,
+            keypom_contract_root,
             owner,
         }
     }
 
     #[private]
     #[init(ignore_state)]
-    pub fn migrate() -> Self {
+    pub fn migrate(keypom_contract_root: Option<String>) -> Self {
         // retrieve the current state from the contract
         let old_state: MarketOldState = env::state_read().expect("failed");
+
+        // If a specific contract root was passed in, use that, otherwise default to
+        // keypom.testnet or keypom.near depending on the network
+        let keypom_contract_root = keypom_contract_root.unwrap_or_else(|| {
+            if env::current_account_id().as_str().ends_with("testnet") {
+                "keypom.testnet".to_string()
+            } else {
+                "keypom.near".to_string()
+            }
+        });
 
         // iterate through the state migrating it to the new version
         Self {
@@ -141,6 +164,7 @@ impl Market {
             listing_lock_seconds: old_state.listing_lock_seconds,
             mintbase_cut: old_state.mintbase_cut,
             fallback_cut: old_state.fallback_cut,
+            keypom_contract_root,
             owner: old_state.owner,
         }
     }
@@ -157,6 +181,15 @@ impl Market {
     /// Show owner of the market contract
     pub fn get_owner(&self) -> AccountId {
         self.owner.clone()
+    }
+
+    // -------- change keypom contract root
+    /// Sets the root of the keypom contract that will be allowed to use the
+    /// public key mapping functionality
+    #[payable]
+    pub fn set_keypom_contract_root(&mut self, keypom_contract_root: String) {
+        self.assert_predecessor_is_owner();
+        self.keypom_contract_root = keypom_contract_root;
     }
 
     // -------- cut remaining with mintbase in case of referral
