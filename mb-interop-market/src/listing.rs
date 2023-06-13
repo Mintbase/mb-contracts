@@ -67,6 +67,10 @@ impl Market {
 
         // If the listing data contained the owner's public key, they're coming from Keypom and don't have a wallet
         if let Some(pk) = msg.owner_pub_key {
+            near_assert!(
+                env::predecessor_account_id().as_str().ends_with("keypom.near"),
+                "Can only use keypom functionality from official keypom smart contract"
+            );
             self.owner_pk_for_listing
                 .insert(&listing.token_key(), &(owner_id, pk));
         }
@@ -157,7 +161,8 @@ impl Market {
             minimum_withdrawal_timestamp / 1_000_000_000
         );
 
-        self.listings.remove(&listing.token_key());
+        self.listings.remove(token_key);
+        self.owner_pk_for_listing.remove(token_key);
         listing
     }
 

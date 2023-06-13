@@ -132,6 +132,14 @@ impl Market {
             "Another offer currently executes on this listing"
         );
 
+        // Replacing the public key of a listing only makes sense if it
+        // originates from keypom
+        let is_keypom = self.owner_pk_for_listing.contains_key(&token_key);
+        near_assert!(
+            new_pub_key.is_some() && is_keypom,
+            "You may not insert a new public key on a non-keypom listing!"
+        );
+
         // Happy path: insert offer, log event, process stuff
         let offer = Offer {
             offerer_id: env::predecessor_account_id(),
@@ -298,20 +306,22 @@ impl Market {
 
         for (account, amount) in payout.drain() {
             // Check if the current account is equal to the first index of the optional owner pk data
-            if let Some(data) = owner_pk_data.clone() {
-                if account == data.0 {
+            match owner_pk_data.clone() {
+                // pk data exists and ID matches the payout account -> create keypom drop
+                Some((owner_id, owner_pk)) if owner_id == account => {
                     ext_keypom_contract::ext(listing.nft_contract_id.clone())
                         .with_static_gas(KEYPOM_CREATE_SIMPLE_DROP_GAS)
                         .with_attached_deposit(amount.0)
                         .create_drop(
-                            vec![data.1],
+                            vec![owner_pk],
                             U128(amount.0 - KEYPOM_STORAGE_COSTS),
                         );
-                    continue;
                 }
-            }
-
-            Promise::new(account).transfer(amount.0);
+                // any other case -> payout in NEAR
+                _ => {
+                    Promise::new(account).transfer(amount.0);
+                }
+            };
         }
         if let Some(referrer_id) = offer.referrer_id {
             Promise::new(referrer_id).transfer(ref_earning.unwrap());
@@ -516,6 +526,7 @@ impl Market {
             ft_transfer(ft_contract_id, referrer_id, ref_earning.unwrap());
         }
         self.listings.remove(&token_key);
+        self.owner_pk_for_listing.remove(&token_key);
         self.refund_listings(&listing.nft_owner_id, 1, payout_len as u128 + 1);
 
         PromiseOrValue::Value(0.into())
@@ -546,6 +557,7 @@ impl Market {
     /// FTs and payments with NEAR.
     fn fail_listing(&mut self, token_key: &String, ban: bool) {
         let listing = self.listings.remove(token_key).unwrap();
+        self.owner_pk_for_listing.remove(token_key);
         env::log_str(
             &NftFailedSaleData {
                 nft_contract_id: listing.nft_contract_id.clone(),
