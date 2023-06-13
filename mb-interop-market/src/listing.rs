@@ -68,7 +68,7 @@ impl Market {
         // If the listing data contained the owner's public key, they're coming from Keypom and don't have a wallet
         if let Some(pk) = msg.owner_pub_key {
             near_assert!(
-                env::predecessor_account_id().as_str().ends_with(self.keypom_contract_root.as_str()),
+                env::predecessor_account_id().as_str().ends_with(self.keypom_contract_root.as_str()) && env::predecessor_account_id() == owner_id,
                 "Can only use keypom functionality from official keypom smart contract"
             );
             self.owner_pk_for_listing

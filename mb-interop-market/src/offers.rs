@@ -134,7 +134,9 @@ impl Market {
 
         // Replacing the public key of a listing only makes sense if it
         // originates from keypom
-        let is_keypom = self.owner_pk_for_listing.contains_key(&token_key);
+        let is_keypom = nft_contract_id
+            .as_str()
+            .ends_with(self.keypom_contract_root.as_str());
         near_assert!(
             new_pub_key.is_some() && is_keypom,
             "You may not insert a new public key on a non-keypom listing!"
