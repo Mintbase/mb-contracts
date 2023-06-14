@@ -134,14 +134,23 @@ impl Market {
 
         // Replacing the public key of a listing only makes sense if it
         // originates from keypom
+        // Ensure that if new_pub_key is set, it is a keypom listing. 
+        // Also assert that if it's not a keypom listing, new_pub_key is None.
         let is_keypom = nft_contract_id
             .as_str()
             .ends_with(self.keypom_contract_root.as_str());
-        near_assert!(
-            new_pub_key.is_some() && is_keypom,
-            "You may not insert a new public key on a non-keypom listing!"
-        );
-
+        if is_keypom {
+            near_assert!(
+                new_pub_key.is_some(),
+                "You must specify a new public key for this keypom listing!"
+            );
+        } else {
+            near_assert!(
+                new_pub_key.is_none(),
+                "You may not specify a new public key for a non-keypom listing!"
+            );
+        }
+        
         // Happy path: insert offer, log event, process stuff
         let offer = Offer {
             offerer_id: env::predecessor_account_id(),
