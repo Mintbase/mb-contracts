@@ -183,13 +183,18 @@ impl Market {
         self.owner.clone()
     }
 
-    // -------- change keypom contract root
+    // -------- keypom contract root
     /// Sets the root of the keypom contract that will be allowed to use the
     /// public key mapping functionality
     #[payable]
     pub fn set_keypom_contract_root(&mut self, keypom_contract_root: String) {
         self.assert_predecessor_is_owner();
         self.keypom_contract_root = keypom_contract_root;
+    }
+    /// Gets the root of the keypom contract that will be allowed to use the
+    /// public key mapping functionality
+    pub fn get_keypom_contract_root(&self) -> String {
+        self.keypom_contract_root.clone()
     }
 
     // -------- cut remaining with mintbase in case of referral
