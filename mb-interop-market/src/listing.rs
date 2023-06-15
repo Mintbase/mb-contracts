@@ -5,6 +5,7 @@ use mb_sdk::{
         self,
         env,
         AccountId,
+        PublicKey,
     },
     utils::{
         assert_predecessor,
@@ -184,5 +185,18 @@ impl Market {
         token_key: &String,
     ) -> Option<Listing> {
         self.listings.get(token_key)
+    }
+
+    /// Get the public key associated with a listing.
+    ///
+    /// Ideally this would have been integrated into the listing struct, but
+    /// the storage migration is unfeasible
+    pub fn get_listing_pk(
+        &self,
+        nft_contract_id: AccountId,
+        token_id: String,
+    ) -> Option<(AccountId, PublicKey)> {
+        self.owner_pk_for_listing
+            .get(&format!("{}<$>{}", nft_contract_id, token_id))
     }
 }
