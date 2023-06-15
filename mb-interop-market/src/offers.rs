@@ -92,7 +92,7 @@ impl Market {
         token_id: String,
         referrer_id: Option<AccountId>,
         affiliate_id: Option<AccountId>,
-        new_pub_key: Option<PublicKey>,
+        new_pub_key: Option<String>,
     ) -> Promise {
         self.assert_not_banned(&env::predecessor_account_id());
 
@@ -150,6 +150,8 @@ impl Market {
                 "You may not specify a new public key for a non-keypom listing!"
             );
         }
+        let new_pub_key: Option<PublicKey> = new_pub_key
+            .map(|npk| npk.parse().expect("`new_pub_key` cannot be parsed"));
 
         // Happy path: insert offer, log event, process stuff
         let offer = Offer {

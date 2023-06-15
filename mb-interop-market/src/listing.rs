@@ -5,7 +5,6 @@ use mb_sdk::{
         self,
         env,
         AccountId,
-        PublicKey,
     },
     utils::{
         assert_predecessor,
@@ -195,8 +194,9 @@ impl Market {
         &self,
         nft_contract_id: AccountId,
         token_id: String,
-    ) -> Option<(AccountId, PublicKey)> {
+    ) -> Option<(AccountId, String)> {
         self.owner_pk_for_listing
             .get(&format!("{}<$>{}", nft_contract_id, token_id))
+            .map(|(acc, pk)| (acc, String::from(&pk)))
     }
 }
