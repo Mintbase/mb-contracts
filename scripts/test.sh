@@ -8,12 +8,12 @@ kill_sandbox() {
 
 kill_sandbox
 
-# # Limit to 6 parallel tests to prevent hiccups with the key store
-# (cd tests && MB_VERSION=v1 npm test -- -c 6 --fail-fast "$@") || {
-#   kill_sandbox
-#   echo "Testing failed (v1)"
-#   exit 1
-# }
+# Limit to 6 parallel tests to prevent hiccups with the key store
+(cd tests && MB_VERSION=v1 npm test -- -c 6 --fail-fast "$@") || {
+  kill_sandbox
+  echo "Testing failed (v1)"
+  exit 1
+}
 
 (cd tests && MB_VERSION=v2 npm test -- -c 6 --fail-fast "$@") || {
   kill_sandbox

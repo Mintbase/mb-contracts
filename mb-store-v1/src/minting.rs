@@ -20,7 +20,6 @@ use mb_sdk::{
         NftMintLogMemo,
     },
     near_assert,
-    near_panic,
     near_sdk::{
         self,
         assert_one_yocto,
@@ -59,18 +58,10 @@ impl MintbaseStore {
         owner_id: AccountId,
         #[allow(unused_mut)] // cargo complains, but it's required
         mut metadata: TokenMetadata,
-        num_to_mint: Option<u64>,
-        token_ids: Option<Vec<U64>>,
+        num_to_mint: u64,
         royalty_args: Option<RoyaltyArgs>,
         split_owners: Option<SplitBetweenUnparsed>,
     ) -> PromiseOrValue<()> {
-        let (num_to_mint, token_ids, predefined_ids) = match (num_to_mint, token_ids) {
-            (None, None) => near_panic!("Must either specify `num_to_mint` or `token_ids`"),
-            (Some(_), Some(_)) => near_panic!("Cannot specify both `num_to_mint` and `token_ids` at the same time"),
-            (Some(n), None) => (n, (self.tokens_minted..self.tokens_minted + n).collect::<Vec<u64>>(), false),
-            (None, Some(ids)) => (ids.len() as u64, ids.into_iter().map(|id| id.0).collect::<Vec<u64>>(), true),
-        };
-
         near_assert!(num_to_mint > 0, "No tokens to mint");
         near_assert!(
             num_to_mint <= 125,
@@ -164,16 +155,8 @@ impl MintbaseStore {
             .insert(&lookup_id, &(num_to_mint as u16, metadata));
 
         // Mint em up hot n fresh with a side of vegan bacon
-        token_ids.into_iter().for_each(|mut token_id| {
-            // Check if token ID is already occupied, panic for predefined,
-            // otherwise create non-occupied ID
-            if self.tokens.contains_key(&token_id) && predefined_ids {
-                near_panic!("Predefined token ID is already in use");
-            }
-            while self.tokens.contains_key(&token_id) {
-                token_id += num_to_mint
-            }
-
+        (0..num_to_mint).for_each(|i| {
+            let token_id = self.tokens_minted + i;
             let token = Token::new(
                 owner_id.clone(),
                 token_id,

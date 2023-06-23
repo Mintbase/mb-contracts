@@ -110,6 +110,7 @@ impl MintbaseStore {
     }
 
     /// Set maximum number of minted tokens on this contract
+    #[payable]
     pub fn set_minting_cap(&mut self, minting_cap: u64) {
         self.assert_store_owner();
         near_assert!(
@@ -117,7 +118,7 @@ impl MintbaseStore {
             "Minting cap has already been set"
         );
         near_assert!(
-            self.tokens_minted > minting_cap,
+            self.tokens_minted < minting_cap,
             "Cannot set minting cap lower than already minted tokens"
         );
         self.minting_cap = Some(minting_cap);

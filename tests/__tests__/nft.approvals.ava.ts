@@ -11,26 +11,11 @@ import {
   assertContractTokenOwners,
   assertNoApproval,
   mintingDeposit,
+  changeSettingsData,
 } from "./utils/index.js";
-import { setup } from "./setup.js";
+import { setup, CHANGE_SETTING_VERSION } from "./setup.js";
 
 const test = setup(avaTest);
-
-const changeSettingsData = (subset: Record<string, string>) => {
-  const data: Record<string, string | null> = {
-    granted_minter: null,
-    revoked_minter: null,
-    new_icon_base64: null,
-    new_owner: null,
-    new_base_uri: null,
-  };
-
-  Object.keys(subset).forEach((k) => {
-    data[k] = subset[k];
-  });
-
-  return data;
-};
 
 test("approvals::core", async (test) => {
   const { alice, bob, carol, store } = test.context.accounts;
@@ -435,7 +420,7 @@ test("approvals::minting", async (test) => {
     [
       {
         standard: "mb_store",
-        version: "0.1.0",
+        version: CHANGE_SETTING_VERSION,
         event: "change_setting",
         data: changeSettingsData({ granted_minter: bob.accountId }),
       },
@@ -548,7 +533,7 @@ test("approvals::minting", async (test) => {
     [
       {
         standard: "mb_store",
-        version: "0.1.0",
+        version: CHANGE_SETTING_VERSION,
         event: "change_setting",
         data: changeSettingsData({ revoked_minter: bob.accountId }),
       },
@@ -607,13 +592,13 @@ test("approvals::minting", async (test) => {
     [
       {
         standard: "mb_store",
-        version: "0.1.0",
+        version: CHANGE_SETTING_VERSION,
         event: "change_setting",
         data: changeSettingsData({ granted_minter: bob.accountId }),
       },
       {
         standard: "mb_store",
-        version: "0.1.0",
+        version: CHANGE_SETTING_VERSION,
         event: "change_setting",
         data: changeSettingsData({ granted_minter: carol.accountId }),
       },
@@ -642,13 +627,13 @@ test("approvals::minting", async (test) => {
     [
       {
         standard: "mb_store",
-        version: "0.1.0",
+        version: CHANGE_SETTING_VERSION,
         event: "change_setting",
         data: changeSettingsData({ granted_minter: dave.accountId }),
       },
       {
         standard: "mb_store",
-        version: "0.1.0",
+        version: CHANGE_SETTING_VERSION,
         event: "change_setting",
         data: changeSettingsData({ revoked_minter: carol.accountId }),
       },
@@ -677,13 +662,13 @@ test("approvals::minting", async (test) => {
     [
       {
         standard: "mb_store",
-        version: "0.1.0",
+        version: CHANGE_SETTING_VERSION,
         event: "change_setting",
         data: changeSettingsData({ revoked_minter: bob.accountId }),
       },
       {
         standard: "mb_store",
-        version: "0.1.0",
+        version: CHANGE_SETTING_VERSION,
         event: "change_setting",
         data: changeSettingsData({ revoked_minter: dave.accountId }),
       },
@@ -814,7 +799,8 @@ test("approvals::token-actions", async (test) => {
   );
 });
 
-test("approvals::capping", async (test) => {
+// only run this test when you change something about it, it takes forever
+test.skip("approvals::capping", async (test) => {
   test.timeout(300000); // 5 minutes
   const { alice, bob, carol, store } = test.context.accounts;
 

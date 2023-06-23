@@ -1,6 +1,7 @@
 import { NearAccount } from "near-workspaces";
 import { ExecutionContext } from "ava";
 import { mintingDeposit } from "./balances.js";
+import { CHANGE_SETTING_VERSION } from "../setup.js";
 
 // TODO::testing::low: commenting all my test utils
 
@@ -72,4 +73,25 @@ export function failPromiseRejection(
 
 export function hours(x: number): number {
   return Math.round(x * 3600 * 1e9);
+}
+
+export function changeSettingsData(subset: Record<string, string>) {
+  const data: Record<string, string | null> = {
+    granted_minter: null,
+    revoked_minter: null,
+    new_icon_base64: null,
+    new_owner: null,
+    new_base_uri: null,
+  };
+
+  if (CHANGE_SETTING_VERSION === "0.2.0") {
+    data.allow_open_minting = null;
+    data.set_minting_cap = null;
+  }
+
+  Object.keys(subset).forEach((k) => {
+    data[k] = subset[k];
+  });
+
+  return data;
 }
