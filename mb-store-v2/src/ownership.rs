@@ -126,12 +126,9 @@ impl MintbaseStore {
     }
 
     /// Set maximum number of minted tokens on this contract
+    #[payable]
     pub fn set_open_minting(&mut self, allow: bool) {
         self.assert_store_owner();
-        near_assert!(
-            self.minting_cap.is_none(),
-            "Minting cap has already been set"
-        );
 
         if allow {
             self.minters.clear();

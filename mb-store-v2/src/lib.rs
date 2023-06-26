@@ -190,7 +190,7 @@ impl MintbaseStore {
 
     /// Get status of open minting enablement
     pub fn get_open_minting(&self) -> bool {
-        !self.minters.is_empty()
+        self.minters.is_empty()
     }
 
     // -------------------------- private methods --------------------------

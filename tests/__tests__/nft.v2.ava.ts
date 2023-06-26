@@ -167,15 +167,14 @@ test("v2::minting_cap", async (test) => {
   // TODO: (low priority) requires yoctoNEAR deposit
 });
 
-test.skip("v2::open_minting", async (test) => {
+test("v2::open_minting", async (test) => {
   if (MB_VERSION == "v1") {
     test.pass();
     return;
   }
 
-  const { alice, store } = test.context.accounts;
+  const { bob, alice, store } = test.context.accounts;
 
-  // FIXME: not working?
   // No minting cap exists initially
   test.is(await store.view("get_open_minting"), false);
 
@@ -207,7 +206,13 @@ test.skip("v2::open_minting", async (test) => {
   // New minting cap is successfuly returned
   test.is(await store.view("get_open_minting"), true);
 
-  // TODO: (medium priority) actually mint something
+  //  actually mint something
+  await bob.call(
+    store,
+    "nft_batch_mint",
+    { num_to_mint: 1, metadata: {}, owner_id: bob.accountId },
+    { attachedDeposit: mintingDeposit({ n_tokens: 1 }) }
+  );
   // TODO: (low priority) disallow open minting and try to mint
 });
 
