@@ -1,5 +1,5 @@
-# Mintbase Smart Contracts
-
+# Mintbase Smart Contracts  
+[Audited on April 2023](https://llyh4t73eduhn2i3j4gs523hnndpb24ynlrnsglgque46drcisxa.arweave.net/WvB-T_sg6HbpG08NLutna0bw65hq4tkZZoUJzw4iRK4)
 ## Setup
 
 In order to make full use of this repo, you will need:
