@@ -37,7 +37,6 @@ use mb_sdk::{
         NftFailedSaleData,
     },
     interfaces::{
-        ext_keypom_contract,
         ext_new_market,
         ext_nft,
     },
@@ -52,6 +51,7 @@ use mb_sdk::{
         PromiseOrValue,
         PublicKey,
     },
+    serde_json::json,
     utils::{
         ft_transfer,
         near_parse,
@@ -322,12 +322,27 @@ impl Market {
             match owner_pk_data.clone() {
                 // pk data exists and ID matches the payout account -> create keypom drop
                 Some((owner_id, owner_pk)) if owner_id == account => {
-                    ext_keypom_contract::ext(listing.nft_contract_id.clone())
-                        .with_static_gas(KEYPOM_CREATE_SIMPLE_DROP_GAS)
-                        .with_attached_deposit(amount.0)
-                        .create_drop(
-                            vec![owner_pk],
-                            U128(amount.0 - KEYPOM_STORAGE_COSTS),
+                    // Tested: https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=142ec68f5736aafe0fe72c278264ede9
+                    let pk = String::try_from(&owner_pk).unwrap();
+                    let split: Vec<&str> = pk.split(":").collect::<Vec<&str>>();
+                    let drop_id = split[split.len() - 1];
+
+                    let create_drop_args = json!({
+                        "drop_id": drop_id,
+                        "key_data": [{"public_key": owner_pk}],
+                        "asset_data": [{
+                            "uses": 1,
+                            "assets": [{"yoctonear": U128(amount.0 - KEYPOM_STORAGE_COSTS)}]
+                        }]
+                    }).to_string();
+
+                    Promise::new(listing.nft_contract_id.clone())
+                        .function_call_weight(
+                            "create_drop".to_string(),
+                            create_drop_args.into(),
+                            amount.0,
+                            KEYPOM_CREATE_SIMPLE_DROP_GAS,
+                            near_sdk::GasWeight(1),
                         );
                 }
                 // any other case -> payout in NEAR
