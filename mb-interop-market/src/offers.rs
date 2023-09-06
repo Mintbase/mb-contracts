@@ -324,7 +324,7 @@ impl Market {
                 Some((owner_id, owner_pk)) if owner_id == account => {
                     // Tested: https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=142ec68f5736aafe0fe72c278264ede9
                     let pk = String::try_from(&owner_pk).unwrap();
-                    let split: Vec<&str> = pk.split(":").collect::<Vec<&str>>();
+                    let split: Vec<&str> = pk.split(':').collect::<Vec<&str>>();
                     let drop_id = split[split.len() - 1];
 
                     let create_drop_args = json!({
