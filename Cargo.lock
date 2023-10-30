@@ -646,6 +646,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "mb-nft-v1"
+version = "0.1.0"
+dependencies = [
+ "mb-sdk",
+]
+
+[[package]]
+name = "mb-nft-v2"
+version = "0.1.0"
+dependencies = [
+ "mb-sdk",
+]
+
+[[package]]
 name = "mb-sdk"
 version = "0.1.0"
 dependencies = [
@@ -654,20 +668,6 @@ dependencies = [
  "near_events",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "mb-store-v1"
-version = "0.1.0"
-dependencies = [
- "mb-sdk",
-]
-
-[[package]]
-name = "mb-store-v2"
-version = "0.1.0"
-dependencies = [
- "mb-sdk",
 ]
 
 [[package]]

@@ -2,8 +2,8 @@
 
 members = [
   "mb-sdk",
-  "mb-store-v1",
-  "mb-store-v2",
+  "mb-nft-v1",
+  "mb-nft-v2",
   "mb-factory-v1",
   "mb-factory-v2",
   "mb-legacy-market",

@@ -267,7 +267,7 @@ impl MintbaseStoreFactory {
             .transfer(storage_stake::STORE)
             .add_full_access_key(self.admin_public_key.clone())
             .deploy_contract(
-                include_bytes!("../../wasm/store-v2.wasm").to_vec(),
+                include_bytes!("../../wasm/mb-nft-v2.wasm").to_vec(),
             )
             .function_call("new".to_string(), init_args, 0, gas::CREATE_STORE)
             .then(

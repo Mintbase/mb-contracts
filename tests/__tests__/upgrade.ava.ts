@@ -60,7 +60,7 @@ test.skip("upgrade::mainnet", async (test) => {
   )) as StateSnapshot;
 
   // upgrade contracts
-  await updateContract(store, `store-${MB_VERSION}`);
+  await updateContract(store, `mb-nft-${MB_VERSION}`);
   test.log("updated store");
   await updateContract(factory, `factory-${MB_VERSION}`);
   test.log("updated factory");
