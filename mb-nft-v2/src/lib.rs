@@ -58,8 +58,8 @@ mod payout;
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct MintbaseStore {
-    /// Accounts that are allowed to mint tokens on this Store.
-    pub minters: UnorderedSet<AccountId>,
+    /// Accounts that are allowed to create metadata.
+    pub creators: UnorderedSet<AccountId>,
     /// Initial deployment data of this Store.
     pub metadata: NFTContractMetadata,
     /// If a Minter mints more than one token at a time, all tokens will
@@ -68,7 +68,9 @@ pub struct MintbaseStore {
     /// Token. The key is generated from `tokens_minted`. The map keeps count
     /// of how many copies of this token remain, so that the element may be
     /// dropped when the number reaches zero (ie, when tokens are burnt).
-    pub token_metadata: LookupMap<u64, (u16, TokenMetadata)>,
+    pub metadata_id: u64,
+    pub token_metadata:
+        LookupMap<u64, (u16, Option<Vec<AccountId>>, TokenMetadata)>,
     /// If a Minter mints more than one token at a time, all tokens will
     /// share the same `Royalty`. It's more storage-efficient to store that
     /// `Royalty` once, rather than to copy the data on each Token. The key
@@ -125,12 +127,13 @@ impl MintbaseStore {
     /// The `Store` is initialized with the owner as a `minter`.
     #[init]
     pub fn new(metadata: NFTContractMetadata, owner_id: AccountId) -> Self {
-        let mut minters = UnorderedSet::new(b"a".to_vec());
-        minters.insert(&owner_id);
+        let mut creators = UnorderedSet::new(b"a".to_vec());
+        creators.insert(&owner_id);
 
         Self {
-            minters,
+            creators,
             metadata,
+            metadata_id: 0,
             token_metadata: LookupMap::new(b"b".to_vec()),
             token_royalty: LookupMap::new(b"c".to_vec()),
             tokens: LookupMap::new(b"d".to_vec()),
@@ -189,8 +192,8 @@ impl MintbaseStore {
     }
 
     /// Get status of open minting enablement
-    pub fn get_open_minting(&self) -> bool {
-        self.minters.is_empty()
+    pub fn get_open_creating(&self) -> bool {
+        self.creators.is_empty()
     }
 
     // -------------------------- private methods --------------------------

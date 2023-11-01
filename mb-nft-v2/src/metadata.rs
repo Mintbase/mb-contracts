@@ -57,7 +57,7 @@ impl MintbaseStore {
         self.token_metadata
             .get(&self.nft_token_internal(token_id.into()).metadata_id)
             .expect("bad metadata_id")
-            .1
+            .2
     }
 
     /// The Token URI is generated to index the token on whatever distributed
