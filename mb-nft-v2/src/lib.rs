@@ -32,6 +32,7 @@ use mb_sdk::{
         },
         near_bindgen,
         AccountId,
+        Balance,
         StorageUsage,
     },
 };
@@ -70,7 +71,7 @@ pub struct MintbaseStore {
     /// dropped when the number reaches zero (ie, when tokens are burnt).
     pub metadata_id: u64,
     pub token_metadata:
-        LookupMap<u64, (u16, Option<Vec<AccountId>>, TokenMetadata)>,
+        LookupMap<u64, (u16, Balance, Option<Vec<AccountId>>, TokenMetadata)>,
     /// If a Minter mints more than one token at a time, all tokens will
     /// share the same `Royalty`. It's more storage-efficient to store that
     /// `Royalty` once, rather than to copy the data on each Token. The key

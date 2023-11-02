@@ -240,7 +240,7 @@ impl MintbaseStore {
         metadata_id: Option<U64>,
         royalty_args: Option<RoyaltyArgs>,
         minters_allowlist: Option<Vec<AccountId>>,
-        // TODO: price for the creation
+        price: U128,
     ) -> String {
         // metadata ID: either predefined (must not conflict with existing), or
         // increasing the counter for it
@@ -270,10 +270,14 @@ impl MintbaseStore {
         );
 
         // makes sure storage is covered
-        // FIXME: add minters list to storage calculation
+        // FIXME: add minters list and token price to storage calculation
         let metadata_size = borsh::to_vec(&metadata).unwrap().len() as u64;
-        let expected_storage_consumption: Balance =
-            self.storage_cost_to_create_metadata(metadata_size, roy_len);
+        let expected_storage_consumption: Balance = self
+            .storage_cost_to_create_metadata(
+                metadata_size,
+                roy_len,
+                minters_allowlist.as_ref().map(|l| l.len()).unwrap_or(0) as u64,
+            );
         let covered_storage = env::attached_deposit() - MINTING_FEE;
         near_assert!(
             covered_storage >= expected_storage_consumption,
@@ -284,7 +288,7 @@ impl MintbaseStore {
 
         // insert metadata
         self.token_metadata
-            .insert(&metadata_id, &(0, minters_allowlist, metadata));
+            .insert(&metadata_id, &(0, price.0, minters_allowlist, metadata));
 
         // padding for updates required
         let used_storage_stake: Balance =
@@ -297,6 +301,8 @@ impl MintbaseStore {
             MINIMUM_FREE_STORAGE_STAKE,
             free_storage_stake
         );
+
+        // FIXME: add event
 
         return metadata_id.to_string();
     }
@@ -328,14 +334,16 @@ impl MintbaseStore {
         // check if this account is allowed to mint this metadata
         // TODO:
 
-        //
+        // was the storage deposit attached? should the storage be paid by the metadata creator?
         // TODO:
 
-        //
+        // is the price attached?
         // TODO:
 
-        //
+        // get valid token IDs
         // TODO:
+
+        // mint the tokens and emit event
 
         // Transfer minting fee to parent account
         // TODO:
@@ -424,11 +432,16 @@ impl MintbaseStore {
         &self,
         metadata_storage: StorageUsage,
         num_royalties: u32,
+        num_minters: u64,
     ) -> near_sdk::Balance {
         // create a metadata record
         metadata_storage as u128 * self.storage_costs.storage_price_per_byte
             // create a royalty record
             + num_royalties as u128 * self.storage_costs.common
+            // store the minters list
+            + num_minters as u128 * self.storage_costs.account_id
+            // store the price
+            + self.storage_costs.balance
     }
 
     /// Get the storage in bytes to mint `num_tokens` each with
