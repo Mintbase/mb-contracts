@@ -6,7 +6,6 @@ use mb_sdk::{
         self,
         assert_one_yocto,
         env,
-        json_types::U64,
         near_bindgen,
     },
 };
@@ -22,16 +21,18 @@ impl MintbaseStore {
     ///
     /// Only the tokens' owner may call this function.
     #[payable]
-    pub fn nft_batch_burn(&mut self, token_ids: Vec<U64>) {
+    pub fn nft_batch_burn(&mut self, token_ids: Vec<String>) {
         assert_one_yocto();
         assert!(!token_ids.is_empty());
+        let token_ids_iter =
+            token_ids.iter().map(|s| parse_token_id(s.as_str()));
 
         let account_id = env::predecessor_account_id();
         let mut set_owned =
             self.tokens_per_owner.get(&account_id).expect("none owned");
 
-        token_ids.iter().for_each(|&token_id| {
-            let token_id: u64 = token_id.into();
+        token_ids_iter.for_each(|token_id| {
+            // let token_id: u64 = token_id.into();
             let token = self.nft_token_internal(token_id);
             assert_token_unloaned!(token);
             assert_token_owned_by!(token, &account_id);
@@ -47,18 +48,7 @@ impl MintbaseStore {
                 );
             } else {
                 self.token_metadata.remove(&metadata_id);
-            }
-            if let Some(royalty_id) =
-                self.nft_token_internal(token_id).royalty_id
-            {
-                let (count, royalty) =
-                    self.token_royalty.get(&royalty_id).unwrap();
-                if count > 1 {
-                    self.token_royalty
-                        .insert(&royalty_id, &(count - 1, royalty));
-                } else {
-                    self.token_royalty.remove(&royalty_id);
-                }
+                self.token_royalty.remove(&metadata_id);
             }
 
             set_owned.remove(&token_id);
@@ -71,7 +61,7 @@ impl MintbaseStore {
             self.tokens_per_owner.insert(&account_id, &set_owned);
         }
         self.tokens_burned += token_ids.len() as u64;
-        log_nft_batch_burn(&token_ids, account_id.to_string());
+        log_nft_batch_burn(token_ids, account_id.to_string());
     }
 
     // -------------------------- view methods -----------------------------
@@ -79,11 +69,7 @@ impl MintbaseStore {
     // -------------------------- internal methods -------------------------
 }
 
-fn log_nft_batch_burn(token_ids: &[U64], owner_id: String) {
-    let token_ids = token_ids
-        .iter()
-        .map(|x| x.0.to_string())
-        .collect::<Vec<_>>();
+fn log_nft_batch_burn(token_ids: Vec<String>, owner_id: String) {
     let log = NftBurnLog {
         owner_id,
         authorized_id: None,

@@ -108,7 +108,12 @@ impl MintbaseStore {
 
         ext_nft_on_transfer::ext(receiver_id.clone())
             .with_static_gas(gas::NFT_TRANSFER_CALL)
-            .nft_on_transfer(pred, previous_owner_id.clone(), token_id, msg)
+            .nft_on_transfer(
+                pred,
+                previous_owner_id.clone(),
+                token_id.0.to_string(),
+                msg,
+            )
             .then(
                 store_self::ext(env::current_account_id())
                     .with_static_gas(gas::NFT_TRANSFER_CALL)

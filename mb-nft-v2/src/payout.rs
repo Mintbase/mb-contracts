@@ -17,10 +17,7 @@ use mb_sdk::{
         self,
         assert_one_yocto,
         env,
-        json_types::{
-            U128,
-            U64,
-        },
+        json_types::U128,
         near_bindgen,
         AccountId,
         Balance,
@@ -41,14 +38,14 @@ impl MintbaseStore {
     pub fn nft_transfer_payout(
         &mut self,
         receiver_id: AccountId,
-        token_id: U64,
+        token_id: String,
         approval_id: Option<u64>,
         memo: Option<String>,
         balance: near_sdk::json_types::U128,
         max_len_payout: Option<u32>,
     ) -> Payout {
         assert_one_yocto();
-        let payout = self.nft_payout(token_id, balance, max_len_payout);
+        let payout = self.nft_payout(token_id.clone(), balance, max_len_payout);
         self.nft_transfer(receiver_id, token_id, approval_id, memo);
         payout
     }
@@ -60,11 +57,11 @@ impl MintbaseStore {
     /// `max_len_payout` accounts.
     pub fn nft_payout(
         &self,
-        token_id: U64,
+        token_id: String,
         balance: U128,
         max_len_payout: Option<u32>,
     ) -> Payout {
-        let token = self.nft_token(token_id).expect("no token");
+        let token = self.nft_token(token_id.clone()).expect("no token");
         let owner_id = match token.owner_id {
             Owner::Account(id) => id,
             _ => env::panic_str("token is composed"),
@@ -94,7 +91,7 @@ impl MintbaseStore {
     #[payable]
     pub fn set_split_owners(
         &mut self,
-        token_ids: Vec<U64>,
+        token_ids: Vec<String>,
         split_between: SplitBetweenUnparsed,
     ) {
         near_assert!(!token_ids.is_empty(), "Requires token IDs");
@@ -108,7 +105,8 @@ impl MintbaseStore {
         );
         let splits = SplitOwners::new(split_between);
 
-        token_ids.iter().for_each(|&token_id| {
+        token_ids.iter().for_each(|token_id| {
+            let token_id = parse_token_id(token_id);
             let mut token = self.nft_token_internal(token_id.into());
             // token.assert_unloaned();
             // token.assert_owned_by_predecessor();
@@ -120,7 +118,6 @@ impl MintbaseStore {
                     .token_royalty
                     .get(&royalty_id)
                     .unwrap()
-                    .1
                     .split_between
                     .len(),
                 None => 0,
@@ -142,10 +139,12 @@ impl MintbaseStore {
     /// Get the Royalty for a Token. The `Royalty` structure is not stored on the
     /// token, as this would lead to duplication of `Royalty`s across tokens.
     /// Instead, the `Royalty` is stored in a Contract `LookupMap`.
-    pub fn get_token_royalty(&self, token_id: U64) -> Option<Royalty> {
-        let royalty_id = self.nft_token_internal(token_id.into()).royalty_id;
+    pub fn get_token_royalty(&self, token_id: String) -> Option<Royalty> {
+        let token_id = parse_token_id(&token_id);
+        // FIXME: needs to be metadata_id, but this function will have to change
+        let royalty_id = self.nft_token_internal(token_id).royalty_id;
         match royalty_id {
-            Some(id) => self.token_royalty.get(&id).map(|(_, r)| r),
+            Some(id) => self.token_royalty.get(&id),
             None => None,
         }
     }
@@ -250,7 +249,7 @@ impl OwnershipFractions {
 }
 
 pub(crate) fn log_set_split_owners(
-    token_ids: Vec<U64>,
+    token_ids: Vec<String>,
     mut split_owners: SplitOwners,
 ) {
     env::log_str(

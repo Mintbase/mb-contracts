@@ -94,7 +94,7 @@ pub struct NftContractMetadataUpdateLog {
     serde(crate = "near_sdk::serde")
 )]
 pub struct NftApproveLog {
-    pub token_id: U64,
+    pub token_id: String,
     pub approval_id: u64,
     pub account_id: String,
 }
@@ -112,7 +112,7 @@ pub struct NftApproveData(pub Vec<NftApproveLog>);
     event = "nft_revoke"
 )]
 pub struct NftRevokeData {
-    pub token_id: U64,
+    pub token_id: String,
     pub account_id: String,
 }
 
@@ -122,7 +122,7 @@ pub struct NftRevokeData {
     event = "nft_revoke_all"
 )]
 pub struct NftRevokeAllData {
-    pub token_id: U64,
+    pub token_id: String,
 }
 
 // -------------------------------- Payouts --------------------------------- //
@@ -135,7 +135,7 @@ use std::collections::HashMap;
     event = "nft_set_split_owners"
 )]
 pub struct NftSetSplitOwnerData {
-    pub token_ids: Vec<U64>,
+    pub token_ids: Vec<String>,
     pub split_owners: HashMap<AccountId, u16>,
 }
 

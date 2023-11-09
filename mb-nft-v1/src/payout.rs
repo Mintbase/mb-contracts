@@ -260,7 +260,7 @@ pub(crate) fn log_set_split_owners(
 ) {
     env::log_str(
         &mb_sdk::events::store::NftSetSplitOwnerData {
-            token_ids,
+            token_ids: token_ids.into_iter().map(|x| x.0.to_string()).collect(),
             split_owners: split_owners
                 .split_between
                 .drain()

@@ -10,8 +10,6 @@ use mb_sdk::{
         Royalty,
         RoyaltyArgs,
         SplitBetweenUnparsed,
-        SplitOwners,
-        Token,
         TokenMetadata,
     },
     events::store::{
@@ -30,7 +28,6 @@ use mb_sdk::{
         AccountId,
         Balance,
         Promise,
-        PromiseOrValue,
     },
 };
 
@@ -261,6 +258,7 @@ impl MintbaseStore {
                 len as u32
             })
             .unwrap_or(0);
+        let checked_royalty = royalty_args.map(Royalty::new);
         near_assert!(
             // TODO: this should probably be less than MAX_LEN_PAYOUT, such
             // that splits can still be added
@@ -286,9 +284,11 @@ impl MintbaseStore {
             expected_storage_consumption
         );
 
-        // insert metadata
+        // insert metadata and royalties
         self.token_metadata
             .insert(&metadata_id, &(0, price.0, minters_allowlist, metadata));
+        checked_royalty.map(|r| self.token_royalty.insert(&metadata_id, &r));
+        self.next_token_id.insert(&metadata_id, &0);
 
         // padding for updates required
         let used_storage_stake: Balance =
@@ -307,46 +307,66 @@ impl MintbaseStore {
         return metadata_id.to_string();
     }
 
-    fn get_metadata_id(&mut self, metadata_id: Option<U64>) -> u64 {
-        match metadata_id {
-            Some(U64(metadata_id)) => {
-                if self.token_metadata.contains_key(&metadata_id) {
-                    near_panic!("Metadata ID {} already exists", metadata_id);
-                }
-                metadata_id
-            }
-            None => {
-                while self.token_metadata.contains_key(&self.metadata_id) {
-                    self.metadata_id += 1;
-                }
-                self.metadata_id
-            }
-        }
-    }
-
     pub fn mint_on_metadata(
         &mut self,
         metadata_id: U64,
         owner_id: AccountId,
-        num_to_mint: Option<u8>,
+        num_to_mint: Option<U64>,
         token_ids: Option<Vec<U64>>,
+        split_owners: Option<SplitBetweenUnparsed>,
     ) {
+        let minter = env::predecessor_account_id();
+
+        // make sure metadata exists
+        let (num_tokens, price, allowlist, metadata) =
+            match self.token_metadata.get(&metadata_id.0) {
+                None => near_panic!(
+                    "Metadata with ID {} does not exist",
+                    metadata_id.0
+                ),
+                Some(metadata) => metadata,
+            };
+
         // check if this account is allowed to mint this metadata
-        // TODO:
+        if let Some(allowlist) = allowlist {
+            near_assert!(
+                allowlist.contains(&minter),
+                "{} is not allowed to mint this metadata",
+                minter
+            )
+        }
+
+        // make sure token_ids and num_to_mint are not conflicting, create valid IDs if necessary
+        let (num_to_mint, token_ids) =
+            self.get_token_ids(metadata_id.0, num_to_mint, token_ids);
+
+        // check that splits are not too long
+        let num_splits = split_owners
+            .as_ref()
+            .map(|pre_split| pre_split.len() as u32)
+            .unwrap_or(0);
 
         // was the storage deposit attached? should the storage be paid by the metadata creator?
-        // TODO:
+        let storage_usage = self.storage_cost_to_mint(num_tokens, num_splits);
 
         // is the price attached?
+        let attached_deposit = env::attached_deposit();
+        let min_attached_deposit = storage_usage + price + MINTING_FEE;
+        near_assert!(
+            attached_deposit >= min_attached_deposit,
+            "Attached deposit must cover storage usage, token price and minting fee ({})",
+            min_attached_deposit
+        );
+
+        // mint the tokens, store splits
+        // TODO:
+        self.tokens_minted += num_to_mint;
+
+        // emit event
         // TODO:
 
-        // get valid token IDs
-        // TODO:
-
-        // mint the tokens and emit event
-
-        // Transfer minting fee to parent account
-        // TODO:
+        // payout for creator(s) and minting fee
+        self.minting_payout(metadata_id.0, attached_deposit - storage_usage);
     }
 
     /// Tries to remove an acount ID from the minters list, will only fail
@@ -449,17 +469,11 @@ impl MintbaseStore {
     /// Internal
     fn storage_cost_to_mint(
         &self,
-        num_tokens: u64,
-        metadata_storage: StorageUsage,
-        num_royalties: u32,
+        num_tokens: u16,
         num_splits: u32,
     ) -> near_sdk::Balance {
-        // create a metadata record
-        metadata_storage as u128 * self.storage_costs.storage_price_per_byte
-            // create a royalty record
-            + num_royalties as u128 * self.storage_costs.common
-            // create n tokens each with splits stored on-token
-            + num_tokens as u128 * (
+        num_tokens as u128
+            * (
                 // token base storage
                 self.storage_costs.token
                 // dynamic split storage
@@ -467,6 +481,94 @@ impl MintbaseStore {
                 // create an entry in tokens_per_owner
                 + self.storage_costs.common
             )
+    }
+
+    fn get_metadata_id(&mut self, metadata_id: Option<U64>) -> u64 {
+        match metadata_id {
+            Some(U64(metadata_id)) => {
+                if self.token_metadata.contains_key(&metadata_id) {
+                    near_panic!("Metadata ID {} already exists", metadata_id);
+                }
+                metadata_id
+            }
+            None => {
+                while self.token_metadata.contains_key(&self.metadata_id) {
+                    self.metadata_id += 1;
+                }
+                self.metadata_id
+            }
+        }
+    }
+
+    fn get_token_ids(
+        &self,
+        metadata_id: u64,
+        num_to_mint: Option<U64>,
+        token_ids: Option<Vec<U64>>,
+    ) -> (u64, Vec<u64>) {
+        match (num_to_mint, token_ids) {
+            (None, None) => near_panic!(
+                "You are required to either specify num_to_mint or token_ids"
+            ),
+            (Some(n), None) => {
+                let mut token_ids = Vec::with_capacity(n.0 as usize);
+                let mut generated = 0;
+                let mut minted_id = self
+                    .next_token_id
+                    .get(&metadata_id)
+                    .expect("metadata existence was checked earlier");
+                while generated < n.0 {
+                    if !self.tokens.contains_key(&(metadata_id, minted_id)) {
+                        token_ids.push(minted_id);
+                        generated += 1;
+                    }
+                    minted_id += 1;
+                }
+                (n.0, token_ids)
+            }
+            (None, Some(ids)) => (
+                ids.len() as u64,
+                self.process_tokens_ids_arg(metadata_id, ids),
+            ),
+            (Some(n), Some(ids)) => {
+                near_assert!(n.0 == ids.len() as u64, "num_to_mint does not match the number of specified token IDs");
+                let ids = self.process_tokens_ids_arg(metadata_id, ids);
+                (n.0, ids)
+            }
+        }
+    }
+
+    fn process_tokens_ids_arg(
+        &self,
+        metadata_id: u64,
+        token_ids: Vec<U64>,
+    ) -> Vec<u64> {
+        token_ids
+            .into_iter()
+            .map(|id| {
+                near_assert!(
+                    !self.tokens.contains_key(&(metadata_id, id.0)),
+                    "Token with ID {}:{} already exists",
+                    metadata_id,
+                    id.0
+                );
+                id.0
+            })
+            .collect()
+    }
+
+    fn minting_payout(&self, metadata_id: u64, mut balance: u128) {
+        // pay minting fee to parent account
+        if let Some(factory) = parent_account_id(&env::current_account_id()) {
+            Promise::new(factory).transfer(MINTING_FEE);
+            balance -= MINTING_FEE
+        }
+
+        // pay out royalty holders
+        if let Some(royalties) = self.token_royalty.get(&metadata_id) {}
+
+        // rest goes to the creator
+        // TODO:
     }
 }
 

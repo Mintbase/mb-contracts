@@ -110,6 +110,14 @@ impl Token {
     pub fn is_loaned(&self) -> bool {
         self.loan.is_some()
     }
+
+    pub fn id_tuple(&self) -> (u64, u64) {
+        (self.metadata_id, self.id)
+    }
+
+    pub fn fmt_id(&self) -> String {
+        format!("{}:{}", self.metadata_id, self.id)
+    }
 }
 
 // Supports NEP-171, 177, 178, 181. Ref:
