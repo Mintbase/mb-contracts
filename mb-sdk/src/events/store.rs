@@ -86,6 +86,17 @@ pub struct NftContractMetadataUpdateLog {
     pub memo: Option<String>,
 }
 
+// --------------------------- Metadata creation ---------------------------- //
+#[cfg_attr(feature = "all", derive(Debug, Clone))]
+#[near_event_data(
+    standard = "mb_store",
+    version = "2.0.0",
+    event = "nft_set_split_owners"
+)]
+pub struct CreateMetadataData {
+    pub metadata: crate::data::store::TokenMetadataCompliant,
+}
+
 // ------------------------------- Approvals -------------------------------- //
 #[cfg_attr(feature = "ser", derive(near_sdk::serde::Serialize))]
 #[cfg_attr(feature = "de", derive(near_sdk::serde::Deserialize))]
@@ -126,8 +137,6 @@ pub struct NftRevokeAllData {
 }
 
 // -------------------------------- Payouts --------------------------------- //
-use std::collections::HashMap;
-
 #[cfg_attr(feature = "all", derive(Debug, Clone))]
 #[near_event_data(
     standard = "mb_store",
@@ -136,7 +145,7 @@ use std::collections::HashMap;
 )]
 pub struct NftSetSplitOwnerData {
     pub token_ids: Vec<String>,
-    pub split_owners: HashMap<AccountId, u16>,
+    pub split_owners: std::collections::HashMap<AccountId, u16>,
 }
 
 // ----------------------------- Store settings ----------------------------- //

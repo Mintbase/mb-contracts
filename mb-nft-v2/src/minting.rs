@@ -15,6 +15,7 @@ use mb_sdk::{
         TokenMetadata,
     },
     events::store::{
+        CreateMetadataData,
         MbStoreChangeSettingDataV020,
         NftMintLog,
         NftMintLogMemo,
@@ -93,7 +94,7 @@ impl MintbaseStore {
         // insert metadata and royalties
         self.token_metadata.insert(
             &metadata_id,
-            &(0, price.0, minters_allowlist, creator, metadata),
+            &(0, price.0, minters_allowlist, creator, metadata.clone()),
         );
         checked_royalty.map(|r| self.token_royalty.insert(&metadata_id, &r));
         self.next_token_id.insert(&metadata_id, &0);
@@ -110,7 +111,7 @@ impl MintbaseStore {
             free_storage_stake
         );
 
-        // FIXME: add event
+        log_create_metadata(metadata);
 
         return metadata_id.to_string();
     }
@@ -449,6 +450,29 @@ fn option_string_is_u64(opt_s: &Option<String>) -> bool {
         .as_ref()
         .map(|s| s.parse::<u64>().is_ok())
         .unwrap_or(true)
+}
+
+fn log_create_metadata(metadata: TokenMetadata) {
+    env::log_str(
+        CreateMetadataData {
+            metadata: TokenMetadataCompliant {
+                title: metadata.title,
+                description: metadata.description,
+                media: metadata.media,
+                media_hash: metadata.media_hash,
+                copies: Some(0),
+                issued_at: None,
+                expires_at: metadata.expires_at,
+                starts_at: metadata.starts_at,
+                updated_at: None,
+                extra: metadata.extra,
+                reference: metadata.reference,
+                reference_hash: metadata.reference_hash,
+            },
+        }
+        .serialize_event()
+        .as_str(),
+    );
 }
 
 fn log_nft_batch_mint(
