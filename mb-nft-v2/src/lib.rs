@@ -71,8 +71,16 @@ pub struct MintbaseStore {
     /// Token. The key is generated from `tokens_minted`. The map keeps count
     /// of how many copies of this token remain, so that the element may be
     /// dropped when the number reaches zero (ie, when tokens are burnt).
-    pub token_metadata:
-        LookupMap<u64, (u16, Balance, Option<Vec<AccountId>>, TokenMetadata)>,
+    pub token_metadata: LookupMap<
+        u64,
+        (
+            u16,                    // number of minted tokens
+            Balance,                // price
+            Option<Vec<AccountId>>, // allowlist
+            AccountId,              // creator
+            TokenMetadata,          // actual metadata
+        ),
+    >,
     // Metadata ID for the next minted metadata
     pub metadata_id: u64,
     /// If a Minter mints more than one token at a time, all tokens will

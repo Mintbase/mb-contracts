@@ -107,8 +107,14 @@ pub mod storage_stake {
 /// Royalty upper limit is 50%.
 pub const ROYALTY_UPPER_LIMIT: u32 = 5000;
 
-/// Maximum payout (royalties + splits) participants to process
+/// Maximum payout (royalties + splits) participants to process (NFT v1)
 pub const MAX_LEN_PAYOUT: u32 = 50;
+
+/// Maximum royalties participants to process (NFT v2)
+pub const MAX_LEN_ROYALTIES: u32 = 25;
+
+/// Maximum splits participants to process (NFT v2)
+pub const MAX_LEN_SPLITS: u32 = 25;
 
 /// Maximum allowed approvals per token to prevent panics on revoking all, most
 /// notably during transfers.

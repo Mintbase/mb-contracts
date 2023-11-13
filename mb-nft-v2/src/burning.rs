@@ -39,12 +39,12 @@ impl MintbaseStore {
 
             // update the counts on token metadata and royalties stored
             let metadata_id = self.nft_token_internal(token_id).metadata_id;
-            let (count, price, allowlist, metadata) =
+            let (count, price, allowlist, creator, metadata) =
                 self.token_metadata.get(&metadata_id).unwrap();
             if count > 1 {
                 self.token_metadata.insert(
                     &metadata_id,
-                    &(count - 1, price, allowlist, metadata),
+                    &(count - 1, price, allowlist, creator, metadata),
                 );
             } else {
                 self.token_metadata.remove(&metadata_id);
