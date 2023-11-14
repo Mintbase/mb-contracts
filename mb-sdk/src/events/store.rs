@@ -91,10 +91,11 @@ pub struct NftContractMetadataUpdateLog {
 #[near_event_data(
     standard = "mb_store",
     version = "2.0.0",
-    event = "nft_set_split_owners"
+    event = "create_metadata"
 )]
 pub struct CreateMetadataData {
-    pub metadata: crate::data::store::TokenMetadataCompliant,
+    pub metadata_id: u64,
+    pub creator: AccountId,
 }
 
 // ------------------------------- Approvals -------------------------------- //

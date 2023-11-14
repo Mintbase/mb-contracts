@@ -94,7 +94,7 @@ impl MintbaseStore {
         // insert metadata and royalties
         self.token_metadata.insert(
             &metadata_id,
-            &(0, price.0, minters_allowlist, creator, metadata.clone()),
+            &(0, price.0, minters_allowlist, creator.clone(), metadata),
         );
         checked_royalty.map(|r| self.token_royalty.insert(&metadata_id, &r));
         self.next_token_id.insert(&metadata_id, &0);
@@ -111,7 +111,7 @@ impl MintbaseStore {
             free_storage_stake
         );
 
-        log_create_metadata(metadata);
+        log_create_metadata(metadata_id, creator);
 
         return metadata_id.to_string();
     }
@@ -452,23 +452,11 @@ fn option_string_is_u64(opt_s: &Option<String>) -> bool {
         .unwrap_or(true)
 }
 
-fn log_create_metadata(metadata: TokenMetadata) {
+fn log_create_metadata(metadata_id: u64, creator: AccountId) {
     env::log_str(
         CreateMetadataData {
-            metadata: TokenMetadataCompliant {
-                title: metadata.title,
-                description: metadata.description,
-                media: metadata.media,
-                media_hash: metadata.media_hash,
-                copies: Some(0),
-                issued_at: None,
-                expires_at: metadata.expires_at,
-                starts_at: metadata.starts_at,
-                updated_at: None,
-                extra: metadata.extra,
-                reference: metadata.reference,
-                reference_hash: metadata.reference_hash,
-            },
+            metadata_id,
+            creator,
         }
         .serialize_event()
         .as_str(),
