@@ -226,6 +226,25 @@ pub struct TokenMetadataCompliant {
     pub reference_hash: Option<Base64VecU8>,
 }
 
+impl From<TokenMetadata> for TokenMetadataCompliant {
+    fn from(metadata: TokenMetadata) -> TokenMetadataCompliant {
+        TokenMetadataCompliant {
+            title: metadata.title,
+            description: metadata.description,
+            media: metadata.media,
+            media_hash: metadata.media_hash,
+            copies: metadata.copies,
+            issued_at: None,
+            expires_at: metadata.expires_at,
+            starts_at: metadata.starts_at,
+            updated_at: None,
+            extra: metadata.extra,
+            reference: metadata.reference,
+            reference_hash: metadata.reference_hash,
+        }
+    }
+}
+
 // -------- token owner
 // This is mostly kept here to avoid storage migrations, but this should always
 // be the `Account` variant.

@@ -96,7 +96,7 @@ pub struct NftContractMetadataUpdateLog {
 pub struct CreateMetadataData {
     pub metadata_id: u64,
     pub creator: AccountId,
-    pub allowlist: Option<Vec<AccountId>>,
+    pub minters_allowlist: Option<Vec<AccountId>>,
     pub price: near_sdk::Balance,
 }
 

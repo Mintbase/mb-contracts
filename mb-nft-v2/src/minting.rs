@@ -296,6 +296,16 @@ impl MintbaseStore {
         self.creators.iter().collect()
     }
 
+    /// Retrieves metadata
+    pub fn get_metadata(
+        &self,
+        metadata_id: U64,
+    ) -> Option<TokenMetadataCompliant> {
+        self.token_metadata
+            .get(&metadata_id.0)
+            .map(|tuple| tuple.4.into())
+    }
+
     // -------------------------- private methods --------------------------
     // -------------------------- internal methods -------------------------
 
@@ -461,14 +471,14 @@ fn option_string_is_u64(opt_s: &Option<String>) -> bool {
 fn log_create_metadata(
     metadata_id: u64,
     creator: AccountId,
-    allowlist: Option<Vec<AccountId>>,
+    minters_allowlist: Option<Vec<AccountId>>,
     price: Balance,
 ) {
     env::log_str(
         CreateMetadataData {
             metadata_id,
             creator,
-            allowlist,
+            minters_allowlist,
             price,
         }
         .serialize_event()

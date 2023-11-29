@@ -319,25 +319,11 @@ impl MintbaseStore {
             let token_id_string = fmt_token_id(*token_id);
             let metadata = self.nft_token_metadata(token_id_string.clone());
             let royalty = self.get_token_royalty(token_id_string);
-            let metadata = TokenMetadataCompliant {
-                title: metadata.title,
-                description: metadata.description,
-                media: metadata.media,
-                media_hash: metadata.media_hash,
-                copies: metadata.copies,
-                issued_at: None,
-                expires_at: metadata.expires_at,
-                starts_at: metadata.starts_at,
-                updated_at: None,
-                extra: metadata.extra,
-                reference: metadata.reference,
-                reference_hash: metadata.reference_hash,
-            };
             TokenCompliant {
                 token_id: format!("{}:{}", x.metadata_id, x.id),
                 owner_id: x.owner_id,
                 approved_account_ids: x.approvals,
-                metadata,
+                metadata: metadata.into(),
                 royalty,
                 split_owners: x.split_owners,
                 minter: x.minter,
