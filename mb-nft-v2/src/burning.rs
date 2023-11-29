@@ -1,13 +1,7 @@
 use mb_sdk::{
-    assert_token_owned_by,
-    assert_token_unloaned,
+    assert_token_owned_by, assert_token_unloaned,
     events::store::NftBurnLog,
-    near_sdk::{
-        self,
-        assert_one_yocto,
-        env,
-        near_bindgen,
-    },
+    near_sdk::{self, assert_one_yocto, env, near_bindgen},
 };
 
 use crate::*;
@@ -32,7 +26,6 @@ impl MintbaseStore {
             self.tokens_per_owner.get(&account_id).expect("none owned");
 
         token_ids_iter.for_each(|token_id| {
-            // let token_id: u64 = token_id.into();
             let token = self.nft_token_internal(token_id);
             assert_token_unloaned!(token);
             assert_token_owned_by!(token, &account_id);

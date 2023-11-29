@@ -1,41 +1,17 @@
 use mb_sdk::{
-    constants::{
-        storage_stake,
-        StorageCosts,
-        YOCTO_PER_BYTE,
-    },
+    constants::{storage_stake, StorageCosts, YOCTO_PER_BYTE},
     data::store::{
-        NFTContractMetadata,
-        Royalty,
-        SplitOwners,
-        Token,
-        TokenMetadata,
+        NFTContractMetadata, Royalty, SplitOwners, Token, TokenMetadata,
         TokenMetadataCompliant,
     },
-    near_assert,
-    near_panic,
+    near_assert, near_panic,
     near_sdk::{
         self,
-        borsh::{
-            self,
-            BorshDeserialize,
-            BorshSerialize,
-        },
-        collections::{
-            LookupMap,
-            TreeMap,
-            UnorderedSet,
-        },
-        env,
-        ext_contract,
-        json_types::{
-            U128,
-            U64,
-        },
-        near_bindgen,
-        AccountId,
-        Balance,
-        StorageUsage,
+        borsh::{self, BorshDeserialize, BorshSerialize},
+        collections::{LookupMap, TreeMap, UnorderedSet},
+        env, ext_contract,
+        json_types::{U128, U64},
+        near_bindgen, AccountId, Balance, StorageUsage,
     },
 };
 
@@ -330,7 +306,7 @@ pub(crate) fn parse_token_id(s: &str) -> (u64, u64) {
                 Ok(m) => m,
                 Err(_) => near_panic!("The metadata_id portion of the token_id {} is not a valid u64!", s)
             };
-            let minted_id = match p.parse() {
+            let minted_id = match s.parse() {
                 Ok(m) => m,
                 Err(_) => near_panic!("The minted_id portion of the token_id {} is not a valid u64!", s)
             };
