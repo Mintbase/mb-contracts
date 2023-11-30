@@ -315,7 +315,7 @@ impl MintbaseStore {
         &self,
         token_id: &(u64, u64),
     ) -> Option<TokenCompliant> {
-        self.tokens.get(&token_id).map(|x| {
+        self.tokens.get(token_id).map(|x| {
             let token_id_string = fmt_token_id(*token_id);
             let metadata = self.nft_token_metadata(token_id_string.clone());
             let royalty = self.get_token_royalty(token_id_string);
@@ -396,7 +396,7 @@ fn log_nft_batch_transfer(
     let data = NftTransferData(
         accounts
             .iter()
-            .zip(token_ids.into_iter())
+            .zip(token_ids)
             .enumerate()
             .map(|(u, (account_id, token_id))| NftTransferLog {
                 authorized_id: None,

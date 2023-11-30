@@ -107,7 +107,7 @@ impl MintbaseStore {
 
         token_ids.iter().for_each(|token_id| {
             let token_id = parse_token_id(token_id);
-            let mut token = self.nft_token_internal(token_id.into());
+            let mut token = self.nft_token_internal(token_id);
             // token.assert_unloaned();
             // token.assert_owned_by_predecessor();
             assert_token_unloaned!(token);
@@ -129,7 +129,7 @@ impl MintbaseStore {
             );
 
             token.split_owners = Some(splits.clone());
-            self.tokens.insert(&token_id.into(), &token);
+            self.tokens.insert(&token_id, &token);
         });
         log_set_split_owners(token_ids, splits);
     }

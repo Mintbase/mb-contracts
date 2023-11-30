@@ -259,7 +259,7 @@ fn log_batch_approve(
     let data = NftApproveData(
         approval_ids
             .iter()
-            .zip(token_ids.into_iter())
+            .zip(token_ids)
             .map(|(approval_id, token_id)| NftApproveLog {
                 token_id,
                 approval_id: approval_id.0,

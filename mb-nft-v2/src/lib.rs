@@ -1,17 +1,41 @@
 use mb_sdk::{
-    constants::{storage_stake, StorageCosts, YOCTO_PER_BYTE},
+    constants::{
+        storage_stake,
+        StorageCosts,
+        YOCTO_PER_BYTE,
+    },
     data::store::{
-        NFTContractMetadata, Royalty, SplitOwners, Token, TokenMetadata,
+        NFTContractMetadata,
+        Royalty,
+        SplitOwners,
+        Token,
+        TokenMetadata,
         TokenMetadataCompliant,
     },
-    near_assert, near_panic,
+    near_assert,
+    near_panic,
     near_sdk::{
         self,
-        borsh::{self, BorshDeserialize, BorshSerialize},
-        collections::{LookupMap, TreeMap, UnorderedSet},
-        env, ext_contract,
-        json_types::{U128, U64},
-        near_bindgen, AccountId, Balance, StorageUsage,
+        borsh::{
+            self,
+            BorshDeserialize,
+            BorshSerialize,
+        },
+        collections::{
+            LookupMap,
+            TreeMap,
+            UnorderedSet,
+        },
+        env,
+        ext_contract,
+        json_types::{
+            U128,
+            U64,
+        },
+        near_bindgen,
+        AccountId,
+        Balance,
+        StorageUsage,
     },
 };
 
@@ -47,6 +71,7 @@ pub struct MintbaseStore {
     /// Token. The key is generated from `tokens_minted`. The map keeps count
     /// of how many copies of this token remain, so that the element may be
     /// dropped when the number reaches zero (ie, when tokens are burnt).
+    #[allow(clippy::type_complexity)] // sorry
     pub token_metadata: LookupMap<
         u64,
         (

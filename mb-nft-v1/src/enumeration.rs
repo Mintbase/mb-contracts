@@ -35,7 +35,6 @@ impl MintbaseStore {
             None => self.tokens_minted,
         };
         (from_index..to_index)
-            .into_iter()
             .flat_map(|token_id| self.nft_token_compliant_internal(token_id))
             .collect()
     }

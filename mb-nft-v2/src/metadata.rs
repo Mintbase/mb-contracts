@@ -55,7 +55,7 @@ impl MintbaseStore {
     pub fn nft_token_metadata(&self, token_id: String) -> TokenMetadata {
         let token_id = parse_token_id(&token_id);
         self.token_metadata
-            .get(&self.nft_token_internal(token_id.into()).metadata_id)
+            .get(&self.nft_token_internal(token_id).metadata_id)
             .expect("bad metadata_id")
             .4
     }

@@ -1,30 +1,13 @@
-use std::{
-    collections::HashMap,
-    fmt,
-};
+use std::{collections::HashMap, fmt};
 
 use near_sdk::{
-    borsh::{
-        self,
-        BorshDeserialize,
-        BorshSerialize,
-    },
-    json_types::{
-        Base64VecU8,
-        U128,
-    },
-    serde::{
-        ser::Serializer,
-        Deserialize,
-        Serialize,
-    },
+    borsh::{self, BorshDeserialize, BorshSerialize},
+    json_types::{Base64VecU8, U128},
+    serde::{ser::Serializer, Deserialize, Serialize},
     AccountId,
 };
 
-use crate::utils::{
-    SafeFraction,
-    TokenKey,
-};
+use crate::utils::{SafeFraction, TokenKey};
 
 // ------------------------ token and token metadata ------------------------ //
 /// Supports NEP-171, 177, 178, 181. Ref:

@@ -1,18 +1,36 @@
-use std::{convert::TryFrom, str::FromStr};
+use std::str::FromStr;
 
 use mb_sdk::{
-    constants::{gas, storage_bytes, storage_stake, YOCTO_PER_BYTE},
-    data::store::{NFTContractMetadata, StoreInitArgs},
+    constants::{
+        gas,
+        storage_bytes,
+        storage_stake,
+        YOCTO_PER_BYTE,
+    },
+    data::store::{
+        NFTContractMetadata,
+        StoreInitArgs,
+    },
     events::factory::MbStoreDeployData,
     interfaces::ext_factory,
     near_assert,
     near_sdk::{
-        self, assert_one_yocto,
-        borsh::{self, BorshDeserialize, BorshSerialize},
+        self,
+        assert_one_yocto,
+        borsh::{
+            self,
+            BorshDeserialize,
+            BorshSerialize,
+        },
         collections::LookupSet,
-        env, is_promise_success,
+        env,
+        is_promise_success,
         json_types::U128,
-        near_bindgen, AccountId, Balance, Promise, PublicKey,
+        near_bindgen,
+        AccountId,
+        Balance,
+        Promise,
+        PublicKey,
     },
     serde_json,
 };
@@ -127,7 +145,6 @@ impl MintbaseStoreFactory {
     #[payable]
     pub fn set_mintbase_factory_owner(&mut self, account_id: AccountId) {
         self.assert_only_owner();
-        let account_id = account_id;
         assert_ne!(account_id, env::predecessor_account_id());
         self.owner_id = account_id;
     }

@@ -119,7 +119,7 @@ impl MintbaseStore {
 
         log_create_metadata(metadata_id, creator, minters_allowlist, price.0);
 
-        return metadata_id.to_string();
+        metadata_id.to_string()
     }
 
     pub fn mint_on_metadata(
@@ -160,7 +160,7 @@ impl MintbaseStore {
             .as_ref()
             .map(|pre_split| pre_split.len() as u32)
             .unwrap_or(0);
-        let split_owners = split_owners.map(|o| SplitOwners::new(o));
+        let split_owners = split_owners.map(SplitOwners::new);
         near_assert!(
             num_splits <= MAX_LEN_SPLITS,
             "Number of split holders may not exceed {}",
