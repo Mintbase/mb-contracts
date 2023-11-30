@@ -97,7 +97,7 @@ pub struct CreateMetadataData {
     pub metadata_id: u64,
     pub creator: AccountId,
     pub minters_allowlist: Option<Vec<AccountId>>,
-    pub price: near_sdk::Balance,
+    pub price: near_sdk::json_types::U128,
 }
 
 // ------------------------------- Approvals -------------------------------- //

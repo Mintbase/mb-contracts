@@ -479,7 +479,7 @@ fn log_create_metadata(
             metadata_id,
             creator,
             minters_allowlist,
-            price,
+            price: price.into(),
         }
         .serialize_event()
         .as_str(),
