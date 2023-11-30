@@ -1,39 +1,18 @@
-use std::{
-    convert::TryFrom,
-    str::FromStr,
-};
+use std::{convert::TryFrom, str::FromStr};
 
 use mb_sdk::{
-    constants::{
-        gas,
-        storage_bytes,
-        storage_stake,
-        YOCTO_PER_BYTE,
-    },
-    data::store::{
-        NFTContractMetadata,
-        StoreInitArgs,
-    },
+    constants::{gas, storage_bytes, storage_stake, YOCTO_PER_BYTE},
+    data::store::{NFTContractMetadata, StoreInitArgs},
     events::factory::MbStoreDeployData,
     interfaces::ext_factory,
     near_assert,
     near_sdk::{
-        self,
-        assert_one_yocto,
-        borsh::{
-            self,
-            BorshDeserialize,
-            BorshSerialize,
-        },
+        self, assert_one_yocto,
+        borsh::{self, BorshDeserialize, BorshSerialize},
         collections::LookupSet,
-        env,
-        is_promise_success,
+        env, is_promise_success,
         json_types::U128,
-        near_bindgen,
-        AccountId,
-        Balance,
-        Promise,
-        PublicKey,
+        near_bindgen, AccountId, Balance, Promise, PublicKey,
     },
     serde_json,
 };
@@ -156,7 +135,7 @@ impl MintbaseStoreFactory {
     /// Set the admin public key. If `public_key` is None, use the signer's
     /// public key.
     #[payable]
-    pub fn set_admin_public_key(&mut self, public_key: Option<String>) {
+    pub fn set_admin_public_key(&mut self, public_key: Option<PublicKey>) {
         self.assert_only_owner();
         match public_key {
             None => {
@@ -164,10 +143,8 @@ impl MintbaseStoreFactory {
                 self.admin_public_key = env::signer_account_pk();
             }
             Some(public_key) => {
-                let public_key = public_key.as_bytes().to_vec();
-                assert_ne!(public_key, self.admin_public_key.as_bytes());
-                self.admin_public_key =
-                    PublicKey::try_from(public_key).unwrap();
+                assert_ne!(public_key, self.admin_public_key);
+                self.admin_public_key = public_key;
             }
         }
     }
