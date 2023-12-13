@@ -79,20 +79,6 @@ impl MintbaseStore {
         );
 
         near_assert!(
-            !option_string_starts_with(
-                &metadata.reference,
-                &self.metadata.base_uri
-            ),
-            "`metadata.reference` must not start with contract base URI"
-        );
-        near_assert!(
-            !option_string_starts_with(
-                &metadata.media,
-                &self.metadata.base_uri
-            ),
-            "`metadata.media` must not start with contract base URI"
-        );
-        near_assert!(
             option_string_is_u64(&metadata.starts_at),
             "`metadata.starts_at` needs to parse to a u64"
         );
@@ -305,16 +291,6 @@ impl MintbaseStore {
                 // create an entry in tokens_per_owner
                 + self.storage_costs.common
             )
-    }
-}
-
-fn option_string_starts_with(
-    string: &Option<String>,
-    prefix: &Option<String>,
-) -> bool {
-    match (string, prefix) {
-        (Some(s), Some(p)) => s.starts_with(p),
-        _ => false,
     }
 }
 
