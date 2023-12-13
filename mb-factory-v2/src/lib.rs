@@ -1,7 +1,4 @@
-use std::{
-    convert::TryFrom,
-    str::FromStr,
-};
+use std::str::FromStr;
 
 use mb_sdk::{
     constants::{
@@ -148,7 +145,6 @@ impl MintbaseStoreFactory {
     #[payable]
     pub fn set_mintbase_factory_owner(&mut self, account_id: AccountId) {
         self.assert_only_owner();
-        let account_id = account_id;
         assert_ne!(account_id, env::predecessor_account_id());
         self.owner_id = account_id;
     }
@@ -156,7 +152,7 @@ impl MintbaseStoreFactory {
     /// Set the admin public key. If `public_key` is None, use the signer's
     /// public key.
     #[payable]
-    pub fn set_admin_public_key(&mut self, public_key: Option<String>) {
+    pub fn set_admin_public_key(&mut self, public_key: Option<PublicKey>) {
         self.assert_only_owner();
         match public_key {
             None => {
@@ -164,10 +160,8 @@ impl MintbaseStoreFactory {
                 self.admin_public_key = env::signer_account_pk();
             }
             Some(public_key) => {
-                let public_key = public_key.as_bytes().to_vec();
-                assert_ne!(public_key, self.admin_public_key.as_bytes());
-                self.admin_public_key =
-                    PublicKey::try_from(public_key).unwrap();
+                assert_ne!(public_key, self.admin_public_key);
+                self.admin_public_key = public_key;
             }
         }
     }

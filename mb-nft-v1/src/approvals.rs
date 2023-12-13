@@ -53,7 +53,7 @@ impl MintbaseStore {
             ext_nft_on_approve::ext(account_id)
                 .with_static_gas(gas::NFT_ON_APPROVE)
                 .nft_on_approve(
-                    token_id,
+                    token_id.0.to_string(),
                     env::predecessor_account_id(),
                     approval_id,
                     msg,
@@ -161,7 +161,7 @@ impl MintbaseStore {
                 .with_attached_deposit(env::attached_deposit() - storage_stake)
                 .with_static_gas(gas::NFT_BATCH_APPROVE)
                 .nft_on_batch_approve(
-                    token_ids,
+                    token_ids.into_iter().map(|x| x.0.to_string()).collect(),
                     approval_ids,
                     env::predecessor_account_id(),
                     msg,
@@ -241,7 +241,7 @@ pub(crate) fn log_approve(
     account_id: &AccountId,
 ) {
     let data = NftApproveData(vec![NftApproveLog {
-        token_id: token_id.into(),
+        token_id: token_id.to_string(),
         approval_id,
         account_id: account_id.to_string(),
     }]);
@@ -258,7 +258,7 @@ fn log_batch_approve(
             .iter()
             .zip(tokens.iter())
             .map(|(approval_id, token_id)| NftApproveLog {
-                token_id: *token_id,
+                token_id: token_id.0.to_string(),
                 approval_id: approval_id.0,
                 account_id: account_id.to_string(),
             })
@@ -270,7 +270,7 @@ fn log_batch_approve(
 fn log_revoke(token_id: u64, account_id: &AccountId) {
     env::log_str(
         &NftRevokeData {
-            token_id: token_id.into(),
+            token_id: token_id.to_string(),
             account_id: account_id.to_string(),
         }
         .serialize_event(),
@@ -280,7 +280,7 @@ fn log_revoke(token_id: u64, account_id: &AccountId) {
 fn log_revoke_all(token_id: u64) {
     env::log_str(
         &NftRevokeAllData {
-            token_id: token_id.into(),
+            token_id: token_id.to_string(),
         }
         .serialize_event(),
     );

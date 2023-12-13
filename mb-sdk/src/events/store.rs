@@ -86,6 +86,20 @@ pub struct NftContractMetadataUpdateLog {
     pub memo: Option<String>,
 }
 
+// --------------------------- Metadata creation ---------------------------- //
+#[cfg_attr(feature = "all", derive(Debug, Clone))]
+#[near_event_data(
+    standard = "mb_store",
+    version = "2.0.0",
+    event = "create_metadata"
+)]
+pub struct CreateMetadataData {
+    pub metadata_id: u64,
+    pub creator: AccountId,
+    pub minters_allowlist: Option<Vec<AccountId>>,
+    pub price: near_sdk::json_types::U128,
+}
+
 // ------------------------------- Approvals -------------------------------- //
 #[cfg_attr(feature = "ser", derive(near_sdk::serde::Serialize))]
 #[cfg_attr(feature = "de", derive(near_sdk::serde::Deserialize))]
@@ -94,7 +108,7 @@ pub struct NftContractMetadataUpdateLog {
     serde(crate = "near_sdk::serde")
 )]
 pub struct NftApproveLog {
-    pub token_id: U64,
+    pub token_id: String,
     pub approval_id: u64,
     pub account_id: String,
 }
@@ -112,7 +126,7 @@ pub struct NftApproveData(pub Vec<NftApproveLog>);
     event = "nft_revoke"
 )]
 pub struct NftRevokeData {
-    pub token_id: U64,
+    pub token_id: String,
     pub account_id: String,
 }
 
@@ -122,12 +136,10 @@ pub struct NftRevokeData {
     event = "nft_revoke_all"
 )]
 pub struct NftRevokeAllData {
-    pub token_id: U64,
+    pub token_id: String,
 }
 
 // -------------------------------- Payouts --------------------------------- //
-use std::collections::HashMap;
-
 #[cfg_attr(feature = "all", derive(Debug, Clone))]
 #[near_event_data(
     standard = "mb_store",
@@ -135,8 +147,8 @@ use std::collections::HashMap;
     event = "nft_set_split_owners"
 )]
 pub struct NftSetSplitOwnerData {
-    pub token_ids: Vec<U64>,
-    pub split_owners: HashMap<AccountId, u16>,
+    pub token_ids: Vec<String>,
+    pub split_owners: std::collections::HashMap<AccountId, u16>,
 }
 
 // ----------------------------- Store settings ----------------------------- //

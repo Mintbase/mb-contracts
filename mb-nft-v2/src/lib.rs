@@ -13,6 +13,7 @@ use mb_sdk::{
         TokenMetadataCompliant,
     },
     near_assert,
+    near_panic,
     near_sdk::{
         self,
         borsh::{
@@ -22,6 +23,7 @@ use mb_sdk::{
         },
         collections::{
             LookupMap,
+            TreeMap,
             UnorderedSet,
         },
         env,
@@ -32,6 +34,7 @@ use mb_sdk::{
         },
         near_bindgen,
         AccountId,
+        Balance,
         StorageUsage,
     },
 };
@@ -58,8 +61,8 @@ mod payout;
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct MintbaseStore {
-    /// Accounts that are allowed to mint tokens on this Store.
-    pub minters: UnorderedSet<AccountId>,
+    /// Accounts that are allowed to create metadata.
+    pub creators: UnorderedSet<AccountId>,
     /// Initial deployment data of this Store.
     pub metadata: NFTContractMetadata,
     /// If a Minter mints more than one token at a time, all tokens will
@@ -68,19 +71,31 @@ pub struct MintbaseStore {
     /// Token. The key is generated from `tokens_minted`. The map keeps count
     /// of how many copies of this token remain, so that the element may be
     /// dropped when the number reaches zero (ie, when tokens are burnt).
-    pub token_metadata: LookupMap<u64, (u16, TokenMetadata)>,
+    #[allow(clippy::type_complexity)] // sorry
+    pub token_metadata: LookupMap<
+        u64,
+        (
+            u16,                    // number of minted tokens
+            Balance,                // price
+            Option<Vec<AccountId>>, // allowlist
+            AccountId,              // creator
+            TokenMetadata,          // actual metadata
+        ),
+    >,
+    // Metadata ID for the next minted metadata
+    pub metadata_id: u64,
     /// If a Minter mints more than one token at a time, all tokens will
     /// share the same `Royalty`. It's more storage-efficient to store that
     /// `Royalty` once, rather than to copy the data on each Token. The key
     /// is generated from `tokens_minted`. The map keeps count of how many
     /// copies of this token remain, so that the element may be dropped when
     /// the number reaches zero (ie, when tokens are burnt).
-    pub token_royalty: LookupMap<u64, (u16, Royalty)>,
+    pub token_royalty: LookupMap<u64, Royalty>,
     /// Tokens this Store has minted, excluding those that have been burned.
-    pub tokens: LookupMap<u64, Token>,
+    pub tokens: TreeMap<(u64, u64), Token>,
     /// A mapping from each user to the tokens owned by that user. The owner
     /// of the token is also stored on the token itself.
-    pub tokens_per_owner: LookupMap<AccountId, UnorderedSet<u64>>,
+    pub tokens_per_owner: LookupMap<AccountId, UnorderedSet<(u64, u64)>>,
     /// DEPRECATED. Kept to avoid storage migrations.
     ///
     /// A map from a token_id of a token on THIS contract to a set of tokens,
@@ -88,6 +103,8 @@ pub struct MintbaseStore {
     /// the id will have format "<u64>". If the token is on another contract,
     /// the token will have format "<u64>:account_id"
     pub composeables: LookupMap<String, UnorderedSet<String>>,
+    /// Lookup map for next token ID to mint for a given metadata ID
+    pub next_token_id: LookupMap<u64, u64>,
     /// The number of tokens this `Store` has minted. Used to generate
     /// `TokenId`s.
     pub tokens_minted: u64,
@@ -125,17 +142,19 @@ impl MintbaseStore {
     /// The `Store` is initialized with the owner as a `minter`.
     #[init]
     pub fn new(metadata: NFTContractMetadata, owner_id: AccountId) -> Self {
-        let mut minters = UnorderedSet::new(b"a".to_vec());
-        minters.insert(&owner_id);
+        let mut creators = UnorderedSet::new(b"a".to_vec());
+        creators.insert(&owner_id);
 
         Self {
-            minters,
+            creators,
             metadata,
+            metadata_id: 0,
             token_metadata: LookupMap::new(b"b".to_vec()),
             token_royalty: LookupMap::new(b"c".to_vec()),
-            tokens: LookupMap::new(b"d".to_vec()),
+            tokens: TreeMap::new(b"d".to_vec()),
             tokens_per_owner: LookupMap::new(b"e".to_vec()),
             composeables: LookupMap::new(b"f".to_vec()),
+            next_token_id: LookupMap::new(b"g".to_vec()),
             tokens_minted: 0,
             tokens_burned: 0,
             num_approved: 0,
@@ -157,12 +176,15 @@ impl MintbaseStore {
     /// type. They may be used in an implementation if the type is instead:
     ///
     /// `tokens_per_owner: LookupMap<AccountId, Vector<TokenId>>`
-    pub fn nft_tokens_for_owner_set(&self, account_id: AccountId) -> Vec<U64> {
+    pub fn nft_tokens_for_owner_set(
+        &self,
+        account_id: AccountId,
+    ) -> Vec<String> {
         self.tokens_per_owner
             .get(&account_id)
             .expect("no tokens")
             .iter()
-            .map(|id| id.into())
+            .map(fmt_token_id)
             .collect()
     }
 
@@ -189,8 +211,8 @@ impl MintbaseStore {
     }
 
     /// Get status of open minting enablement
-    pub fn get_open_minting(&self) -> bool {
-        self.minters.is_empty()
+    pub fn get_open_creating(&self) -> bool {
+        self.creators.is_empty()
     }
 
     // -------------------------- private methods --------------------------
@@ -220,7 +242,7 @@ impl MintbaseStore {
     /// If neither are None, the tokens are being transferred.
     fn update_tokens_per_owner(
         &mut self,
-        token_id: u64,
+        token_id: (u64, u64),
         from: Option<AccountId>,
         to: Option<AccountId>,
     ) {
@@ -248,7 +270,7 @@ impl MintbaseStore {
     pub(crate) fn get_or_make_new_owner_set(
         &self,
         account_id: &AccountId,
-    ) -> UnorderedSet<u64> {
+    ) -> UnorderedSet<(u64, u64)> {
         self.tokens_per_owner.get(account_id).unwrap_or_else(|| {
             let mut prefix: Vec<u8> = vec![b'j'];
             prefix.extend_from_slice(account_id.as_bytes());
@@ -297,4 +319,27 @@ pub trait NonFungibleResolveTransfer {
         approved_account_ids: std::collections::HashMap<AccountId, u64>,
         split_owners: Option<SplitOwners>,
     );
+}
+
+pub(crate) fn parse_token_id(s: &str) -> (u64, u64) {
+    match s.split_once(':') {
+        None => near_panic!(
+            "Token ID needs to be of shape {{metadata_id}}:{{minted_id}}"
+        ),
+        Some((p, s)) => {
+            let metadata_id = match p.parse() {
+                Ok(m) => m,
+                Err(_) => near_panic!("The metadata_id portion of the token_id {} is not a valid u64!", s)
+            };
+            let minted_id = match s.parse() {
+                Ok(m) => m,
+                Err(_) => near_panic!("The minted_id portion of the token_id {} is not a valid u64!", s)
+            };
+            (metadata_id, minted_id)
+        }
+    }
+}
+
+pub(crate) fn fmt_token_id(tuple: (u64, u64)) -> String {
+    format!("{}:{}", tuple.0, tuple.1)
 }

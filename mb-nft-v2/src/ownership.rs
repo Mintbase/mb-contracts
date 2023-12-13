@@ -13,8 +13,8 @@ use mb_sdk::{
 
 use crate::{
     minting::{
-        log_grant_minter,
-        log_revoke_minter,
+        log_grant_creator,
+        log_revoke_creator,
     },
     *,
 };
@@ -34,7 +34,7 @@ impl MintbaseStore {
     pub fn transfer_store_ownership(
         &mut self,
         new_owner: AccountId,
-        keep_old_minters: bool,
+        keep_old_creators: bool,
     ) {
         self.assert_store_owner();
         near_assert!(
@@ -42,15 +42,15 @@ impl MintbaseStore {
             "{} already owns this store",
             new_owner
         );
-        if !keep_old_minters {
-            for minter in self.minters.iter() {
-                log_revoke_minter(&minter);
+        if !keep_old_creators {
+            for creator in self.creators.iter() {
+                log_revoke_creator(&creator);
             }
-            self.minters.clear();
+            self.creators.clear();
         }
-        log_grant_minter(&new_owner);
-        // add the new_owner to the minter set (insert does nothing if they already are a minter).
-        self.minters.insert(&new_owner);
+        log_grant_creator(&new_owner);
+        // add the new_owner to the creator set (insert does nothing if they already are a minter).
+        self.creators.insert(&new_owner);
         log_transfer_store(&new_owner);
         self.owner_id = new_owner;
     }
@@ -127,16 +127,16 @@ impl MintbaseStore {
 
     /// Set maximum number of minted tokens on this contract
     #[payable]
-    pub fn set_open_minting(&mut self, allow: bool) {
+    pub fn set_open_creating(&mut self, allow: bool) {
         self.assert_store_owner();
 
         if allow {
-            self.minters.clear();
-        } else if self.minters.is_empty() {
-            self.minters.insert(&self.owner_id);
+            self.creators.clear();
+        } else if self.creators.is_empty() {
+            self.creators.insert(&self.owner_id);
         }
 
-        log_open_minting(allow);
+        log_open_creating(allow);
     }
 
     // -------------------------- view methods -----------------------------
@@ -173,7 +173,7 @@ fn log_transfer_store(account_id: &AccountId) {
     );
 }
 
-fn log_open_minting(allow: bool) {
+fn log_open_creating(allow: bool) {
     env::log_str(
         &MbStoreChangeSettingDataV020 {
             allow_open_minting: Some(allow),

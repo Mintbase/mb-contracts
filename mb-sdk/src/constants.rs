@@ -61,7 +61,7 @@ pub mod gas {
 pub mod storage_bytes {
     use near_sdk::StorageUsage;
     /// Storage bytes that a raw store occupies, about 350 KB.
-    pub const STORE: StorageUsage = 350_000;
+    pub const STORE: StorageUsage = 370_000;
 
     /// Storage bytes for a maximum size token without any metadata and without
     /// any royalties.
@@ -107,8 +107,14 @@ pub mod storage_stake {
 /// Royalty upper limit is 50%.
 pub const ROYALTY_UPPER_LIMIT: u32 = 5000;
 
-/// Maximum payout (royalties + splits) participants to process
+/// Maximum payout (royalties + splits) participants to process (NFT v1)
 pub const MAX_LEN_PAYOUT: u32 = 50;
+
+/// Maximum royalties participants to process (NFT v2)
+pub const MAX_LEN_ROYALTIES: u32 = 25;
+
+/// Maximum splits participants to process (NFT v2)
+pub const MAX_LEN_SPLITS: u32 = 25;
 
 /// Maximum allowed approvals per token to prevent panics on revoking all, most
 /// notably during transfers.
@@ -129,7 +135,12 @@ pub struct StorageCosts {
     /// - adding a new entry to the `tokens_per_account` map
     /// - adding a new entry to the `composeables` map
     pub common: u128,
+    /// base cost of storing a single NFT
     pub token: u128,
+    /// storing an account ID with the maximum of 64 characters lenght
+    pub account_id: u128,
+    /// storing a balance
+    pub balance: u128,
 }
 
 impl StorageCosts {
@@ -140,6 +151,8 @@ impl StorageCosts {
             common: storage_stake::COMMON,
             // token: storage_price_per_byte * 360_u64 as u128,
             token: storage_stake::TOKEN,
+            account_id: 64 * storage_price_per_byte,
+            balance: 16 * storage_price_per_byte,
         }
     }
 }
@@ -156,7 +169,12 @@ pub struct StorageCostsJson {
     /// - adding a new entry to the `tokens_per_account` map
     /// - adding a new entry to the `composeables` map
     pub common: U128,
+    /// base cost of storing a single NFT
     pub token: U128,
+    /// storing an account ID with the maximum of 64 characters lenght
+    pub account_id: U128,
+    /// storing a balance
+    pub balance: U128,
 }
 
 impl From<&StorageCosts> for StorageCostsJson {
@@ -165,6 +183,8 @@ impl From<&StorageCosts> for StorageCostsJson {
             storage_price_per_byte: storage_costs.storage_price_per_byte.into(),
             common: storage_costs.common.into(),
             token: storage_costs.token.into(),
+            account_id: storage_costs.account_id.into(),
+            balance: storage_costs.balance.into(),
         }
     }
 }

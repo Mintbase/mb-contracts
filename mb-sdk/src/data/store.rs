@@ -110,6 +110,14 @@ impl Token {
     pub fn is_loaned(&self) -> bool {
         self.loan.is_some()
     }
+
+    pub fn id_tuple(&self) -> (u64, u64) {
+        (self.metadata_id, self.id)
+    }
+
+    pub fn fmt_id(&self) -> String {
+        format!("{}:{}", self.metadata_id, self.id)
+    }
 }
 
 // Supports NEP-171, 177, 178, 181. Ref:
@@ -216,6 +224,25 @@ pub struct TokenMetadataCompliant {
     /// Base64-encoded sha256 hash of JSON from reference field. Required if
     /// `reference` is included.
     pub reference_hash: Option<Base64VecU8>,
+}
+
+impl From<TokenMetadata> for TokenMetadataCompliant {
+    fn from(metadata: TokenMetadata) -> TokenMetadataCompliant {
+        TokenMetadataCompliant {
+            title: metadata.title,
+            description: metadata.description,
+            media: metadata.media,
+            media_hash: metadata.media_hash,
+            copies: metadata.copies,
+            issued_at: None,
+            expires_at: metadata.expires_at,
+            starts_at: metadata.starts_at,
+            updated_at: None,
+            extra: metadata.extra,
+            reference: metadata.reference,
+            reference_hash: metadata.reference_hash,
+        }
+    }
 }
 
 // -------- token owner

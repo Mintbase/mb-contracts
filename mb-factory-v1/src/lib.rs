@@ -148,7 +148,6 @@ impl MintbaseStoreFactory {
     #[payable]
     pub fn set_mintbase_factory_owner(&mut self, account_id: AccountId) {
         self.assert_only_owner();
-        let account_id = account_id;
         assert_ne!(account_id, env::predecessor_account_id());
         self.owner_id = account_id;
     }
