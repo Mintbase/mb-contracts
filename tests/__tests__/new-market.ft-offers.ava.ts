@@ -5,12 +5,11 @@ import {
   getBalance,
   diffCheck,
   nearToBn,
-  mintingDeposit,
 } from "./utils/balances.js";
 import { getPanic } from "./utils/panics.js";
 import { getEvent } from "./utils/events.js";
 import { createPayouts } from "./utils/payouts.js";
-import setup, { createAndDeploy } from "./setup.js";
+import setup, { createAndDeploy, mint } from "./setup.js";
 
 const test = setup(avaTest);
 
@@ -21,18 +20,14 @@ const deployWnear = async (root: NearAccount): Promise<NearAccount> =>
     initMethod: "new",
     initArgs: {},
   });
+
 const mintAndList = async ({
   alice,
   market,
   store,
   wnear,
 }: Record<string, NearAccount>) => {
-  await alice.call(
-    store,
-    "nft_batch_mint",
-    { owner_id: alice, metadata: {}, num_to_mint: 1 },
-    { attachedDeposit: mintingDeposit({ n_tokens: 1 }) }
-  );
+  const token_id = (await mint({ minter: alice, store, n: 1 }))[0];
 
   await alice.call(
     market,
@@ -45,7 +40,7 @@ const mintAndList = async ({
     store,
     "nft_approve",
     {
-      token_id: "0",
+      token_id,
       account_id: market.accountId,
       msg: JSON.stringify({
         price: nearToYocto("1"),
@@ -57,6 +52,8 @@ const mintAndList = async ({
       gas: Gas.parse("50 Tgas"),
     }
   );
+
+  return token_id;
 };
 
 const wrapNear = async ({
@@ -462,7 +459,8 @@ test("Payouts are respected (FT)", async (test) => {
 // // TODO: check logs for refund reasoning
 const checkFailedBuy = async (
   test: ExecutionContext,
-  { alice, bob, market, store, wnear }: Record<string, NearAccount>
+  { alice, bob, market, store, wnear }: Record<string, NearAccount>,
+  token_id: string
 ) => {
   const getOwner = async ({ token_id }: { token_id: string }) =>
     ((await store.view("nft_token", { token_id })) as { owner_id: string })
@@ -471,7 +469,7 @@ const checkFailedBuy = async (
   const preAliceBalance = await getWnearBalance({ account: alice, wnear });
   const preMarketBalance = await getWnearBalance({ account: market, wnear });
   const preBobBalance = await getWnearBalance({ account: bob, wnear });
-  const preOwner = await getOwner({ token_id: "0" });
+  const preOwner = await getOwner({ token_id });
 
   await bob.call(
     wnear,
@@ -481,14 +479,14 @@ const checkFailedBuy = async (
       amount: nearToYocto("2"),
       msg: JSON.stringify({
         nft_contract_id: store.accountId,
-        token_id: "0",
+        token_id,
       }),
     },
     { attachedDeposit: "1", gas: Gas.parse("299 Tgas") }
   );
 
   // owner did not change
-  const postOwner = await getOwner({ token_id: "0" });
+  const postOwner = await getOwner({ token_id });
   test.is(preOwner, postOwner);
 
   const postAliceBalance = await getWnearBalance({ account: alice, wnear });
@@ -507,7 +505,7 @@ test("Non-market transfers lead to graceful failures", async (test) => {
   const { root, alice, bob, newMarket: market, store } = test.context.accounts;
   const wnear = await deployWnear(root);
 
-  await mintAndList({ alice, market, store, wnear });
+  const token_id = await mintAndList({ alice, market, store, wnear });
   await wrapNear({ account: alice, wnear, amount: "0.5" });
   await wrapNear({ account: market, wnear, amount: "0.5" });
   await wrapNear({ account: bob, wnear, amount: "3" });
@@ -515,18 +513,18 @@ test("Non-market transfers lead to graceful failures", async (test) => {
   await alice.call(
     store,
     "nft_transfer",
-    { token_id: "0", receiver_id: bob.accountId },
+    { token_id, receiver_id: bob.accountId },
     { attachedDeposit: "1" }
   );
 
-  await checkFailedBuy(test, { alice, bob, market, store, wnear });
+  await checkFailedBuy(test, { alice, bob, market, store, wnear }, token_id);
 });
 
 test("Revoking approvals lead to graceful failures", async (test) => {
   const { root, alice, bob, newMarket: market, store } = test.context.accounts;
   const wnear = await deployWnear(root);
 
-  await mintAndList({ alice, market, store, wnear });
+  const token_id = await mintAndList({ alice, market, store, wnear });
   await wrapNear({ account: alice, wnear, amount: "0.5" });
   await wrapNear({ account: market, wnear, amount: "0.5" });
   await wrapNear({ account: bob, wnear, amount: "3" });
@@ -534,18 +532,18 @@ test("Revoking approvals lead to graceful failures", async (test) => {
   await alice.call(
     store,
     "nft_revoke",
-    { token_id: "0", account_id: market.accountId },
+    { token_id, account_id: market.accountId },
     { attachedDeposit: "1" }
   );
 
-  await checkFailedBuy(test, { alice, bob, market, store, wnear });
+  await checkFailedBuy(test, { alice, bob, market, store, wnear }, token_id);
 });
 
 test("Badly updated approvals lead to graceful failures", async (test) => {
   const { root, alice, bob, newMarket: market, store } = test.context.accounts;
   const wnear = await deployWnear(root);
 
-  await mintAndList({ alice, market, store, wnear });
+  const token_id = await mintAndList({ alice, market, store, wnear });
   await wrapNear({ account: alice, wnear, amount: "0.5" });
   await wrapNear({ account: market, wnear, amount: "0.5" });
   await wrapNear({ account: bob, wnear, amount: "3" });
@@ -553,19 +551,19 @@ test("Badly updated approvals lead to graceful failures", async (test) => {
   await alice.call(
     store,
     "nft_revoke",
-    { token_id: "0", account_id: market.accountId },
+    { token_id, account_id: market.accountId },
     { attachedDeposit: "1" }
   );
   await alice.call(
     store,
     "nft_approve",
     // no msg -> market never get's a callback
-    { token_id: "0", account_id: market.accountId },
+    { token_id, account_id: market.accountId },
     {
       attachedDeposit: nearToYocto("0.008") as string,
       gas: Gas.parse("50 Tgas"),
     }
   );
 
-  await checkFailedBuy(test, { alice, bob, market, store, wnear });
+  await checkFailedBuy(test, { alice, bob, market, store, wnear }, token_id);
 });

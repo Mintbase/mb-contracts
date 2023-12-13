@@ -97,9 +97,9 @@ export const bnToNear = (bn: BN): string => yoctoToNear(bnToYocto(bn));
 /** Maximum possible gas (will be serialized to a u64) */
 export const MAX_U64 = new BN("ffffffffffffffff", 16);
 /** Gas cost for deploying a store (taken from mintbase-js) */
-export const DEPLOY_STORE_GAS = Tgas(200);
+export const DEPLOY_STORE_GAS = Tgas(250);
 /** Storage rent for deploying a store (taken from mintbase-js) */
-export const DEPLOY_STORE_RENT = NEAR(3.5);
+export const DEPLOY_STORE_RENT = NEAR(3.7);
 /** Storage rent for deploying a store (taken from mintbase-js) */
 
 export const mintingDeposit = ({

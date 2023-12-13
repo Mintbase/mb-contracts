@@ -61,7 +61,7 @@ pub mod gas {
 pub mod storage_bytes {
     use near_sdk::StorageUsage;
     /// Storage bytes that a raw store occupies, about 350 KB.
-    pub const STORE: StorageUsage = 355_000;
+    pub const STORE: StorageUsage = 370_000;
 
     /// Storage bytes for a maximum size token without any metadata and without
     /// any royalties.

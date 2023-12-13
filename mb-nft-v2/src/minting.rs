@@ -122,11 +122,12 @@ impl MintbaseStore {
         metadata_id.to_string()
     }
 
+    #[payable]
     pub fn mint_on_metadata(
         &mut self,
-        metadata_id: U64,
+        metadata_id: u64,
         owner_id: AccountId,
-        num_to_mint: Option<U64>,
+        num_to_mint: Option<u64>,
         token_ids: Option<Vec<U64>>,
         split_owners: Option<SplitBetweenUnparsed>,
     ) {
@@ -134,10 +135,10 @@ impl MintbaseStore {
 
         // make sure metadata exists
         let (num_tokens, price, allowlist, creator, metadata) =
-            match self.token_metadata.get(&metadata_id.0) {
+            match self.token_metadata.get(&metadata_id) {
                 None => near_panic!(
                     "Metadata with ID {} does not exist",
-                    metadata_id.0
+                    metadata_id
                 ),
                 Some(metadata) => metadata,
             };
@@ -153,7 +154,7 @@ impl MintbaseStore {
 
         // make sure token_ids and num_to_mint are not conflicting, create valid IDs if necessary
         let (num_to_mint, token_ids) =
-            self.get_token_ids(metadata_id.0, num_to_mint, token_ids);
+            self.get_token_ids(metadata_id, num_to_mint, token_ids);
 
         // check that splits are not too long and parse properly
         let num_splits = split_owners
@@ -178,8 +179,8 @@ impl MintbaseStore {
         );
 
         // mint the tokens, store splits
-        let royalty_id = match self.token_royalty.contains_key(&metadata_id.0) {
-            true => Some(metadata_id.0),
+        let royalty_id = match self.token_royalty.contains_key(&metadata_id) {
+            true => Some(metadata_id),
             false => None,
         };
         self.tokens_minted += num_to_mint;
@@ -188,7 +189,7 @@ impl MintbaseStore {
                 id,
                 owner_id: mb_sdk::data::store::Owner::Account(owner_id.clone()),
                 approvals: std::collections::HashMap::new(),
-                metadata_id: metadata_id.0,
+                metadata_id,
                 royalty_id,
                 split_owners: split_owners.clone(),
                 minter: minter.clone(),
@@ -201,15 +202,18 @@ impl MintbaseStore {
                 },
                 origin_key: None,
             };
-            self.tokens.insert(&(metadata_id.0, id), &token);
+            self.tokens.insert(&(metadata_id, id), &token);
         }
 
         // emit event
         log_nft_batch_mint(
-            token_ids.as_slice(),
+            token_ids
+                .into_iter()
+                .map(|id| fmt_token_id((metadata_id, id)))
+                .collect(),
             minter.as_str(),
             owner_id.as_str(),
-            &self.token_royalty.get(&metadata_id.0),
+            &self.token_royalty.get(&metadata_id),
             &split_owners,
             &metadata.reference,
             &metadata.extra,
@@ -217,7 +221,7 @@ impl MintbaseStore {
 
         // payout for creator(s) and minting fee
         self.minting_payout(
-            metadata_id.0,
+            metadata_id,
             attached_deposit - storage_usage - MINTING_FEE,
             creator,
         );
@@ -369,7 +373,7 @@ impl MintbaseStore {
     fn get_token_ids(
         &self,
         metadata_id: u64,
-        num_to_mint: Option<U64>,
+        num_to_mint: Option<u64>,
         token_ids: Option<Vec<U64>>,
     ) -> (u64, Vec<u64>) {
         match (num_to_mint, token_ids) {
@@ -377,29 +381,29 @@ impl MintbaseStore {
                 "You are required to either specify num_to_mint or token_ids"
             ),
             (Some(n), None) => {
-                let mut token_ids = Vec::with_capacity(n.0 as usize);
+                let mut token_ids = Vec::with_capacity(n as usize);
                 let mut generated = 0;
                 let mut minted_id = self
                     .next_token_id
                     .get(&metadata_id)
                     .expect("metadata existence was checked earlier");
-                while generated < n.0 {
+                while generated < n {
                     if !self.tokens.contains_key(&(metadata_id, minted_id)) {
                         token_ids.push(minted_id);
                         generated += 1;
                     }
                     minted_id += 1;
                 }
-                (n.0, token_ids)
+                (n, token_ids)
             }
             (None, Some(ids)) => (
                 ids.len() as u64,
                 self.process_tokens_ids_arg(metadata_id, ids),
             ),
             (Some(n), Some(ids)) => {
-                near_assert!(n.0 == ids.len() as u64, "num_to_mint does not match the number of specified token IDs");
+                near_assert!(n == ids.len() as u64, "num_to_mint does not match the number of specified token IDs");
                 let ids = self.process_tokens_ids_arg(metadata_id, ids);
-                (n.0, ids)
+                (n, ids)
             }
         }
     }
@@ -487,7 +491,7 @@ fn log_create_metadata(
 }
 
 fn log_nft_batch_mint(
-    token_ids: &[u64],
+    token_ids: Vec<String>,
     minter: &str,
     owner: &str,
     royalty: &Option<mb_sdk::data::store::Royalty>,
@@ -505,7 +509,7 @@ fn log_nft_batch_mint(
     .unwrap();
     let log = NftMintLog {
         owner_id: owner.to_string(),
-        token_ids: token_ids.iter().map(|t| t.to_string()).collect(),
+        token_ids,
         memo: Option::from(memo),
     };
 
