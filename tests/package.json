@@ -2,7 +2,7 @@
   "name": "tests",
   "type": "module",
   "scripts": {
-    "test": "ava --timeout=75s"
+    "test": "NODE_OPTIONS='--loader=ts-node/esm' ava --timeout=75s"
   },
   "devDependencies": {
     "@types/bn.js": "^5.1.1",

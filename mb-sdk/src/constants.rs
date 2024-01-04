@@ -138,8 +138,10 @@ pub struct StorageCosts {
     /// base cost of storing a single NFT
     pub token: u128,
     /// storing an account ID with the maximum of 64 characters lenght
+    #[cfg(feature = "storage-v2")]
     pub account_id: u128,
     /// storing a balance
+    #[cfg(feature = "storage-v2")]
     pub balance: u128,
 }
 
@@ -151,7 +153,9 @@ impl StorageCosts {
             common: storage_stake::COMMON,
             // token: storage_price_per_byte * 360_u64 as u128,
             token: storage_stake::TOKEN,
+            #[cfg(feature = "storage-v2")]
             account_id: 64 * storage_price_per_byte,
+            #[cfg(feature = "storage-v2")]
             balance: 16 * storage_price_per_byte,
         }
     }
@@ -172,8 +176,10 @@ pub struct StorageCostsJson {
     /// base cost of storing a single NFT
     pub token: U128,
     /// storing an account ID with the maximum of 64 characters lenght
+    #[cfg(feature = "storage-v2")]
     pub account_id: U128,
     /// storing a balance
+    #[cfg(feature = "storage-v2")]
     pub balance: U128,
 }
 
@@ -183,7 +189,9 @@ impl From<&StorageCosts> for StorageCostsJson {
             storage_price_per_byte: storage_costs.storage_price_per_byte.into(),
             common: storage_costs.common.into(),
             token: storage_costs.token.into(),
+            #[cfg(feature = "storage-v2")]
             account_id: storage_costs.account_id.into(),
+            #[cfg(feature = "storage-v2")]
             balance: storage_costs.balance.into(),
         }
     }

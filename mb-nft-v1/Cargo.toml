@@ -8,3 +8,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 mb-sdk = { path = "../mb-sdk", features = ["store-wasm"] }
+
+[features]
+storage-v2 = ["mb-sdk/storage-v2"]
