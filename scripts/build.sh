@@ -12,7 +12,13 @@ cargo check -p mb-factory-v2 || exit 1
 cargo check -p mb-legacy-market || exit 1
 cargo check -p mb-interop-market || exit 1
 
-cargo clippy -- -D warnings || exit 1
+cargo clippy -p mb-sdk -- -D warnings || exit 1
+cargo clippy -p mb-nft-v1 -- -D warnings || exit 1
+cargo clippy -p mb-nft-v2 -- -D warnings || exit 1
+cargo clippy -p mb-factory-v1 -- -D warnings || exit 1
+cargo clippy -p mb-factory-v2 -- -D warnings || exit 1
+cargo clippy -p mb-legacy-market -- -D warnings || exit 1
+cargo clippy -p mb-interop-market -- -D warnings || exit 1
 
 build() {
   cargo "$1" || return 1
