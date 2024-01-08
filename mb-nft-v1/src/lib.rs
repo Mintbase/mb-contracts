@@ -317,8 +317,6 @@ pub trait NonFungibleResolveTransfer {
     );
 }
 
-// FIXME: remove directive!
-#[allow(dead_code)]
 // Required because storage has been botched at some point with different
 // structures for `StorageCosts`
 #[derive(BorshDeserialize)]
@@ -338,8 +336,6 @@ struct MintbaseStoreV2 {
     pub allow_moves: bool,
 }
 
-// FIXME: remove directive!
-#[allow(dead_code)]
 #[derive(BorshDeserialize)]
 struct StorageCostsV2 {
     pub storage_price_per_byte: u128,
