@@ -61,11 +61,8 @@ test("upgrade::mainnet", async (test) => {
 
   // upgrade contracts
   await updateContract(store, `mb-nft-${MB_VERSION}`);
-  test.log("updated store");
   await updateContract(factory, `factory-${MB_VERSION}`);
-  test.log("updated factory");
   await updateContract(market, "legacy-market");
-  test.log("updated market");
 
   // compare pre- and post-upgrade states
   const currentState = await queryState(accounts);

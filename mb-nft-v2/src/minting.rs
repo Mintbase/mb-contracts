@@ -58,7 +58,7 @@ impl MintbaseStore {
         near_assert!(self.creators.contains(&creator), "{}", creator);
 
         // validate metadata
-        validate_metadata(&metadata, &self.metadata.base_uri);
+        validate_metadata(&metadata);
 
         // validate royalties
         let roy_len = royalty_args
@@ -455,16 +455,6 @@ impl MintbaseStore {
     }
 }
 
-fn option_string_starts_with(
-    string: &Option<String>,
-    prefix: &Option<String>,
-) -> bool {
-    match (string, prefix) {
-        (Some(s), Some(p)) => s.starts_with(p),
-        _ => false,
-    }
-}
-
 fn option_string_is_u64(opt_s: &Option<String>) -> bool {
     opt_s
         .as_ref()
@@ -547,15 +537,7 @@ fn parent_account_id(child: &AccountId) -> Option<AccountId> {
         .ok()
 }
 
-fn validate_metadata(metadata: &TokenMetadata, base_uri: &Option<String>) {
-    near_assert!(
-        !option_string_starts_with(&metadata.reference, base_uri),
-        "`metadata.reference` must not start with contract base URI"
-    );
-    near_assert!(
-        !option_string_starts_with(&metadata.media, base_uri),
-        "`metadata.media` must not start with contract base URI"
-    );
+fn validate_metadata(metadata: &TokenMetadata) {
     near_assert!(
         option_string_is_u64(&metadata.starts_at),
         "`metadata.starts_at` needs to parse to a u64"
