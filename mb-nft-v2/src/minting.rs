@@ -39,10 +39,10 @@ use crate::*;
 #[near_bindgen]
 impl MintbaseStore {
     // -------------------------- change methods ---------------------------
+    // TODO: maximum supply?
     #[payable]
     pub fn create_metadata(
         &mut self,
-        //     owner_id: AccountId,
         metadata: TokenMetadata,
         metadata_id: Option<U64>,
         royalty_args: Option<RoyaltyArgs>,
@@ -125,12 +125,13 @@ impl MintbaseStore {
     #[payable]
     pub fn mint_on_metadata(
         &mut self,
-        metadata_id: u64,
+        metadata_id: U64,
         owner_id: AccountId,
         num_to_mint: Option<u64>,
         token_ids: Option<Vec<U64>>,
         split_owners: Option<SplitBetweenUnparsed>,
     ) {
+        let metadata_id = metadata_id.0;
         let minter = env::predecessor_account_id();
 
         // make sure metadata exists

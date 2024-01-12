@@ -17,17 +17,17 @@ export PATH="/usr/local/bin:$PATH"
 ) || exit 1
 
 # Limit to 6 parallel tests to prevent hiccups with the key store
-(cd tests && MB_VERSION=v1 npm test -- -c 6 --fail-fast "$@") || {
-  kill_sandbox
-  echo "Testing failed (v1)"
-  exit 1
-}
-
-# FIXME: Reactivate
-# (cd tests && MB_VERSION=v2 npm test -- -c 6 --fail-fast "$@") || {
+# FIXME: reactivate
+# (cd tests && MB_VERSION=v1 npm test -- -c 6 --fail-fast "$@") || {
 #   kill_sandbox
-#   echo "Testing failed (v2)"
+#   echo "Testing failed (v1)"
 #   exit 1
 # }
+
+(cd tests && MB_VERSION=v2 npm test -- -c 6 --fail-fast "$@") || {
+  kill_sandbox
+  echo "Testing failed (v2)"
+  exit 1
+}
 
 kill_sandbox
