@@ -179,6 +179,14 @@ impl MintbaseStore {
             min_attached_deposit
         );
 
+        // TODO: is this still necessary with a per-token minting cap?
+        if let Some(minting_cap) = self.minting_cap {
+            near_assert!(
+                self.tokens_minted + num_to_mint <= minting_cap,
+                "This mint would exceed the smart contracts minting cap"
+            );
+        }
+
         // mint the tokens, store splits
         let royalty_id = match self.token_royalty.contains_key(&metadata_id) {
             true => Some(metadata_id),

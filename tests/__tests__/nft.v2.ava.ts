@@ -20,9 +20,13 @@ const createMetadata = async ({
   alice: NearAccount;
   store: NearAccount;
   args: Record<string, any>;
-}) =>
-  alice.callRaw(store, "create_metadata", args, { attachedDeposit: NEAR(0.1) });
-
+}) => {
+  const call = await alice.callRaw(store, "create_metadata", args, {
+    attachedDeposit: NEAR(0.1),
+  });
+  if (call.failed) throw new Error(JSON.stringify(call));
+  return call;
+};
 const mintOnMetadata = async ({
   bob,
   store,
@@ -33,10 +37,13 @@ const mintOnMetadata = async ({
   store: NearAccount;
   args: Record<string, any>;
   deposit: number;
-}) =>
-  await bob.callRaw(store, "mint_on_metadata", args, {
+}) => {
+  const call = await bob.callRaw(store, "mint_on_metadata", args, {
     attachedDeposit: NEAR(deposit),
   });
+  if (call.failed) throw new Error(JSON.stringify(call));
+  return call;
+};
 
 const mint = async ({ store, alice, bob }: Record<string, NearAccount>) => {
   await createMetadata({
@@ -131,14 +138,22 @@ test("v2::reset_splits", async (test) => {
   );
 });
 
-// FIXME: unskip
-test.skip("v2::minting_cap", async (test) => {
+test("v2::minting_cap", async (test) => {
   if (MB_VERSION == "v1") {
     test.pass();
     return;
   }
 
   const { alice, store } = test.context.accounts;
+  await createMetadata({
+    alice,
+    store,
+    args: {
+      metadata: {},
+      metadata_id: "1",
+      price: NEAR(0.01),
+    },
+  });
 
   // No minting cap exists initially
   test.is(await store.view("get_minting_cap"), null);
@@ -147,7 +162,7 @@ test.skip("v2::minting_cap", async (test) => {
   const setMintingCapCall = await alice.callRaw(
     store,
     "set_minting_cap",
-    { minting_cap: 5 },
+    { minting_cap: 2 },
     { attachedDeposit: "1" }
   );
 
@@ -160,7 +175,7 @@ test.skip("v2::minting_cap", async (test) => {
         version: CHANGE_SETTING_VERSION,
         event: "change_setting",
         data: changeSettingsData({
-          set_minting_cap: "5",
+          set_minting_cap: "2",
         }),
       },
     ],
@@ -168,7 +183,7 @@ test.skip("v2::minting_cap", async (test) => {
   );
 
   // New minting cap is successfuly returned
-  test.is(await store.view("get_minting_cap"), 5);
+  test.is(await store.view("get_minting_cap"), 2);
 
   // cannot set minting cap again
   await assertContractPanic(
@@ -189,18 +204,16 @@ test.skip("v2::minting_cap", async (test) => {
   await assertContractPanic(
     test,
     async () => {
-      await alice.call(
+      await mintOnMetadata({
+        bob: alice,
         store,
-        "nft_batch_mint",
-        {
+        args: {
+          metadata_id: "1",
           owner_id: alice.accountId,
-          metadata: {},
-          num_to_mint: 20,
+          num_to_mint: 3,
         },
-        {
-          attachedDeposit: mintingDeposit({ n_tokens: 20, metadata_bytes: 50 }),
-        }
-      );
+        deposit: 0.05,
+      });
     },
     "This mint would exceed the smart contracts minting cap",
     "Minting beyond cap"
