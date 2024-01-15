@@ -257,8 +257,7 @@ test("v2::create_metadata", async (test) => {
     "creating metadata"
   );
 
-  // TODO: create with minters allowlist
-  // TODO: create with splits
+  // TODO: create with royalties
   // TODO: create with specified metadata ID
 });
 
@@ -332,7 +331,6 @@ test("v2::mint_on_metadata", async (test) => {
           {
             owner_id: bob.accountId,
             token_ids: ["0:12"],
-            // TODO: should the minter here be alice?
             memo: '{"royalty":null,"split_owners":null,"meta_id":null,"meta_extra":null,"minter":"bob.test.near"}',
           },
         ],
@@ -375,5 +373,72 @@ test("v2::mint_on_metadata", async (test) => {
     },
     "Attached deposit must cover storage usage, token price and minting fee",
     "Minting with insufficient deposit"
+  );
+});
+
+test("v2::minters_allowlist", async (test) => {
+  if (MB_VERSION == "v1") {
+    test.pass();
+    return;
+  }
+
+  const { alice, bob, store } = test.context.accounts;
+
+  const createMetadataCall = await createMetadata({
+    alice,
+    store,
+    args: {
+      metadata: {},
+      minters_allowlist: [bob.accountId],
+      price: NEAR(0.01),
+    },
+  });
+  assertEventLogs(
+    test,
+    (createMetadataCall as TransactionResult).logs,
+    [
+      {
+        standard: "mb_store",
+        version: "2.0.0",
+        event: "create_metadata",
+        data: {
+          creator: alice.accountId,
+          metadata_id: 0,
+          minters_allowlist: [bob.accountId],
+          price: NEAR(0.01).toString(),
+        },
+      },
+    ],
+    "creating metadata"
+  );
+
+  // bob can mint
+  const mintOnMetadataCall = await mintOnMetadata({
+    bob,
+    store,
+    args: {
+      metadata_id: "0",
+      num_to_mint: 1,
+      owner_id: bob.accountId,
+    },
+    deposit: 0.05,
+  });
+
+  await assertContractPanic(
+    test,
+    async () => {
+      await mintOnMetadata({
+        bob: alice,
+        store,
+        args: {
+          metadata_id: "0",
+          num_to_mint: 1,
+          owner_id: bob.accountId,
+        },
+        deposit: 0.05,
+      });
+    },
+    "X".repeat(120),
+    "Minting token ID twice"
   );
 });
