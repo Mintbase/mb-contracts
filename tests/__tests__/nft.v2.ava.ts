@@ -125,7 +125,7 @@ test("v2::reset_splits", async (test) => {
     [
       {
         standard: "mb_store",
-        version: "0.1.0", // FIXME:
+        version: "0.1.0",
         event: "nft_set_split_owners",
         data: {
           split_owners: {
@@ -244,7 +244,7 @@ test("v2::create_metadata", async (test) => {
     return;
   }
 
-  const { alice, store } = test.context.accounts;
+  const { alice, bob, store } = test.context.accounts;
 
   const createMetadataCall = await createMetadata({
     alice,
@@ -273,8 +273,69 @@ test("v2::create_metadata", async (test) => {
     "creating metadata"
   );
 
-  // TODO: create with royalties
-  // TODO: create with specified metadata ID
+  const createMetadataCall1 = await createMetadata({
+    alice,
+    store,
+    args: {
+      metadata: {},
+      metadata_id: "12",
+      price: NEAR(0.01),
+    },
+  });
+  assertEventLogs(
+    test,
+    (createMetadataCall1 as TransactionResult).logs,
+    [
+      {
+        standard: "mb_store",
+        version: "2.0.0",
+        event: "create_metadata",
+        data: {
+          creator: alice.accountId,
+          metadata_id: 12,
+          minters_allowlist: null,
+          price: NEAR(0.01).toString(),
+        },
+      },
+    ],
+    "creating metadata"
+  );
+
+  const createMetadataCall2 = await createMetadata({
+    alice,
+    store,
+    args: {
+      metadata: {},
+      royalty_args: {
+        split_between: (() => {
+          const s: Record<string, number> = {};
+          s[alice.accountId] = 6000;
+          s[bob.accountId] = 4000;
+          return s;
+        })(),
+        percentage: 2000,
+      },
+      price: NEAR(0.01),
+    },
+  });
+  assertEventLogs(
+    test,
+    (createMetadataCall2 as TransactionResult).logs,
+    [
+      {
+        standard: "mb_store",
+        version: "2.0.0",
+        event: "create_metadata",
+        data: {
+          creator: alice.accountId,
+          metadata_id: 1,
+          minters_allowlist: null,
+          price: NEAR(0.01).toString(),
+        },
+      },
+    ],
+    "creating metadata"
+  );
 });
 
 test("v2::mint_on_metadata", async (test) => {
