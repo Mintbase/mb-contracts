@@ -109,19 +109,35 @@ test("v2::reset_splits", async (test) => {
     return o;
   })();
 
-  await bob
-    .call(
-      store,
-      "set_split_owners",
-      {
-        token_ids: ["1:1"],
-        split_between: newSplitOwners,
-      },
-      { attachedDeposit: mintingDeposit({ n_tokens: 1, n_splits: 2 }) }
-    )
-    .catch(failPromiseRejection(test, "resetting splits"));
+  const setSplitsCall = await bob.callRaw(
+    store,
+    "set_split_owners",
+    {
+      token_ids: ["1:1"],
+      split_between: newSplitOwners,
+    },
+    { attachedDeposit: mintingDeposit({ n_tokens: 1, n_splits: 2 }) }
+  );
 
-  // TODO: test logs
+  assertEventLogs(
+    test,
+    (setSplitsCall as TransactionResult).logs,
+    [
+      {
+        standard: "mb_store",
+        version: "0.1.0", // FIXME:
+        event: "nft_set_split_owners",
+        data: {
+          split_owners: {
+            "a.near": 4000,
+            "b.near": 6000,
+          },
+          token_ids: ["1:1"],
+        },
+      },
+    ],
+    "resetting splits"
+  );
 
   const newPayout = (() => {
     const p: Record<string, string> = {};
@@ -438,7 +454,7 @@ test("v2::minters_allowlist", async (test) => {
         deposit: 0.05,
       });
     },
-    "X".repeat(120),
+    `${alice.accountId} is not allowed to mint this metadata`,
     "Minting token ID twice"
   );
 });
