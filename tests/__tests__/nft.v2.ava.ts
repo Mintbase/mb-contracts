@@ -283,7 +283,7 @@ test("v2::mint_on_metadata", async (test) => {
     store,
     args: {
       metadata_id: "0",
-      num_to_mint: 1,
+      num_to_mint: 3,
       owner_id: bob.accountId,
     },
     deposit: 0.05,
@@ -300,7 +300,7 @@ test("v2::mint_on_metadata", async (test) => {
         data: [
           {
             owner_id: bob.accountId,
-            token_ids: ["0:0"],
+            token_ids: ["0:0", "0:1", "0:2"],
             // TODO: should the minter here be alice?
             memo: '{"royalty":null,"split_owners":null,"meta_id":null,"meta_extra":null,"minter":"bob.test.near"}',
           },
@@ -310,7 +310,70 @@ test("v2::mint_on_metadata", async (test) => {
     "minting on metadata metadata"
   );
 
-  // TODO: test batch minting
-  // TODO: fails with insufficient deposit
-  // TODO: create with specified token ID
+  const mintOnMetadataCall1 = await mintOnMetadata({
+    bob,
+    store,
+    args: {
+      metadata_id: "0",
+      token_ids: ["12"],
+      owner_id: bob.accountId,
+    },
+    deposit: 0.05,
+  });
+  assertEventLogs(
+    test,
+    (mintOnMetadataCall1 as TransactionResult).logs,
+    [
+      {
+        standard: "nep171",
+        version: "1.0.0",
+        event: "nft_mint",
+        data: [
+          {
+            owner_id: bob.accountId,
+            token_ids: ["0:12"],
+            // TODO: should the minter here be alice?
+            memo: '{"royalty":null,"split_owners":null,"meta_id":null,"meta_extra":null,"minter":"bob.test.near"}',
+          },
+        ],
+      },
+    ],
+    "minting on metadata metadata"
+  );
+
+  await assertContractPanic(
+    test,
+    async () => {
+      await mintOnMetadata({
+        bob,
+        store,
+        args: {
+          metadata_id: "0",
+          token_ids: ["12"],
+          owner_id: bob.accountId,
+        },
+        deposit: 0.05,
+      });
+    },
+    "Token with ID 0:12 already exist",
+    "Minting token ID twice"
+  );
+
+  await assertContractPanic(
+    test,
+    async () => {
+      await mintOnMetadata({
+        bob,
+        store,
+        args: {
+          metadata_id: "0",
+          num_to_mint: 1,
+          owner_id: bob.accountId,
+        },
+        deposit: 0.005,
+      });
+    },
+    "Attached deposit must cover storage usage, token price and minting fee",
+    "Minting with insufficient deposit"
+  );
 });
