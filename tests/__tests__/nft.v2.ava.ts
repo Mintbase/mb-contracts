@@ -533,12 +533,7 @@ test("v2::royalties", async (test) => {
     args: {
       metadata: {},
       royalty_args: {
-        split_between: (() => {
-          const s: Record<string, number> = {};
-          s[alice.accountId] = 6000;
-          s[bob.accountId] = 4000;
-          return s;
-        })(),
+        split_between: { "a.near": 6000, "b.near": 4000 },
         percentage: 2000,
       },
       price: NEAR(0.01),
@@ -568,12 +563,25 @@ test("v2::royalties", async (test) => {
           {
             owner_id: bob.accountId,
             token_ids: ["0:0", "0:1", "0:2"],
-            // TODO: should the minter here be alice?
-            memo: '{"royalty":{"split_between":{"alice.test.near":{"numerator":6000},"bob.test.near":{"numerator":4000}},"percentage":{"numerator":2000}},"split_owners":null,"meta_id":null,"meta_extra":null,"minter":"bob.test.near"}',
+            memo: '{"royalty":{"split_between":{"a.near":{"numerator":6000},"b.near":{"numerator":4000}},"percentage":{"numerator":2000}},"split_owners":null,"meta_id":null,"meta_extra":null,"minter":"bob.test.near"}',
           },
         ],
       },
     ],
     "minting on metadata metadata"
+  );
+
+  test.deepEqual(
+    await store.view("nft_payout", {
+      token_id: "0:0",
+      balance: "10000000000000000",
+    }),
+    {
+      payout: {
+        "a.near": "1200000000000000",
+        "b.near": "800000000000000",
+        "bob.test.near": "8000000000000000",
+      },
+    }
   );
 });
