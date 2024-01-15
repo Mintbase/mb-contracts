@@ -490,7 +490,7 @@ test("v2::minters_allowlist", async (test) => {
   );
 
   // bob can mint
-  const mintOnMetadataCall = await mintOnMetadata({
+  await mintOnMetadata({
     bob,
     store,
     args: {
@@ -517,5 +517,63 @@ test("v2::minters_allowlist", async (test) => {
     },
     `${alice.accountId} is not allowed to mint this metadata`,
     "Minting token ID twice"
+  );
+});
+
+test("v2::royalties", async (test) => {
+  if (MB_VERSION == "v1") {
+    test.pass();
+    return;
+  }
+
+  const { alice, bob, store } = test.context.accounts;
+  await createMetadata({
+    alice,
+    store,
+    args: {
+      metadata: {},
+      royalty_args: {
+        split_between: (() => {
+          const s: Record<string, number> = {};
+          s[alice.accountId] = 6000;
+          s[bob.accountId] = 4000;
+          return s;
+        })(),
+        percentage: 2000,
+      },
+      price: NEAR(0.01),
+    },
+  });
+
+  const mintOnMetadataCall = await mintOnMetadata({
+    bob,
+    store,
+    args: {
+      metadata_id: "0",
+      num_to_mint: 3,
+      owner_id: bob.accountId,
+    },
+    deposit: 0.05,
+  });
+
+  assertEventLogs(
+    test,
+    (mintOnMetadataCall as TransactionResult).logs,
+    [
+      {
+        standard: "nep171",
+        version: "1.0.0",
+        event: "nft_mint",
+        data: [
+          {
+            owner_id: bob.accountId,
+            token_ids: ["0:0", "0:1", "0:2"],
+            // TODO: should the minter here be alice?
+            memo: '{"royalty":{"split_between":{"alice.test.near":{"numerator":6000},"bob.test.near":{"numerator":4000}},"percentage":{"numerator":2000}},"split_owners":null,"meta_id":null,"meta_extra":null,"minter":"bob.test.near"}',
+          },
+        ],
+      },
+    ],
+    "minting on metadata metadata"
   );
 });
