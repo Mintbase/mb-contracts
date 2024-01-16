@@ -192,6 +192,7 @@ impl MintbaseStore {
             true => Some(metadata_id),
             false => None,
         };
+        let mut owned_set = self.get_or_make_new_owner_set(&owner_id);
         self.tokens_minted += num_to_mint as u64;
         for &id in token_ids.iter() {
             let token = Token {
@@ -212,6 +213,7 @@ impl MintbaseStore {
                 origin_key: None,
             };
             self.tokens.insert(&(metadata_id, id), &token);
+            owned_set.insert(&(metadata_id, id));
         }
         self.token_metadata.insert(
             &metadata_id,
@@ -223,6 +225,7 @@ impl MintbaseStore {
                 metadata.clone(),
             ),
         );
+        self.tokens_per_owner.insert(&owner_id, &owned_set);
 
         // emit event
         log_nft_batch_mint(
