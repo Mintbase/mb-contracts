@@ -520,6 +520,7 @@ test("v2::minters_allowlist", async (test) => {
   );
 });
 
+// TODO: verify if redundant with payout tests?
 test("v2::royalties", async (test) => {
   if (MB_VERSION == "v1") {
     test.pass();
