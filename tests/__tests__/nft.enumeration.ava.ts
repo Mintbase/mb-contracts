@@ -1,6 +1,7 @@
 import avaTest from "ava";
-import { assertTokensAre, batchMint } from "./utils/index.js";
+import { assertTokensAre, batchMint, parseEvent } from "./utils/index.js";
 import { setup } from "./setup.js";
+import { TransactionResult } from "near-workspaces";
 
 const test = setup(avaTest);
 
@@ -14,17 +15,21 @@ test("enumeration", async (test) => {
   };
 
   // seeding: mint 4 tokens (2 for Alice, 2 for Bob)
-  const aliceTokenIds = (await batchMint({
+  const aliceMintCall = await batchMint({
     owner: alice,
     store,
     num_to_mint: 2,
-  }).catch(failPromiseRejection("minting"))) as string[];
-  const bobTokenIds = (await batchMint({
+  }).catch(failPromiseRejection("minting"));
+  const bobMintCall = await batchMint({
     owner: alice,
     store,
     num_to_mint: 2,
     owner_id: bob.accountId,
-  }).catch(failPromiseRejection("minting"))) as string[];
+  }).catch(failPromiseRejection("minting"));
+  const aliceTokenIds = parseEvent((aliceMintCall as TransactionResult).logs[0])
+    .data[0].token_ids as string[];
+  const bobTokenIds = parseEvent((bobMintCall as TransactionResult).logs[0])
+    .data[0].token_ids as string[];
 
   // testing `nft_total_supply` and `nft_supply_for_owner`
   test.is(await store.view("nft_total_supply", {}), "4");
