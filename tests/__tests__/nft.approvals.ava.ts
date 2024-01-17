@@ -12,8 +12,9 @@ import {
   assertNoApproval,
   mintingDeposit,
   changeSettingsData,
+  parseEvent,
 } from "./utils/index.js";
-import { setup, CHANGE_SETTING_VERSION } from "./setup.js";
+import { setup, CHANGE_SETTING_VERSION, MB_VERSION } from "./setup.js";
 
 const test = setup(avaTest);
 
@@ -26,9 +27,13 @@ test("approvals::core", async (test) => {
     test.fail();
   };
 
-  await batchMint({ owner: alice, store, num_to_mint: 4 }).catch(
-    failPromiseRejection("minting")
-  );
+  const mintCall = await batchMint({
+    owner: alice,
+    store,
+    num_to_mint: 4,
+  }).catch(failPromiseRejection("minting"));
+  const tokenIds = parseEvent((mintCall as TransactionResult).logs[0]).data[0]
+    .token_ids as string[];
   // // assert correctness of current owners
   // await assertContractTokenOwners(
   //   test,
@@ -46,10 +51,10 @@ test("approvals::core", async (test) => {
   await assertNoApprovals(
     { test, store },
     [
-      { token_id: "0", approved_account_id: bob.accountId },
-      { token_id: "1", approved_account_id: bob.accountId },
-      { token_id: "2", approved_account_id: bob.accountId },
-      { token_id: "3", approved_account_id: bob.accountId },
+      { token_id: tokenIds[0], approved_account_id: bob.accountId },
+      { token_id: tokenIds[1], approved_account_id: bob.accountId },
+      { token_id: tokenIds[2], approved_account_id: bob.accountId },
+      { token_id: tokenIds[3], approved_account_id: bob.accountId },
     ],
     "minting"
   );
@@ -59,7 +64,7 @@ test("approvals::core", async (test) => {
     .callRaw(
       store,
       "nft_approve",
-      { token_id: "0", account_id: bob.accountId },
+      { token_id: tokenIds[0], account_id: bob.accountId },
       { attachedDeposit: mNEAR(0.8) }
     )
     .catch(failPromiseRejection("approving"));
@@ -72,7 +77,9 @@ test("approvals::core", async (test) => {
         standard: "mb_store",
         version: "0.1.0",
         event: "nft_approve",
-        data: [{ token_id: "0", approval_id: 0, account_id: bob.accountId }],
+        data: [
+          { token_id: tokenIds[0], approval_id: 0, account_id: bob.accountId },
+        ],
       },
     ],
     "approving"
@@ -85,7 +92,7 @@ test("approvals::core", async (test) => {
         bob.call(
           store,
           "nft_approve",
-          { token_id: "1", account_id: bob.accountId },
+          { token_id: tokenIds[1], account_id: bob.accountId },
           { attachedDeposit: mNEAR(0.8) }
         ),
       `${bob.accountId} is required to own token 1`,
@@ -97,7 +104,7 @@ test("approvals::core", async (test) => {
         alice.call(
           store,
           "nft_approve",
-          { token_id: "1", account_id: bob.accountId },
+          { token_id: tokenIds[1], account_id: bob.accountId },
           { attachedDeposit: mNEAR(0.79) }
         ),
       "Requires storage deposit of at least 800000000000000000000 yoctoNEAR",
@@ -108,21 +115,27 @@ test("approvals::core", async (test) => {
   // assert correctness of current approvals
   await assertApprovals(
     { test, store },
-    [{ token_id: "0", approved_account_id: bob.accountId, approval_id: 0 }],
+    [
+      {
+        token_id: tokenIds[0],
+        approved_account_id: bob.accountId,
+        approval_id: 0,
+      },
+    ],
     "approving"
   );
   await assertNoApprovals(
     { test, store },
     [
-      { token_id: "1", approved_account_id: bob.accountId },
-      { token_id: "2", approved_account_id: bob.accountId },
-      { token_id: "3", approved_account_id: bob.accountId },
+      { token_id: tokenIds[1], approved_account_id: bob.accountId },
+      { token_id: tokenIds[2], approved_account_id: bob.accountId },
+      { token_id: tokenIds[3], approved_account_id: bob.accountId },
     ],
     "approving"
   );
   test.is(
     await store.view("nft_approval_id", {
-      token_id: "0",
+      token_id: tokenIds[0],
       account_id: bob.accountId,
     }),
     0
@@ -133,7 +146,7 @@ test("approvals::core", async (test) => {
     .callRaw(
       store,
       "nft_batch_approve",
-      { token_ids: ["1", "2"], account_id: bob.accountId },
+      { token_ids: [tokenIds[1], tokenIds[2]], account_id: bob.accountId },
       { attachedDeposit: mNEAR(1.6) } // no value for this in mintbase-js
     )
     .catch(failPromiseRejection("batch approving"));
@@ -147,8 +160,8 @@ test("approvals::core", async (test) => {
         version: "0.1.0",
         event: "nft_approve",
         data: [
-          { token_id: "1", approval_id: 1, account_id: bob.accountId },
-          { token_id: "2", approval_id: 2, account_id: bob.accountId },
+          { token_id: tokenIds[1], approval_id: 1, account_id: bob.accountId },
+          { token_id: tokenIds[2], approval_id: 2, account_id: bob.accountId },
         ],
       },
     ],
@@ -162,7 +175,7 @@ test("approvals::core", async (test) => {
         bob.call(
           store,
           "nft_batch_approve",
-          { token_ids: ["2", "3"], account_id: bob.accountId },
+          { token_ids: [tokenIds[2], tokenIds[3]], account_id: bob.accountId },
           { attachedDeposit: mNEAR(1.6) }
         ),
       `${bob.accountId} is required to own token 2`,
@@ -174,7 +187,7 @@ test("approvals::core", async (test) => {
         alice.call(
           store,
           "nft_batch_approve",
-          { token_ids: ["3"], account_id: bob.accountId },
+          { token_ids: [tokenIds[3]], account_id: bob.accountId },
           { attachedDeposit: mNEAR(0.79) }
         ),
       "Requires storage deposit of at least 800000000000000000000 yoctoNEAR",
@@ -186,15 +199,27 @@ test("approvals::core", async (test) => {
   await assertApprovals(
     { test, store },
     [
-      { token_id: "0", approved_account_id: bob.accountId, approval_id: 0 },
-      { token_id: "1", approved_account_id: bob.accountId, approval_id: 1 },
-      { token_id: "2", approved_account_id: bob.accountId, approval_id: 2 },
+      {
+        token_id: tokenIds[0],
+        approved_account_id: bob.accountId,
+        approval_id: 0,
+      },
+      {
+        token_id: tokenIds[1],
+        approved_account_id: bob.accountId,
+        approval_id: 1,
+      },
+      {
+        token_id: tokenIds[2],
+        approved_account_id: bob.accountId,
+        approval_id: 2,
+      },
     ],
     "batch approving"
   );
   await assertNoApprovals(
     { test, store },
-    [{ token_id: "3", approved_account_id: bob.accountId }],
+    [{ token_id: tokenIds[3], approved_account_id: bob.accountId }],
     "batch approving"
   );
 
@@ -206,7 +231,7 @@ test("approvals::core", async (test) => {
       store,
       "nft_revoke",
       {
-        token_id: "2",
+        token_id: tokenIds[2],
         account_id: bob.accountId,
       },
       { attachedDeposit: "1" }
@@ -235,7 +260,7 @@ test("approvals::core", async (test) => {
         event: "nft_revoke",
         // TODO::store::low: for `nft_approve`, data is an array, here
         //  it's an object -> should have the same predictable structure
-        data: { token_id: "2", account_id: bob.accountId },
+        data: { token_id: tokenIds[2], account_id: bob.accountId },
       },
     ],
     "revoking"
@@ -262,7 +287,7 @@ test("approvals::core", async (test) => {
           store,
           "nft_revoke",
           {
-            token_id: "1",
+            token_id: tokenIds[1],
             account_id: bob.accountId,
           },
           { attachedDeposit: "1" }
@@ -274,7 +299,7 @@ test("approvals::core", async (test) => {
     [
       async () =>
         alice.call(store, "nft_revoke", {
-          token_id: "0",
+          token_id: tokenIds[0],
           account_id: bob.accountId,
         }),
       "Requires attached deposit of exactly 1 yoctoNEAR",
@@ -286,16 +311,24 @@ test("approvals::core", async (test) => {
   await assertApprovals(
     { test, store },
     [
-      { token_id: "0", approved_account_id: bob.accountId, approval_id: 0 },
-      { token_id: "1", approved_account_id: bob.accountId, approval_id: 1 },
+      {
+        token_id: tokenIds[0],
+        approved_account_id: bob.accountId,
+        approval_id: 0,
+      },
+      {
+        token_id: tokenIds[1],
+        approved_account_id: bob.accountId,
+        approval_id: 1,
+      },
     ],
     "revoking"
   );
   await assertNoApprovals(
     { test, store },
     [
-      { token_id: "2", approved_account_id: bob.accountId },
-      { token_id: "3", approved_account_id: bob.accountId },
+      { token_id: tokenIds[2], approved_account_id: bob.accountId },
+      { token_id: tokenIds[3], approved_account_id: bob.accountId },
     ],
     "revoking"
   );
@@ -305,14 +338,22 @@ test("approvals::core", async (test) => {
   await alice.call(
     store,
     "nft_batch_approve",
-    { token_ids: ["0", "1"], account_id: carol.accountId },
+    { token_ids: [tokenIds[0], tokenIds[1]], account_id: carol.accountId },
     { attachedDeposit: mNEAR(1.61) } // no value for this in mintbase-js
   );
   await assertApprovals(
     { test, store },
     [
-      { token_id: "0", approved_account_id: carol.accountId, approval_id: 3 },
-      { token_id: "1", approved_account_id: carol.accountId, approval_id: 4 },
+      {
+        token_id: tokenIds[0],
+        approved_account_id: carol.accountId,
+        approval_id: 3,
+      },
+      {
+        token_id: tokenIds[1],
+        approved_account_id: carol.accountId,
+        approval_id: 4,
+      },
     ],
     "preparing revoke_all"
   );
@@ -323,7 +364,7 @@ test("approvals::core", async (test) => {
     .callRaw(
       store,
       "nft_revoke_all",
-      { token_id: "1" },
+      { token_id: tokenIds[1] },
       { attachedDeposit: "1" }
     )
     .catch(failPromiseRejection("revoking all"));
@@ -336,7 +377,7 @@ test("approvals::core", async (test) => {
         standard: "mb_store",
         version: "0.1.0",
         event: "nft_revoke_all",
-        data: { token_id: "1" },
+        data: { token_id: tokenIds[1] },
       },
     ],
     "revoking all"
@@ -357,7 +398,7 @@ test("approvals::core", async (test) => {
         bob.call(
           store,
           "nft_revoke_all",
-          { token_id: "0" },
+          { token_id: tokenIds[0] },
           { attachedDeposit: "1" }
         ),
       `${bob.accountId} is required to own token 0`,
@@ -365,7 +406,8 @@ test("approvals::core", async (test) => {
     ],
     // require at least one yoctoNEAR to revoke all
     [
-      async () => alice.call(store, "nft_revoke_all", { token_id: "0" }),
+      async () =>
+        alice.call(store, "nft_revoke_all", { token_id: tokenIds[0] }),
       "Requires attached deposit of exactly 1 yoctoNEAR",
       "Alice tried revoking all without yoctoNEAR deposit",
     ],
@@ -375,18 +417,26 @@ test("approvals::core", async (test) => {
   await assertApprovals(
     { test, store },
     [
-      { token_id: "0", approved_account_id: bob.accountId, approval_id: 0 },
-      { token_id: "0", approved_account_id: carol.accountId, approval_id: 3 },
+      {
+        token_id: tokenIds[0],
+        approved_account_id: bob.accountId,
+        approval_id: 0,
+      },
+      {
+        token_id: tokenIds[0],
+        approved_account_id: carol.accountId,
+        approval_id: 3,
+      },
     ],
     "revoking all"
   );
   await assertNoApprovals(
     { test, store },
     [
-      { token_id: "1", approved_account_id: carol.accountId },
-      { token_id: "1", approved_account_id: bob.accountId },
-      { token_id: "2", approved_account_id: bob.accountId },
-      { token_id: "3", approved_account_id: bob.accountId },
+      { token_id: tokenIds[1], approved_account_id: carol.accountId },
+      { token_id: tokenIds[1], approved_account_id: bob.accountId },
+      { token_id: tokenIds[2], approved_account_id: bob.accountId },
+      { token_id: tokenIds[3], approved_account_id: bob.accountId },
     ],
     "revoking all"
   );
@@ -399,6 +449,12 @@ test("approvals::minting", async (test) => {
     test.log(e);
     test.fail();
   };
+  const CHANGE_MINTERS_METHOD =
+    MB_VERSION === "v1" ? "batch_change_minters" : "batch_change_creators";
+  const CHECK_MINTERS_METHOD =
+    MB_VERSION === "v1" ? "check_is_minter" : "check_is_creator";
+  const LIST_MINTERS_METHOD =
+    MB_VERSION === "v1" ? "list_minters" : "list_creators";
 
   // ---------------------------- authorized mint ----------------------------
   // TODO::store::low: this increases storage, shouldn't it then require
@@ -407,12 +463,11 @@ test("approvals::minting", async (test) => {
   const grantMinterCall = await alice
     .callRaw(
       store,
-      "batch_change_minters",
+      CHANGE_MINTERS_METHOD,
       { grant: [bob.accountId] },
       { attachedDeposit: "1" }
     )
     .catch(failPromiseRejection("grant minting rights"));
-
   // check logs
   assertEventLogs(
     test,
@@ -434,7 +489,7 @@ test("approvals::minting", async (test) => {
       async () =>
         bob.call(
           store,
-          "batch_change_minters",
+          CHANGE_MINTERS_METHOD,
           { grant: [bob.accountId] },
           { attachedDeposit: "1" }
         ),
@@ -444,24 +499,23 @@ test("approvals::minting", async (test) => {
     //  require deposit
     [
       async () =>
-        alice.call(store, "batch_change_minters", { grant: [bob.accountId] }),
+        alice.call(store, CHANGE_MINTERS_METHOD, { grant: [bob.accountId] }),
       "Requires attached deposit of exactly 1 yoctoNEAR",
       "Alice tried to grant minting rights without yoctoNEAR deposit",
     ],
   ]);
-
   // check contract state (implicitly tests `check_is_minter`)
   test.true(
-    await store.view("check_is_minter", { account_id: bob.accountId }),
+    await store.view(CHECK_MINTERS_METHOD, { account_id: bob.accountId }),
     "Failed to grant minting rights to Bob"
   );
   test.false(
-    await store.view("check_is_minter", { account_id: carol.accountId }),
+    await store.view(CHECK_MINTERS_METHOD, { account_id: carol.accountId }),
     "How on earth did Carol get minting rights?"
   );
   // checking the list_minters method
   test.deepEqual(
-    await store.view("list_minters"),
+    await store.view(LIST_MINTERS_METHOD),
     [alice.accountId, bob.accountId],
     "Bad minters list after granting minting rigths to Bob"
   );
@@ -470,19 +524,18 @@ test("approvals::minting", async (test) => {
   // TODO::store::low: shouldn't third party minting require deposits to
   //  cover storage costs? -> otherwise third-party minters might exhaust a
   //  contracts storage
-  const batchMintCall = await bob
-    .callRaw(
-      store,
-      "nft_batch_mint",
-      { owner_id: bob.accountId, num_to_mint: 2, metadata: {} },
-      { attachedDeposit: mintingDeposit({ n_tokens: 1, n_splits: 2 }) }
-    )
-    .catch(failPromiseRejection("approved minting"));
+  const mintCall = await batchMint({
+    owner: bob,
+    store,
+    num_to_mint: 2,
+  });
+  const tokenIds = parseEvent((mintCall as TransactionResult).logs[0]).data[0]
+    .token_ids as string[];
 
   // check logs
   assertEventLogs(
     test,
-    (batchMintCall as TransactionResult).logs,
+    (mintCall as TransactionResult).logs,
     [
       {
         standard: "nep171",
@@ -491,7 +544,7 @@ test("approvals::minting", async (test) => {
         data: [
           {
             owner_id: bob.accountId,
-            token_ids: ["0", "1"],
+            token_ids: tokenIds,
             memo: JSON.stringify({
               royalty: null,
               split_owners: null,
@@ -510,8 +563,8 @@ test("approvals::minting", async (test) => {
   assertContractTokenOwners(
     { test, store },
     [
-      { token_id: "0", owner_id: bob.accountId },
-      { token_id: "1", owner_id: bob.accountId },
+      { token_id: tokenIds[0], owner_id: bob.accountId },
+      { token_id: tokenIds[1], owner_id: bob.accountId },
     ],
     "approved minting"
   );
@@ -520,7 +573,7 @@ test("approvals::minting", async (test) => {
   const revokeMinterCall = await alice
     .callRaw(
       store,
-      "batch_change_minters",
+      CHANGE_MINTERS_METHOD,
       { revoke: [bob.accountId] },
       { attachedDeposit: "1" }
     )
@@ -545,7 +598,7 @@ test("approvals::minting", async (test) => {
     // requires yoctoNEAR deposit
     [
       async () =>
-        alice.call(store, "batch_change_minters", { revoke: [bob.accountId] }),
+        alice.call(store, CHANGE_MINTERS_METHOD, { revoke: [bob.accountId] }),
       "Requires attached deposit of exactly 1 yoctoNEAR",
       "Alice tried to revoke minting rights without yoctoNEAR deposit",
     ],
@@ -554,7 +607,7 @@ test("approvals::minting", async (test) => {
       async () =>
         alice.call(
           store,
-          "batch_change_minters",
+          CHANGE_MINTERS_METHOD,
           { revoke: [alice.accountId] },
           { attachedDeposit: "1" }
         ),
@@ -565,12 +618,12 @@ test("approvals::minting", async (test) => {
 
   // check contract state
   test.false(
-    await store.view("check_is_minter", { account_id: bob.accountId }),
+    await store.view(CHECK_MINTERS_METHOD, { account_id: bob.accountId }),
     "Failed to revoke Bob's minting rights"
   );
   // checking the list_minters method
   test.deepEqual(
-    await store.view("list_minters"),
+    await store.view(LIST_MINTERS_METHOD),
     [alice.accountId],
     "Bad minters list after granting minting rights to Bob"
   );
@@ -579,7 +632,7 @@ test("approvals::minting", async (test) => {
   const batchGrantMinterCall = await alice
     .callRaw(
       store,
-      "batch_change_minters",
+      CHANGE_MINTERS_METHOD,
       { grant: [bob.accountId, carol.accountId] },
       { attachedDeposit: "1" }
     )
@@ -606,7 +659,7 @@ test("approvals::minting", async (test) => {
     "batch grant minter rights"
   );
   test.deepEqual(
-    await store.view("list_minters"),
+    await store.view(LIST_MINTERS_METHOD),
     [alice.accountId, bob.accountId, carol.accountId],
     "Bad minters list after batch granting minter rights"
   );
@@ -615,7 +668,7 @@ test("approvals::minting", async (test) => {
   const batchChangeMinterCall = await alice
     .callRaw(
       store,
-      "batch_change_minters",
+      CHANGE_MINTERS_METHOD,
       { revoke: [carol.accountId], grant: [dave.accountId] },
       { attachedDeposit: "1" }
     )
@@ -641,7 +694,7 @@ test("approvals::minting", async (test) => {
     "batch change minter rights"
   );
   test.deepEqual(
-    await store.view("list_minters"),
+    await store.view(LIST_MINTERS_METHOD),
     [alice.accountId, bob.accountId, dave.accountId],
     "Bad minters list after batch changing minter rights"
   );
@@ -650,7 +703,7 @@ test("approvals::minting", async (test) => {
   const batchRevokeMinterCall = await alice
     .callRaw(
       store,
-      "batch_change_minters",
+      CHANGE_MINTERS_METHOD,
       { revoke: [bob.accountId, dave.accountId] },
       { attachedDeposit: "1" }
     )
@@ -676,7 +729,7 @@ test("approvals::minting", async (test) => {
     "batch revoke minter rights"
   );
   test.deepEqual(
-    await store.view("list_minters"),
+    await store.view(LIST_MINTERS_METHOD),
     [alice.accountId],
     "Bad minters list after batch revoking minter rights"
   );
@@ -691,19 +744,23 @@ test("approvals::token-actions", async (test) => {
     test.fail();
   };
 
-  await batchMint({ owner: alice, store, num_to_mint: 5 }).catch(
-    failPromiseRejection("minting")
-  );
+  const mintCall = await batchMint({
+    owner: alice,
+    store,
+    num_to_mint: 5,
+  }).catch(failPromiseRejection("minting"));
+  const tokenIds = parseEvent((mintCall as TransactionResult).logs[0]).data[0]
+    .token_ids as string[];
 
   await alice
     .call(
       store,
       "nft_batch_approve",
       {
-        token_ids: ["0", "1", "2", "3"],
+        token_ids: tokenIds,
         account_id: bob.accountId,
       },
-      { attachedDeposit: mNEAR(3.21) } // no value for this in mintbase-js
+      { attachedDeposit: mNEAR(4) } // no value for this in mintbase-js
     )
     .catch(failPromiseRejection("approving"));
 
@@ -712,7 +769,7 @@ test("approvals::token-actions", async (test) => {
     .callRaw(
       store,
       "nft_transfer",
-      { receiver_id: carol.accountId, token_id: "0", approval_id: 0 },
+      { receiver_id: carol.accountId, token_id: tokenIds[0], approval_id: 0 },
       { attachedDeposit: "1" }
     )
     .catch(failPromiseRejection("transferring (approved)"));
@@ -729,7 +786,7 @@ test("approvals::token-actions", async (test) => {
             authorized_id: bob.accountId,
             old_owner_id: alice.accountId,
             new_owner_id: carol.accountId,
-            token_ids: ["0"],
+            token_ids: [tokenIds[0]],
             memo: null,
           },
         ],
@@ -745,7 +802,7 @@ test("approvals::token-actions", async (test) => {
         await bob.call(
           store,
           "nft_transfer",
-          { receiver_id: carol.accountId, token_id: "1" },
+          { receiver_id: carol.accountId, token_id: tokenIds[1] },
           { attachedDeposit: "1" }
         );
       },
@@ -757,7 +814,7 @@ test("approvals::token-actions", async (test) => {
       async () => {
         await bob.call(store, "nft_transfer", {
           receiver_id: carol.accountId,
-          token_id: "1",
+          token_id: tokenIds[1],
           approval_id: 1,
         });
       },
@@ -771,7 +828,11 @@ test("approvals::token-actions", async (test) => {
         await bob.call(
           store,
           "nft_transfer",
-          { receiver_id: carol.accountId, token_id: "0", approval_id: 0 },
+          {
+            receiver_id: carol.accountId,
+            token_id: tokenIds[0],
+            approval_id: 0,
+          },
           { attachedDeposit: "1" }
         );
       },
@@ -784,17 +845,17 @@ test("approvals::token-actions", async (test) => {
   await assertContractTokenOwners(
     { test, store },
     [
-      { token_id: "0", owner_id: carol.accountId },
-      { token_id: "1", owner_id: alice.accountId },
-      { token_id: "2", owner_id: alice.accountId },
-      { token_id: "3", owner_id: alice.accountId },
+      { token_id: tokenIds[0], owner_id: carol.accountId },
+      { token_id: tokenIds[1], owner_id: alice.accountId },
+      { token_id: tokenIds[2], owner_id: alice.accountId },
+      { token_id: tokenIds[3], owner_id: alice.accountId },
     ],
     "Bad ownership state after approved transfer"
   );
   // approval must have cleared -> FIXME: cannot check properly, because API is broken
   assertNoApproval(
     { test, store },
-    { token_id: "1", approved_account_id: bob.accountId },
+    { token_id: tokenIds[1], approved_account_id: bob.accountId },
     "Bob didn't loose approval after transfer"
   );
 });
@@ -809,10 +870,13 @@ test.skip("approvals::capping", async (test) => {
     test.log(e);
     test.fail();
   };
-  await batchMint({ owner: alice, store, num_to_mint: 1 }).catch(
-    failPromiseRejection("minting")
-  );
-  const token_id = "0";
+  const mintCall = await batchMint({
+    owner: alice,
+    store,
+    num_to_mint: 1,
+  }).catch(failPromiseRejection("minting"));
+  const token_id = parseEvent((mintCall as TransactionResult).logs[0]).data[0]
+    .token_ids[0] as string;
 
   const approved_account_ids: Record<string, number> = {};
   for (let i = 0; i < 100; i++) {
