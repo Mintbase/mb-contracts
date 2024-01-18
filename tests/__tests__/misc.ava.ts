@@ -11,7 +11,7 @@ import {
   assertContractPanics,
   changeSettingsData,
 } from "./utils/index.js";
-import { CHANGE_SETTING_VERSION, setup } from "./setup.js";
+import { CHANGE_SETTING_VERSION, MB_VERSION, setup } from "./setup.js";
 
 const test = setup(avaTest);
 
@@ -71,10 +71,17 @@ avaTest("util tests", (test) => {
 test("ownership::transfer-store", async (test) => {
   const { alice, bob, carol, store } = test.context.accounts;
 
+  const CHANGE_MINTERS_METHOD =
+    MB_VERSION === "v1" ? "batch_change_minters" : "batch_change_creators";
+  const keepMinters = (keep: boolean) =>
+    MB_VERSION === "v1"
+      ? { keep_old_minters: keep }
+      : { keep_old_creators: keep };
+
   await alice
     .call(
       store,
-      "batch_change_minters",
+      CHANGE_MINTERS_METHOD,
       { grant: [bob] },
       { attachedDeposit: "1" }
     )
@@ -85,7 +92,10 @@ test("ownership::transfer-store", async (test) => {
     .callRaw(
       store,
       "transfer_store_ownership",
-      { new_owner: carol.accountId, keep_old_minters: false },
+      {
+        new_owner: carol.accountId,
+        ...keepMinters(false),
+      },
       { attachedDeposit: "1" }
     )
     .catch(
@@ -156,7 +166,10 @@ test("ownership::transfer-store", async (test) => {
         await alice.call(
           store,
           "transfer_store_ownership",
-          { new_owner: alice.accountId, keep_old_minters: false },
+          {
+            new_owner: alice.accountId,
+            ...keepMinters(false),
+          },
           { attachedDeposit: "1" }
         );
       },
@@ -168,7 +181,7 @@ test("ownership::transfer-store", async (test) => {
       async () => {
         await carol.call(store, "transfer_store_ownership", {
           new_owner: alice.accountId,
-          keep_old_minters: false,
+          ...keepMinters(false),
         });
       },
       "Requires attached deposit of exactly 1 yoctoNEAR",
@@ -181,7 +194,10 @@ test("ownership::transfer-store", async (test) => {
     .callRaw(
       store,
       "transfer_store_ownership",
-      { new_owner: alice.accountId, keep_old_minters: true },
+      {
+        new_owner: alice.accountId,
+        ...keepMinters(true),
+      },
       { attachedDeposit: "1" }
     )
     .catch(
