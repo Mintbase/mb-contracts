@@ -14,10 +14,14 @@ export * from "./payouts.js";
 export * from "./download-contracts.js";
 
 // ---------------------------------- misc ---------------------------------- //
-export function parseEvent(log: string) {
+function parseEvent(log: string) {
   if (log.slice(0, 11) !== "EVENT_JSON:")
     throw new Error(`${log}: Not an event log`);
   return JSON.parse(log.slice(11).trimStart());
+}
+
+export function getTokenIds(result: TransactionResult): string[] {
+  return parseEvent(result.logs[0]).data[0].token_ids;
 }
 
 export async function batchMint({

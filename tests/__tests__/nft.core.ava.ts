@@ -10,7 +10,7 @@ import {
   Tgas,
   mintingDeposit,
   batchMint,
-  parseEvent,
+  getTokenIds,
 } from "./utils/index.js";
 import { MB_VERSION, setup } from "./setup.js";
 
@@ -58,8 +58,7 @@ test("core", async (test) => {
   //   )
   //   .catch(failPromiseRejection(test, "minting"));
   const mintCall = await batchMint({ owner: alice, store, num_to_mint: 6 });
-  const tokenIds = parseEvent((mintCall as TransactionResult).logs[0]).data[0]
-    .token_ids as string[];
+  const tokenIds = getTokenIds(mintCall);
 
   // check minting logs
   assertEventLogs(

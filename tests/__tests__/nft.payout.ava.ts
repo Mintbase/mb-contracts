@@ -1,5 +1,5 @@
 import avaTest from "ava";
-import { NEAR, failPromiseRejection, mintingDeposit } from "./utils/index.js";
+import { NEAR, mintingDeposit } from "./utils/index.js";
 import { MB_VERSION, setup } from "./setup.js";
 import { NearAccount } from "near-workspaces";
 

@@ -10,9 +10,8 @@ import {
   getBalance,
   assertContractTokenOwners,
   assertNoApproval,
-  mintingDeposit,
   changeSettingsData,
-  parseEvent,
+  getTokenIds,
 } from "./utils/index.js";
 import { setup, CHANGE_SETTING_VERSION, MB_VERSION } from "./setup.js";
 
@@ -32,8 +31,7 @@ test("approvals::core", async (test) => {
     store,
     num_to_mint: 4,
   }).catch(failPromiseRejection("minting"));
-  const tokenIds = parseEvent((mintCall as TransactionResult).logs[0]).data[0]
-    .token_ids as string[];
+  const tokenIds = getTokenIds(mintCall as TransactionResult);
   // // assert correctness of current owners
   // await assertContractTokenOwners(
   //   test,
@@ -529,8 +527,7 @@ test("approvals::minting", async (test) => {
     store,
     num_to_mint: 2,
   });
-  const tokenIds = parseEvent((mintCall as TransactionResult).logs[0]).data[0]
-    .token_ids as string[];
+  const tokenIds = getTokenIds(mintCall);
 
   // check logs
   assertEventLogs(
@@ -749,8 +746,7 @@ test("approvals::token-actions", async (test) => {
     store,
     num_to_mint: 5,
   }).catch(failPromiseRejection("minting"));
-  const tokenIds = parseEvent((mintCall as TransactionResult).logs[0]).data[0]
-    .token_ids as string[];
+  const tokenIds = getTokenIds(mintCall as TransactionResult);
 
   await alice
     .call(
@@ -875,8 +871,7 @@ test.skip("approvals::capping", async (test) => {
     store,
     num_to_mint: 1,
   }).catch(failPromiseRejection("minting"));
-  const token_id = parseEvent((mintCall as TransactionResult).logs[0]).data[0]
-    .token_ids[0] as string;
+  const token_id = getTokenIds(mintCall as TransactionResult)[0];
 
   const approved_account_ids: Record<string, number> = {};
   for (let i = 0; i < 100; i++) {
