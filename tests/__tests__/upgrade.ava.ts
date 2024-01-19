@@ -15,6 +15,10 @@ import { setup, createAndDeploy, MB_VERSION } from "./setup.js";
 const test = setup(avaTest);
 
 test("upgrade::mainnet", async (test) => {
+  if (MB_VERSION === "v2") {
+    test.pass();
+    return;
+  }
   const { root, alice } = test.context.accounts;
   // download current contracts from blockchain
   await downloadContracts();

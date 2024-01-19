@@ -171,7 +171,7 @@ test("interop-market::near-offer-below-ask", async (test) => {
 //   );
 // });
 
-// // ----------------------- checking referral support ------------------------ //
+// ----------------------- checking referral support ------------------------ //
 test("interop-market::near-affiliate", async (test) => {
   const {
     root,
@@ -302,9 +302,9 @@ test("interop-market::near-referrer", async (test) => {
   );
 });
 
-// // ---------------------------- checking payouts ---------------------------- //
+// ---------------------------- checking payouts ---------------------------- //
 
-test("interop-market::near-payouts", async (test) => {
+test("interop-market::near-payout", async (test) => {
   const { alice, bob, carol, newMarket: market, store } = test.context.accounts;
 
   const tokenId = await mintAndList({ alice, market, store });
@@ -426,7 +426,7 @@ test("interop-market::near-non-market-transfer", async (test) => {
   await checkFailedBuy(test, { alice, bob, market, store }, tokenId);
 });
 
-test("interop-market::near-revoked-approvals", async (test) => {
+test("interop-market::near-revoked-approval", async (test) => {
   const { alice, bob, newMarket: market, store } = test.context.accounts;
 
   const tokenId = await mintAndList({ alice, market, store });
@@ -441,7 +441,7 @@ test("interop-market::near-revoked-approvals", async (test) => {
   await checkFailedBuy(test, { alice, bob, market, store }, tokenId);
 });
 
-test("interop-market::near-approvals", async (test) => {
+test("interop-market::near-updated-approval", async (test) => {
   const { alice, bob, newMarket: market, store } = test.context.accounts;
 
   const tokenId = await mintAndList({ alice, market, store });

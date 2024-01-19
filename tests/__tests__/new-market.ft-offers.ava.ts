@@ -9,7 +9,8 @@ import {
 import { getPanic } from "./utils/panics.js";
 import { getEvent } from "./utils/events.js";
 import { createPayouts } from "./utils/payouts.js";
-import setup, { createAndDeploy, mint } from "./setup.js";
+import setup, { createAndDeploy } from "./setup.js";
+import { batchMint, getTokenIds } from "./utils/index.js";
 
 const test = setup(avaTest);
 
@@ -27,7 +28,8 @@ const mintAndList = async ({
   store,
   wnear,
 }: Record<string, NearAccount>) => {
-  const token_id = (await mint({ minter: alice, store, n: 1 }))[0];
+  const mintCall = await batchMint({ owner: alice, store, num_to_mint: 1 });
+  const tokenId = getTokenIds(mintCall)[0];
 
   await alice.call(
     market,
@@ -40,7 +42,7 @@ const mintAndList = async ({
     store,
     "nft_approve",
     {
-      token_id,
+      token_id: tokenId,
       account_id: market.accountId,
       msg: JSON.stringify({
         price: nearToYocto("1"),
@@ -53,7 +55,7 @@ const mintAndList = async ({
     }
   );
 
-  return token_id;
+  return tokenId;
 };
 
 const wrapNear = async ({
@@ -82,11 +84,11 @@ const getWnearBalance = async ({
 }): Promise<BN> =>
   new BN(await wnear.view("ft_balance_of", { account_id: account.accountId }));
 
-test("Offers in NEAR are rejected (FT)", async (test) => {
+test("interop-market::ft-offer-in-near", async (test) => {
   const { root, alice, bob, newMarket: market, store } = test.context.accounts;
   const wnear = await deployWnear(root);
 
-  await mintAndList({ alice, market, store, wnear });
+  const tokenId = await mintAndList({ alice, market, store, wnear });
 
   const preMarketBalance = await getBalance(market);
   const preAliceBalance = await getBalance(alice);
@@ -95,7 +97,7 @@ test("Offers in NEAR are rejected (FT)", async (test) => {
   const buyCall = await bob.callRaw(
     market,
     "buy",
-    { nft_contract_id: store.accountId, token_id: "0" },
+    { nft_contract_id: store.accountId, token_id: tokenId },
     { attachedDeposit: nearToYocto("0.9") as string }
   );
   test.is(
@@ -126,14 +128,14 @@ test("Offers in NEAR are rejected (FT)", async (test) => {
   );
 });
 
-test("Offers in wrong FT are rejected (FT)", async (test) => {
+test("interop-market::ft-wrong-token", async (test) => {
   const { root, alice, bob, newMarket: market, store } = test.context.accounts;
   const wnear = await deployWnear(root);
 
   const getOwner = async ({ token_id }: { token_id: string }) =>
     ((await store.view("nft_token", { token_id })) as { owner_id: string })
       .owner_id;
-  await mintAndList({ alice, market, store, wnear });
+  const tokenId = await mintAndList({ alice, market, store, wnear });
   const wnear2 = await createAndDeploy(root, "wnear2", {
     codePath: "../wasm/wnear.wasm",
     initMethod: "new",
@@ -157,7 +159,7 @@ test("Offers in wrong FT are rejected (FT)", async (test) => {
     wnear: wnear2,
   });
 
-  test.is(await getOwner({ token_id: "0" }), alice.accountId);
+  test.is(await getOwner({ token_id: tokenId }), alice.accountId);
   const buyCall = await bob.callRaw(
     wnear2,
     "ft_transfer_call",
@@ -166,7 +168,7 @@ test("Offers in wrong FT are rejected (FT)", async (test) => {
       amount: nearToYocto("0.5"),
       msg: JSON.stringify({
         nft_contract_id: store.accountId,
-        token_id: "0",
+        token_id: tokenId,
       }),
     },
     { attachedDeposit: "1", gas: Gas.parse("299 Tgas") }
@@ -176,7 +178,7 @@ test("Offers in wrong FT are rejected (FT)", async (test) => {
     buyCall.logs[1],
     `This NFT can only be bought with FTs from ${wnear2.accountId}, refunding.`
   );
-  test.is(await getOwner({ token_id: "0" }), alice.accountId);
+  test.is(await getOwner({ token_id: tokenId }), alice.accountId);
 
   const postAliceBalance = await getWnearBalance({
     account: alice,
@@ -199,14 +201,14 @@ test("Offers in wrong FT are rejected (FT)", async (test) => {
   test.true(postBobBalance.eq(preBobBalance));
 });
 
-test("Offers below ask are rejected (FT)", async (test) => {
+test("interop-market::ft-offer-below-ask", async (test) => {
   const { root, alice, bob, newMarket: market, store } = test.context.accounts;
   const wnear = await deployWnear(root);
 
   const getOwner = async ({ token_id }: { token_id: string }) =>
     ((await store.view("nft_token", { token_id })) as { owner_id: string })
       .owner_id;
-  await mintAndList({ alice, market, store, wnear });
+  const tokenId = await mintAndList({ alice, market, store, wnear });
   await wrapNear({ account: alice, wnear, amount: "0.5" });
   await wrapNear({ account: market, wnear, amount: "0.5" });
   await wrapNear({ account: bob, wnear, amount: "3" });
@@ -215,7 +217,7 @@ test("Offers below ask are rejected (FT)", async (test) => {
   const preMarketBalance = await getWnearBalance({ account: market, wnear });
   const preBobBalance = await getWnearBalance({ account: bob, wnear });
 
-  test.is(await getOwner({ token_id: "0" }), alice.accountId);
+  test.is(await getOwner({ token_id: tokenId }), alice.accountId);
   const buyCall = await bob.callRaw(
     wnear,
     "ft_transfer_call",
@@ -224,7 +226,7 @@ test("Offers below ask are rejected (FT)", async (test) => {
       amount: nearToYocto("0.5"),
       msg: JSON.stringify({
         nft_contract_id: store.accountId,
-        token_id: "0",
+        token_id: tokenId,
       }),
     },
     { attachedDeposit: "1", gas: Gas.parse("299 Tgas") }
@@ -234,7 +236,7 @@ test("Offers below ask are rejected (FT)", async (test) => {
     buyCall.logs[1],
     "You have not supplied sufficient funds to buy this token, refunding."
   );
-  test.is(await getOwner({ token_id: "0" }), alice.accountId);
+  test.is(await getOwner({ token_id: tokenId }), alice.accountId);
 
   const postAliceBalance = await getWnearBalance({ account: alice, wnear });
   const postMarketBalance = await getWnearBalance({ account: market, wnear });
@@ -248,14 +250,14 @@ test("Offers below ask are rejected (FT)", async (test) => {
   test.true(postBobBalance.eq(preBobBalance));
 });
 
-test("Offers above ask are executed (FT)", async (test) => {
+test("interop-market::ft-ffers", async (test) => {
   const { root, alice, bob, newMarket: market, store } = test.context.accounts;
   const wnear = await deployWnear(root);
 
   const getOwner = async ({ token_id }: { token_id: string }) =>
     ((await store.view("nft_token", { token_id })) as { owner_id: string })
       .owner_id;
-  await mintAndList({ alice, market, store, wnear });
+  const tokenId = await mintAndList({ alice, market, store, wnear });
   await wrapNear({ account: alice, wnear, amount: "0.5" });
   await wrapNear({ account: market, wnear, amount: "0.5" });
   await wrapNear({ account: bob, wnear, amount: "3" });
@@ -264,7 +266,7 @@ test("Offers above ask are executed (FT)", async (test) => {
   const preMarketBalance = await getWnearBalance({ account: market, wnear });
   const preBobBalance = await getWnearBalance({ account: bob, wnear });
 
-  test.is(await getOwner({ token_id: "0" }), alice.accountId);
+  test.is(await getOwner({ token_id: tokenId }), alice.accountId);
   const buyCall = await bob.callRaw(
     wnear,
     "ft_transfer_call",
@@ -273,7 +275,7 @@ test("Offers above ask are executed (FT)", async (test) => {
       amount: nearToYocto("2"),
       msg: JSON.stringify({
         nft_contract_id: store.accountId,
-        token_id: "0",
+        token_id: tokenId,
       }),
     },
     { attachedDeposit: "1", gas: Gas.parse("299 Tgas") }
@@ -285,7 +287,7 @@ test("Offers above ask are executed (FT)", async (test) => {
     event: "nft_make_offer",
     data: {
       nft_contract_id: store.accountId,
-      nft_token_id: "0",
+      nft_token_id: tokenId,
       nft_approval_id: 0,
       offer_id: 0,
       offerer_id: bob.accountId,
@@ -305,7 +307,7 @@ test("Offers above ask are executed (FT)", async (test) => {
     event: "nft_sale",
     data: {
       nft_contract_id: store.accountId,
-      nft_token_id: "0",
+      nft_token_id: tokenId,
       nft_approval_id: 0,
       accepted_offer_id: 0,
       currency: `ft::${wnear.accountId}`,
@@ -316,7 +318,7 @@ test("Offers above ask are executed (FT)", async (test) => {
       mintbase_amount: "50000000000000000000000",
     },
   });
-  test.is(await getOwner({ token_id: "0" }), bob.accountId);
+  test.is(await getOwner({ token_id: tokenId }), bob.accountId);
 
   const postAliceBalance = await getWnearBalance({ account: alice, wnear });
   const postMarketBalance = await getWnearBalance({ account: market, wnear });
@@ -330,8 +332,8 @@ test("Offers above ask are executed (FT)", async (test) => {
   test.true(postBobBalance.eq(preBobBalance.sub(nearToBn("2"))));
 });
 
-// // ----------------------- checking referral support ------------------------ //
-test("Affiliations work (FT)", async (test) => {
+// ----------------------- checking referral support ------------------------ //
+test("interop-market::ft-affiliate", async (test) => {
   const {
     root,
     alice,
@@ -342,7 +344,7 @@ test("Affiliations work (FT)", async (test) => {
   } = test.context.accounts;
   const wnear = await deployWnear(root);
 
-  await mintAndList({ alice, market, store, wnear });
+  const tokenId = await mintAndList({ alice, market, store, wnear });
   await root.call(
     market,
     "add_affiliate",
@@ -367,7 +369,7 @@ test("Affiliations work (FT)", async (test) => {
       amount: nearToYocto("2"),
       msg: JSON.stringify({
         nft_contract_id: store.accountId,
-        token_id: "0",
+        token_id: tokenId,
         affiliate_id: bob.accountId,
       }),
     },
@@ -389,9 +391,9 @@ test("Affiliations work (FT)", async (test) => {
   test.true(postCarolBalance.eq(preCarolBalance.sub(nearToBn("2"))));
 });
 
-// // ---------------------------- checking payouts ---------------------------- //
+// ---------------------------- checking payouts ---------------------------- //
 
-test("Payouts are respected (FT)", async (test) => {
+test("interop-market::ft-payout", async (test) => {
   const {
     root,
     alice,
@@ -402,12 +404,12 @@ test("Payouts are respected (FT)", async (test) => {
   } = test.context.accounts;
   const wnear = await deployWnear(root);
 
-  await mintAndList({ alice, market, store, wnear });
+  const tokenId = await mintAndList({ alice, market, store, wnear });
   await alice.call(
     store,
     "set_split_owners",
     {
-      token_ids: ["0"],
+      token_ids: [tokenId],
       split_between: createPayouts([
         [alice, 6000],
         [bob, 4000],
@@ -425,7 +427,7 @@ test("Payouts are respected (FT)", async (test) => {
   const preBobBalance = await getWnearBalance({ account: bob, wnear });
   const preCarolBalance = await getWnearBalance({ account: carol, wnear });
 
-  const buyCall = await carol.callRaw(
+  await carol.callRaw(
     wnear,
     "ft_transfer_call",
     {
@@ -433,7 +435,7 @@ test("Payouts are respected (FT)", async (test) => {
       amount: nearToYocto("2"),
       msg: JSON.stringify({
         nft_contract_id: store.accountId,
-        token_id: "0",
+        token_id: tokenId,
       }),
     },
     { attachedDeposit: "1", gas: Gas.parse("299 Tgas") }
@@ -454,9 +456,9 @@ test("Payouts are respected (FT)", async (test) => {
   test.true(postCarolBalance.eq(preCarolBalance.sub(nearToBn("2"))));
 });
 
-// // -------------------------- checking edge cases --------------------------- //
-// // TODO: move some of the edge cases down here
-// // TODO: check logs for refund reasoning
+// -------------------------- checking edge cases --------------------------- //
+// TODO: move some of the edge cases down here
+// TODO: check logs for refund reasoning
 const checkFailedBuy = async (
   test: ExecutionContext,
   { alice, bob, market, store, wnear }: Record<string, NearAccount>,
@@ -501,7 +503,7 @@ const checkFailedBuy = async (
   test.true(postBobBalance.eq(preBobBalance));
 };
 
-test("Non-market transfers lead to graceful failures", async (test) => {
+test("interop-market::ft-non-market-transfer", async (test) => {
   const { root, alice, bob, newMarket: market, store } = test.context.accounts;
   const wnear = await deployWnear(root);
 
@@ -520,7 +522,7 @@ test("Non-market transfers lead to graceful failures", async (test) => {
   await checkFailedBuy(test, { alice, bob, market, store, wnear }, token_id);
 });
 
-test("Revoking approvals lead to graceful failures", async (test) => {
+test("interop-market::ft-revoked-approval", async (test) => {
   const { root, alice, bob, newMarket: market, store } = test.context.accounts;
   const wnear = await deployWnear(root);
 
@@ -539,7 +541,7 @@ test("Revoking approvals lead to graceful failures", async (test) => {
   await checkFailedBuy(test, { alice, bob, market, store, wnear }, token_id);
 });
 
-test("Badly updated approvals lead to graceful failures", async (test) => {
+test("interop-market::ft-updated-approval", async (test) => {
   const { root, alice, bob, newMarket: market, store } = test.context.accounts;
   const wnear = await deployWnear(root);
 
