@@ -5,7 +5,6 @@ import {
   getBalance,
   diffCheck,
   nearToBn,
-  mintingDeposit,
 } from "./utils/balances.js";
 import { getEvent } from "./utils/events.js";
 import { getPanic } from "./utils/panics.js";
