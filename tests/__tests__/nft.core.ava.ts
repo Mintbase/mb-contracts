@@ -43,20 +43,6 @@ test("core", async (test) => {
   //  - taken names, in this case "alice"
 
   // minting
-  // const mintCall = await alice
-  //   .callRaw(
-  //     store,
-  //     "nft_batch_mint",
-  //     { owner_id: alice.accountId, metadata: {}, num_to_mint: 6 },
-  //     {
-  //       attachedDeposit: mintingDeposit({
-  //         n_tokens: 6,
-  //         n_royalties: 0,
-  //         n_splits: 0,
-  //       }),
-  //     }
-  //   )
-  //   .catch(failPromiseRejection(test, "minting"));
   const mintCall = await batchMint({ owner: alice, store, num_to_mint: 6 });
   const tokenIds = getTokenIds(mintCall);
 
@@ -93,8 +79,6 @@ test("core", async (test) => {
     tokenIds.map((id) => ({ token_id: id, owner_id: alice.accountId })),
     "After minting"
   ).catch(failPromiseRejection(test, "checking token format"));
-  // test.pass();
-  // return;
 
   if (MB_VERSION == "v1") {
     await assertContractPanics(test, [

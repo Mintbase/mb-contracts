@@ -15,6 +15,7 @@ import { setup, createAndDeploy, MB_VERSION } from "./setup.js";
 const test = setup(avaTest);
 
 test("upgrade::mainnet", async (test) => {
+  // TODO: remove once v2 is deployed
   if (MB_VERSION === "v2") {
     test.pass();
     return;
