@@ -34,6 +34,7 @@ impl MintbaseStore {
         royalty_args: Option<RoyaltyArgs>,
         minters_allowlist: Option<Vec<AccountId>>,
         minting_cap: Option<u32>,
+        last_possible_mint: Option<U64>,
         price: U128,
     ) -> String {
         // metadata ID: either predefined (must not conflict with existing), or
@@ -87,6 +88,7 @@ impl MintbaseStore {
                 price: price.0,
                 minting_cap,
                 allowlist: minters_allowlist.clone(),
+                last_possible_mint: last_possible_mint.map(|t| t.0),
                 creator: creator.clone(),
                 metadata,
             },
@@ -179,6 +181,13 @@ impl MintbaseStore {
             near_assert!(
                 minting_metadata.minted + num_to_mint as u32 <= minting_cap,
                 "This mint would exceed the metadatas minting cap"
+            );
+        }
+
+        if let Some(expiry) = minting_metadata.last_possible_mint {
+            near_assert!(
+                env::block_timestamp() <= expiry,
+                "This metadata has expired and can no longer be minted on"
             );
         }
 
