@@ -245,6 +245,23 @@ impl From<TokenMetadata> for TokenMetadataCompliant {
     }
 }
 
+/// Metadata and meta-metadata for tokens minted on store v2
+#[derive(Clone, BorshDeserialize, BorshSerialize)]
+pub struct MintingMetadata {
+    /// Number of tokens minted on this metadata
+    pub minted: u32,
+    /// Number of tokens minted on this metadata
+    pub burned: u32,
+    /// Price required to mint on this metadata
+    pub price: near_sdk::Balance,
+    /// Accounts allowed to mint on this metadata, no restrictions if `None`
+    pub allowlist: Option<Vec<AccountId>>,
+    /// Creator of this metadata
+    pub creator: AccountId,
+    /// The actual metadata
+    pub metadata: TokenMetadata,
+}
+
 // -------- token owner
 // This is mostly kept here to avoid storage migrations, but this should always
 // be the `Account` variant.

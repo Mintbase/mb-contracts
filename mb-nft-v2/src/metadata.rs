@@ -54,11 +54,14 @@ impl MintbaseStore {
     /// tokens. Instead, the Metadata is stored in a Contract `LookupMap`.
     pub fn nft_token_metadata(&self, token_id: String) -> TokenMetadata {
         let token_id = parse_token_id(&token_id);
-        let (copies, _, _, _, mut metadata) = self
+        let minting_metadata = self
             .token_metadata
             .get(&self.nft_token_internal(token_id).metadata_id)
             .expect("bad metadata_id");
-        metadata.copies = Some(copies);
+        let mut metadata = minting_metadata.metadata;
+        // This conversion might fail, but we need the u16 for compatibility!
+        metadata.copies =
+            Some((minting_metadata.minted - minting_metadata.burned) as u16);
         metadata
     }
 
