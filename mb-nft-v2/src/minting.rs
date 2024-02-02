@@ -2,35 +2,21 @@ use std::convert::TryInto;
 
 use mb_sdk::{
     constants::{
-        MAX_LEN_ROYALTIES,
-        MAX_LEN_SPLITS,
-        MINIMUM_FREE_STORAGE_STAKE,
+        MAX_LEN_ROYALTIES, MAX_LEN_SPLITS, MINIMUM_FREE_STORAGE_STAKE,
         MINTING_FEE,
     },
     data::store::{
-        ComposeableStats,
-        Royalty,
-        RoyaltyArgs,
-        SplitBetweenUnparsed,
+        ComposeableStats, Royalty, RoyaltyArgs, SplitBetweenUnparsed,
         TokenMetadata,
     },
     events::store::{
-        CreateMetadataData,
-        MbStoreChangeSettingDataV020,
-        NftMintLog,
+        CreateMetadataData, MbStoreChangeSettingDataV020, NftMintLog,
         NftMintLogMemo,
     },
-    near_assert,
-    near_panic,
+    near_assert, near_panic,
     near_sdk::{
-        self,
-        assert_one_yocto,
-        env,
-        near_bindgen,
-        serde_json,
-        AccountId,
-        Balance,
-        Promise,
+        self, assert_one_yocto, env, near_bindgen, serde_json, AccountId,
+        Balance, Promise,
     },
 };
 
@@ -47,6 +33,7 @@ impl MintbaseStore {
         metadata_id: Option<U64>,
         royalty_args: Option<RoyaltyArgs>,
         minters_allowlist: Option<Vec<AccountId>>,
+        minting_cap: Option<u32>,
         price: U128,
     ) -> String {
         // metadata ID: either predefined (must not conflict with existing), or
@@ -98,6 +85,7 @@ impl MintbaseStore {
                 minted: 0,
                 burned: 0,
                 price: price.0,
+                minting_cap,
                 allowlist: minters_allowlist.clone(),
                 creator: creator.clone(),
                 metadata,
@@ -184,6 +172,13 @@ impl MintbaseStore {
             near_assert!(
                 self.tokens_minted + num_to_mint as u64 <= minting_cap,
                 "This mint would exceed the smart contracts minting cap"
+            );
+        }
+
+        if let Some(minting_cap) = minting_metadata.minting_cap {
+            near_assert!(
+                minting_metadata.minted + num_to_mint as u32 <= minting_cap,
+                "This mint would exceed the metadatas minting cap"
             );
         }
 
