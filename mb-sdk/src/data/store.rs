@@ -1,13 +1,30 @@
-use std::{collections::HashMap, fmt};
+use std::{
+    collections::HashMap,
+    fmt,
+};
 
 use near_sdk::{
-    borsh::{self, BorshDeserialize, BorshSerialize},
-    json_types::{Base64VecU8, U128},
-    serde::{ser::Serializer, Deserialize, Serialize},
+    borsh::{
+        self,
+        BorshDeserialize,
+        BorshSerialize,
+    },
+    json_types::{
+        Base64VecU8,
+        U128,
+    },
+    serde::{
+        ser::Serializer,
+        Deserialize,
+        Serialize,
+    },
     AccountId,
 };
 
-use crate::utils::{SafeFraction, TokenKey};
+use crate::utils::{
+    SafeFraction,
+    TokenKey,
+};
 
 // ------------------------ token and token metadata ------------------------ //
 /// Supports NEP-171, 177, 178, 181. Ref:
@@ -238,7 +255,7 @@ pub struct MintingMetadata {
     /// Price required to mint on this metadata
     pub price: near_sdk::Balance,
     /// Maximum amount of tokens allowed to be minted, no restrictions if `None`
-    pub minting_cap: Option<u32>,
+    pub max_supply: Option<u32>,
     /// Accounts allowed to mint on this metadata, no restrictions if `None`
     pub allowlist: Option<Vec<AccountId>>,
     /// Latest possible timestamp to mint, no restrictions if `None`. Timestamp
