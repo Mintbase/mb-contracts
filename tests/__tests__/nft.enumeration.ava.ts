@@ -1,6 +1,7 @@
 import avaTest from "ava";
-import { assertTokensAre, batchMint } from "./utils/index.js";
+import { assertTokensAre, batchMint, getTokenIds } from "./utils/index.js";
 import { setup } from "./setup.js";
+import { TransactionResult } from "near-workspaces";
 
 const test = setup(avaTest);
 
@@ -14,15 +15,19 @@ test("enumeration", async (test) => {
   };
 
   // seeding: mint 4 tokens (2 for Alice, 2 for Bob)
-  await batchMint({ owner: alice, store, num_to_mint: 2 }).catch(
-    failPromiseRejection("minting")
-  );
-  await batchMint({
+  const aliceMintCall = await batchMint({
+    owner: alice,
+    store,
+    num_to_mint: 2,
+  }).catch(failPromiseRejection("minting"));
+  const bobMintCall = await batchMint({
     owner: alice,
     store,
     num_to_mint: 2,
     owner_id: bob.accountId,
   }).catch(failPromiseRejection("minting"));
+  const aliceTokenIds = getTokenIds(aliceMintCall as TransactionResult);
+  const bobTokenIds = getTokenIds(bobMintCall as TransactionResult);
 
   // testing `nft_total_supply` and `nft_supply_for_owner`
   test.is(await store.view("nft_total_supply", {}), "4");
@@ -40,10 +45,11 @@ test("enumeration", async (test) => {
     test,
     await store.view("nft_tokens", {}),
     [
-      { token_id: "0", owner_id: alice.accountId },
-      { token_id: "1", owner_id: alice.accountId },
-      { token_id: "2", owner_id: bob.accountId },
-      { token_id: "3", owner_id: bob.accountId },
+      ...aliceTokenIds.map((id) => ({
+        token_id: id,
+        owner_id: alice.accountId,
+      })),
+      ...bobTokenIds.map((id) => ({ token_id: id, owner_id: bob.accountId })),
     ],
     "`nft_tokens({})` output is wrong"
   );
@@ -52,10 +58,7 @@ test("enumeration", async (test) => {
   assertTokensAre(
     test,
     await store.view("nft_tokens", { from_index: "2" }),
-    [
-      { token_id: "2", owner_id: bob.accountId },
-      { token_id: "3", owner_id: bob.accountId },
-    ],
+    bobTokenIds.map((id) => ({ token_id: id, owner_id: bob.accountId })),
     "`nft_tokens({ from_index })` output is wrong"
   );
 
@@ -64,8 +67,8 @@ test("enumeration", async (test) => {
     test,
     await store.view("nft_tokens", { from_index: "1", limit: 2 }),
     [
-      { token_id: "1", owner_id: alice.accountId },
-      { token_id: "2", owner_id: bob.accountId },
+      { token_id: aliceTokenIds[1], owner_id: alice.accountId },
+      { token_id: bobTokenIds[0], owner_id: bob.accountId },
     ],
     "`nft_tokens({ from_index, limit })` output is wrong"
   );
@@ -74,10 +77,7 @@ test("enumeration", async (test) => {
   assertTokensAre(
     test,
     await store.view("nft_tokens_for_owner", { account_id: bob.accountId }),
-    [
-      { token_id: "2", owner_id: bob.accountId },
-      { token_id: "3", owner_id: bob.accountId },
-    ],
+    bobTokenIds.map((id) => ({ token_id: id, owner_id: bob.accountId })),
     "`nft_tokens_for_owner({})` output is wrong"
   );
 
@@ -90,7 +90,7 @@ test("enumeration", async (test) => {
       //  index of token for this token owner? -> if token_id, then use "3"
       from_index: "1",
     }),
-    [{ token_id: "3", owner_id: bob.accountId }],
+    [{ token_id: bobTokenIds[1], owner_id: bob.accountId }],
     "`nft_tokens_for_owner({ from_index })` output is wrong"
   );
 
@@ -106,14 +106,14 @@ test("enumeration", async (test) => {
       // (see above)
       limit: 1,
     }),
-    [{ token_id: "2", owner_id: bob.accountId }],
+    [{ token_id: bobTokenIds[0], owner_id: bob.accountId }],
     "`nft_tokens_for_owner({ from_index, limit })` output is wrong"
   );
 
   await bob.call(
     store,
     "nft_batch_burn",
-    { token_ids: ["2"] },
+    { token_ids: [bobTokenIds[0]] },
     { attachedDeposit: "1" }
   );
 
@@ -122,9 +122,9 @@ test("enumeration", async (test) => {
     test,
     await store.view("nft_tokens", {}),
     [
-      { token_id: "0", owner_id: alice.accountId },
-      { token_id: "1", owner_id: alice.accountId },
-      { token_id: "3", owner_id: bob.accountId },
+      { token_id: aliceTokenIds[0], owner_id: alice.accountId },
+      { token_id: aliceTokenIds[1], owner_id: alice.accountId },
+      { token_id: bobTokenIds[1], owner_id: bob.accountId },
     ],
     "`nft_tokens({})` output is wrong after burning"
   );
@@ -135,7 +135,7 @@ test("enumeration", async (test) => {
     await store.view("nft_tokens_for_owner", {
       account_id: bob.accountId,
     }),
-    [{ token_id: "3", owner_id: bob.accountId }],
+    [{ token_id: bobTokenIds[1], owner_id: bob.accountId }],
     "`nft_tokens_for_owner({})` output is wrong after burning"
   );
 });

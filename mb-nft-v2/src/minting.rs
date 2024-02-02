@@ -39,10 +39,10 @@ use crate::*;
 #[near_bindgen]
 impl MintbaseStore {
     // -------------------------- change methods ---------------------------
+    // TODO: maximum supply?
     #[payable]
     pub fn create_metadata(
         &mut self,
-        //     owner_id: AccountId,
         metadata: TokenMetadata,
         metadata_id: Option<U64>,
         royalty_args: Option<RoyaltyArgs>,
@@ -125,12 +125,13 @@ impl MintbaseStore {
     #[payable]
     pub fn mint_on_metadata(
         &mut self,
-        metadata_id: u64,
+        metadata_id: U64,
         owner_id: AccountId,
-        num_to_mint: Option<u64>,
+        num_to_mint: Option<u16>,
         token_ids: Option<Vec<U64>>,
         split_owners: Option<SplitBetweenUnparsed>,
     ) {
+        let metadata_id = metadata_id.0;
         let minter = env::predecessor_account_id();
 
         // make sure metadata exists
@@ -144,7 +145,7 @@ impl MintbaseStore {
             };
 
         // check if this account is allowed to mint this metadata
-        if let Some(allowlist) = allowlist {
+        if let Some(ref allowlist) = allowlist {
             near_assert!(
                 allowlist.contains(&minter),
                 "{} is not allowed to mint this metadata",
@@ -178,12 +179,21 @@ impl MintbaseStore {
             min_attached_deposit
         );
 
+        // TODO: is this still necessary with a per-token minting cap?
+        if let Some(minting_cap) = self.minting_cap {
+            near_assert!(
+                self.tokens_minted + num_to_mint as u64 <= minting_cap,
+                "This mint would exceed the smart contracts minting cap"
+            );
+        }
+
         // mint the tokens, store splits
         let royalty_id = match self.token_royalty.contains_key(&metadata_id) {
             true => Some(metadata_id),
             false => None,
         };
-        self.tokens_minted += num_to_mint;
+        let mut owned_set = self.get_or_make_new_owner_set(&owner_id);
+        self.tokens_minted += num_to_mint as u64;
         for &id in token_ids.iter() {
             let token = Token {
                 id,
@@ -203,7 +213,19 @@ impl MintbaseStore {
                 origin_key: None,
             };
             self.tokens.insert(&(metadata_id, id), &token);
+            owned_set.insert(&(metadata_id, id));
         }
+        self.token_metadata.insert(
+            &metadata_id,
+            &(
+                num_to_mint,
+                price,
+                allowlist,
+                creator.clone(),
+                metadata.clone(),
+            ),
+        );
+        self.tokens_per_owner.insert(&owner_id, &owned_set);
 
         // emit event
         log_nft_batch_mint(
@@ -373,9 +395,9 @@ impl MintbaseStore {
     fn get_token_ids(
         &self,
         metadata_id: u64,
-        num_to_mint: Option<u64>,
+        num_to_mint: Option<u16>,
         token_ids: Option<Vec<U64>>,
-    ) -> (u64, Vec<u64>) {
+    ) -> (u16, Vec<u64>) {
         match (num_to_mint, token_ids) {
             (None, None) => near_panic!(
                 "You are required to either specify num_to_mint or token_ids"
@@ -397,11 +419,11 @@ impl MintbaseStore {
                 (n, token_ids)
             }
             (None, Some(ids)) => (
-                ids.len() as u64,
+                ids.len() as u16,
                 self.process_tokens_ids_arg(metadata_id, ids),
             ),
             (Some(n), Some(ids)) => {
-                near_assert!(n == ids.len() as u64, "num_to_mint does not match the number of specified token IDs");
+                near_assert!(n == ids.len() as u16, "num_to_mint does not match the number of specified token IDs");
                 let ids = self.process_tokens_ids_arg(metadata_id, ids);
                 (n, ids)
             }

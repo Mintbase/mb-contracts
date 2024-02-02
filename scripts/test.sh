@@ -23,11 +23,10 @@ export PATH="/usr/local/bin:$PATH"
   exit 1
 }
 
-# FIXME: Reactivate
-# (cd tests && MB_VERSION=v2 npm test -- -c 6 --fail-fast "$@") || {
-#   kill_sandbox
-#   echo "Testing failed (v2)"
-#   exit 1
-# }
+(cd tests && MB_VERSION=v2 npm test -- -c 6 --fail-fast "$@") || {
+  kill_sandbox
+  echo "Testing failed (v2)"
+  exit 1
+}
 
 kill_sandbox

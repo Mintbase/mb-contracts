@@ -1,7 +1,7 @@
-import { NearAccount } from "near-workspaces";
+import { NearAccount, TransactionResult } from "near-workspaces";
 import { ExecutionContext } from "ava";
-import { mintingDeposit } from "./balances.js";
-import { CHANGE_SETTING_VERSION } from "../setup.js";
+import { NEAR, mintingDeposit } from "./balances.js";
+import { CHANGE_SETTING_VERSION, MB_VERSION } from "../setup.js";
 
 // TODO::testing::low: commenting all my test utils
 
@@ -14,6 +14,16 @@ export * from "./payouts.js";
 export * from "./download-contracts.js";
 
 // ---------------------------------- misc ---------------------------------- //
+function parseEvent(log: string) {
+  if (log.slice(0, 11) !== "EVENT_JSON:")
+    throw new Error(`${log}: Not an event log`);
+  return JSON.parse(log.slice(11).trimStart());
+}
+
+export function getTokenIds(result: TransactionResult): string[] {
+  return parseEvent(result.logs[0]).data[0].token_ids;
+}
+
 export async function batchMint({
   owner,
   store,
@@ -24,20 +34,45 @@ export async function batchMint({
   store: NearAccount;
   num_to_mint: number;
   owner_id?: string;
-}) {
+}): Promise<TransactionResult> {
   if (!owner_id) owner_id = owner.accountId;
+
+  if (MB_VERSION == "v1") {
+    return owner.callRaw(
+      store,
+      "nft_batch_mint",
+      {
+        owner_id,
+        num_to_mint,
+        metadata: {},
+      },
+      {
+        attachedDeposit: mintingDeposit({ n_tokens: num_to_mint }),
+      }
+    );
+
+    // return parseEvent(mintCall.logs[0]).data[0].token_ids;
+  }
+
   await owner.call(
     store,
-    "nft_batch_mint",
-    {
-      owner_id,
-      num_to_mint,
-      metadata: {},
-    },
-    {
-      attachedDeposit: mintingDeposit({ n_tokens: 4 }),
-    }
+    "create_metadata",
+    { metadata: {}, price: NEAR(0.01) },
+    { attachedDeposit: NEAR(0.1) }
   );
+
+  return owner.callRaw(
+    store,
+    "mint_on_metadata",
+    {
+      metadata_id: "0",
+      num_to_mint,
+      owner_id,
+    },
+    { attachedDeposit: NEAR(0.05) }
+  );
+
+  // return parseEvent(mintCall.logs[0]).data[0].token_ids;
 }
 
 export async function prepareTokenListing(
