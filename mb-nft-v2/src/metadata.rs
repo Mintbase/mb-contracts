@@ -1,14 +1,8 @@
 use mb_sdk::{
-    data::store::{
-        NFTContractMetadata,
-        TokenMetadata,
-    },
+    data::store::{NFTContractMetadata, TokenMetadata},
     events::store::NftContractMetadataUpdateLog,
     near_panic,
-    near_sdk::{
-        self,
-        near_bindgen,
-    },
+    near_sdk::{self, near_bindgen},
 };
 
 use crate::*;
@@ -59,9 +53,16 @@ impl MintbaseStore {
             .get(&self.nft_token_internal(token_id).metadata_id)
             .expect("bad metadata_id");
         let mut metadata = minting_metadata.metadata;
-        // This conversion might fail, but we need the u16 for compatibility!
-        metadata.copies =
-            Some((minting_metadata.minted - minting_metadata.burned) as u16);
+        // If copies would overflow, just use `None` instead. Need to keep the
+        // u16 for backwards compatibility.
+        metadata.copies = {
+            let copies_u32 = minting_metadata.minted - minting_metadata.burned;
+            if copies_u32 > u16::MAX as u32 {
+                None
+            } else {
+                Some(copies_u32 as u16)
+            }
+        };
         metadata
     }
 
