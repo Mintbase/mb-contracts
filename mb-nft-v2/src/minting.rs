@@ -8,7 +8,7 @@ use mb_sdk::{
         MINTING_FEE,
     },
     data::store::{
-        ComposeableStats,
+        ComposableStats,
         Royalty,
         RoyaltyArgs,
         SplitBetweenUnparsed,
@@ -223,7 +223,7 @@ impl MintbaseStore {
                 // These fields are theoretically unused, but stay here to share
                 // this type with NFT v1
                 loan: None,
-                composeable_stats: ComposeableStats {
+                composable_stats: ComposableStats {
                     local_depth: 0,
                     cross_contract_children: 0,
                 },

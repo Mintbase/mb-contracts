@@ -91,7 +91,7 @@ pub struct MintbaseStore {
     /// that may be on ANY contract. If the owned-token is on this contract,
     /// the id will have format "<u64>". If the token is on another contract,
     /// the token will have format "<u64>:account_id"
-    pub composeables: LookupMap<String, UnorderedSet<String>>,
+    pub composables: LookupMap<String, UnorderedSet<String>>,
     /// Lookup map for next token ID to mint for a given metadata ID
     pub next_token_id: LookupMap<u64, u64>,
     /// The number of tokens this `Store` has minted. Used to generate
@@ -142,7 +142,7 @@ impl MintbaseStore {
             token_royalty: LookupMap::new(b"c".to_vec()),
             tokens: TreeMap::new(b"d".to_vec()),
             tokens_per_owner: LookupMap::new(b"e".to_vec()),
-            composeables: LookupMap::new(b"f".to_vec()),
+            composables: LookupMap::new(b"f".to_vec()),
             next_token_id: LookupMap::new(b"g".to_vec()),
             tokens_minted: 0,
             tokens_burned: 0,
