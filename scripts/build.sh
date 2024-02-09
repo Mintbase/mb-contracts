@@ -7,7 +7,7 @@ touch wasm/mb-nft-v1.wasm
 touch wasm/mb-nft-v2.wasm
 cargo clippy -p mb-sdk -- -D warnings || exit 1
 cargo clippy -p mb-nft-v1 -- -D warnings || exit 1
-cargo clippy -p mb-nft-v2 -- -D warnings || exit 1
+cargo clippy -p mb-nft-v2 -- -D warnings -A clippy::too_many_arguments || exit 1
 cargo clippy -p mb-factory-v1 -- -D warnings || exit 1
 cargo clippy -p mb-factory-v2 -- -D warnings || exit 1
 cargo clippy -p mb-legacy-market -- -D warnings || exit 1

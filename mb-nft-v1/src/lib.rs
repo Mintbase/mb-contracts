@@ -87,7 +87,7 @@ pub struct MintbaseStore {
     /// that may be on ANY contract. If the owned-token is on this contract,
     /// the id will have format "<u64>". If the token is on another contract,
     /// the token will have format "<u64>:account_id"
-    pub composeables: LookupMap<String, UnorderedSet<String>>,
+    pub composables: LookupMap<String, UnorderedSet<String>>,
     /// The number of tokens this `Store` has minted. Used to generate
     /// `TokenId`s.
     pub tokens_minted: u64,
@@ -132,7 +132,7 @@ impl MintbaseStore {
             token_royalty: LookupMap::new(b"c".to_vec()),
             tokens: LookupMap::new(b"d".to_vec()),
             tokens_per_owner: LookupMap::new(b"e".to_vec()),
-            composeables: LookupMap::new(b"f".to_vec()),
+            composables: LookupMap::new(b"f".to_vec()),
             tokens_minted: 0,
             tokens_burned: 0,
             num_approved: 0,
@@ -214,7 +214,7 @@ impl MintbaseStore {
             token_royalty: old_state.token_royalty,
             tokens: old_state.tokens,
             tokens_per_owner: old_state.tokens_per_owner,
-            composeables: old_state.composeables,
+            composables: old_state.composables,
             tokens_minted: old_state.tokens_minted,
             tokens_burned: old_state.tokens_burned,
             num_approved: old_state.num_approved,
@@ -327,7 +327,7 @@ struct MintbaseStoreV2 {
     pub token_royalty: LookupMap<u64, (u16, Royalty)>,
     pub tokens: LookupMap<u64, Token>,
     pub tokens_per_owner: LookupMap<AccountId, UnorderedSet<u64>>,
-    pub composeables: LookupMap<String, UnorderedSet<String>>,
+    pub composables: LookupMap<String, UnorderedSet<String>>,
     pub tokens_minted: u64,
     pub tokens_burned: u64,
     pub num_approved: u64,

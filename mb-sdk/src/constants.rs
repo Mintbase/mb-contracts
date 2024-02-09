@@ -72,7 +72,7 @@ pub mod storage_bytes {
     /// - a single royalty
     /// - a single approval
     /// - an entry in the `tokens_per_account` map
-    /// - an entry in the `composeables` map
+    /// - an entry in the `composables` map
     pub const COMMON: StorageUsage = 80;
 }
 
@@ -97,7 +97,7 @@ pub mod storage_stake {
     /// - adding a single royalty
     /// - adding a single approval
     /// - adding a new entry to the `tokens_per_account` map
-    /// - adding a new entry to the `composeables` map
+    /// - adding a new entry to the `composables` map
     pub const COMMON: Balance = bytes_to_stake(super::storage_bytes::COMMON);
 
     /// Require 0.1 NEAR of storage stake to remain unused.
@@ -133,7 +133,7 @@ pub struct StorageCosts {
     /// - a single royalty
     /// - a single approval
     /// - adding a new entry to the `tokens_per_account` map
-    /// - adding a new entry to the `composeables` map
+    /// - adding a new entry to the `composables` map
     pub common: u128,
     /// base cost of storing a single NFT
     pub token: u128,
@@ -171,7 +171,7 @@ pub struct StorageCostsJson {
     /// - a single royalty
     /// - a single approval
     /// - adding a new entry to the `tokens_per_account` map
-    /// - adding a new entry to the `composeables` map
+    /// - adding a new entry to the `composables` map
     pub common: U128,
     /// base cost of storing a single NFT
     pub token: U128,

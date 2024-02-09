@@ -8,7 +8,7 @@ use mb_sdk::{
         MINTING_FEE,
     },
     data::store::{
-        ComposeableStats,
+        ComposableStats,
         Royalty,
         RoyaltyArgs,
         SplitBetweenUnparsed,
@@ -39,7 +39,6 @@ use crate::*;
 #[near_bindgen]
 impl MintbaseStore {
     // -------------------------- change methods ---------------------------
-    // TODO: maximum supply?
     #[payable]
     pub fn create_metadata(
         &mut self,
@@ -47,6 +46,8 @@ impl MintbaseStore {
         metadata_id: Option<U64>,
         royalty_args: Option<RoyaltyArgs>,
         minters_allowlist: Option<Vec<AccountId>>,
+        max_supply: Option<u32>,
+        last_possible_mint: Option<U64>,
         price: U128,
     ) -> String {
         // metadata ID: either predefined (must not conflict with existing), or
@@ -94,13 +95,16 @@ impl MintbaseStore {
         // insert metadata and royalties
         self.token_metadata.insert(
             &metadata_id,
-            &(
-                0,
-                price.0,
-                minters_allowlist.clone(),
-                creator.clone(),
+            &MintingMetadata {
+                minted: 0,
+                burned: 0,
+                price: price.0,
+                max_supply,
+                allowlist: minters_allowlist.clone(),
+                last_possible_mint: last_possible_mint.map(|t| t.0),
+                creator: creator.clone(),
                 metadata,
-            ),
+            },
         );
         checked_royalty.map(|r| self.token_royalty.insert(&metadata_id, &r));
         self.next_token_id.insert(&metadata_id, &0);
@@ -135,17 +139,15 @@ impl MintbaseStore {
         let minter = env::predecessor_account_id();
 
         // make sure metadata exists
-        let (num_tokens, price, allowlist, creator, metadata) =
-            match self.token_metadata.get(&metadata_id) {
-                None => near_panic!(
-                    "Metadata with ID {} does not exist",
-                    metadata_id
-                ),
-                Some(metadata) => metadata,
-            };
+        let mut minting_metadata = match self.token_metadata.get(&metadata_id) {
+            None => {
+                near_panic!("Metadata with ID {} does not exist", metadata_id)
+            }
+            Some(metadata) => metadata,
+        };
 
         // check if this account is allowed to mint this metadata
-        if let Some(ref allowlist) = allowlist {
+        if let Some(ref allowlist) = minting_metadata.allowlist {
             near_assert!(
                 allowlist.contains(&minter),
                 "{} is not allowed to mint this metadata",
@@ -170,9 +172,10 @@ impl MintbaseStore {
         );
 
         // are storage deposit and price attached?
-        let storage_usage = self.storage_cost_to_mint(num_tokens, num_splits);
+        let storage_usage = self.storage_cost_to_mint(num_to_mint, num_splits);
         let attached_deposit = env::attached_deposit();
-        let min_attached_deposit = storage_usage + price + MINTING_FEE;
+        let min_attached_deposit =
+            storage_usage + minting_metadata.price + MINTING_FEE;
         near_assert!(
             attached_deposit >= min_attached_deposit,
             "Attached deposit must cover storage usage, token price and minting fee ({})",
@@ -184,6 +187,20 @@ impl MintbaseStore {
             near_assert!(
                 self.tokens_minted + num_to_mint as u64 <= minting_cap,
                 "This mint would exceed the smart contracts minting cap"
+            );
+        }
+
+        if let Some(max_supply) = minting_metadata.max_supply {
+            near_assert!(
+                minting_metadata.minted + num_to_mint as u32 <= max_supply,
+                "This mint would exceed the metadatas minting cap"
+            );
+        }
+
+        if let Some(expiry) = minting_metadata.last_possible_mint {
+            near_assert!(
+                env::block_timestamp() <= expiry,
+                "This metadata has expired and can no longer be minted on"
             );
         }
 
@@ -206,7 +223,7 @@ impl MintbaseStore {
                 // These fields are theoretically unused, but stay here to share
                 // this type with NFT v1
                 loan: None,
-                composeable_stats: ComposeableStats {
+                composable_stats: ComposableStats {
                     local_depth: 0,
                     cross_contract_children: 0,
                 },
@@ -215,16 +232,8 @@ impl MintbaseStore {
             self.tokens.insert(&(metadata_id, id), &token);
             owned_set.insert(&(metadata_id, id));
         }
-        self.token_metadata.insert(
-            &metadata_id,
-            &(
-                num_to_mint,
-                price,
-                allowlist,
-                creator.clone(),
-                metadata.clone(),
-            ),
-        );
+        minting_metadata.minted += num_to_mint as u32;
+        self.token_metadata.insert(&metadata_id, &minting_metadata);
         self.tokens_per_owner.insert(&owner_id, &owned_set);
 
         // emit event
@@ -237,15 +246,15 @@ impl MintbaseStore {
             owner_id.as_str(),
             &self.token_royalty.get(&metadata_id),
             &split_owners,
-            &metadata.reference,
-            &metadata.extra,
+            &minting_metadata.metadata.reference,
+            &minting_metadata.metadata.extra,
         );
 
         // payout for creator(s) and minting fee
         self.minting_payout(
             metadata_id,
             attached_deposit - storage_usage - MINTING_FEE,
-            creator,
+            minting_metadata.creator,
         );
     }
 
@@ -329,7 +338,7 @@ impl MintbaseStore {
     ) -> Option<TokenMetadataCompliant> {
         self.token_metadata
             .get(&metadata_id.0)
-            .map(|tuple| tuple.4.into())
+            .map(|minting_metadata| minting_metadata.metadata.into())
     }
 
     // -------------------------- private methods --------------------------

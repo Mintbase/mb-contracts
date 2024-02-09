@@ -5,11 +5,11 @@ use mb_sdk::{
         YOCTO_PER_BYTE,
     },
     data::store::{
+        MintingMetadata,
         NFTContractMetadata,
         Royalty,
         SplitOwners,
         Token,
-        TokenMetadata,
         TokenMetadataCompliant,
     },
     near_assert,
@@ -34,7 +34,6 @@ use mb_sdk::{
         },
         near_bindgen,
         AccountId,
-        Balance,
         StorageUsage,
     },
 };
@@ -71,17 +70,7 @@ pub struct MintbaseStore {
     /// Token. The key is generated from `tokens_minted`. The map keeps count
     /// of how many copies of this token remain, so that the element may be
     /// dropped when the number reaches zero (ie, when tokens are burnt).
-    #[allow(clippy::type_complexity)] // sorry
-    pub token_metadata: LookupMap<
-        u64,
-        (
-            u16,                    // number of minted tokens
-            Balance,                // price
-            Option<Vec<AccountId>>, // allowlist
-            AccountId,              // creator
-            TokenMetadata,          // actual metadata
-        ),
-    >,
+    pub token_metadata: LookupMap<u64, MintingMetadata>,
     // Metadata ID for the next minted metadata
     pub metadata_id: u64,
     /// If a Minter mints more than one token at a time, all tokens will
@@ -102,7 +91,7 @@ pub struct MintbaseStore {
     /// that may be on ANY contract. If the owned-token is on this contract,
     /// the id will have format "<u64>". If the token is on another contract,
     /// the token will have format "<u64>:account_id"
-    pub composeables: LookupMap<String, UnorderedSet<String>>,
+    pub composables: LookupMap<String, UnorderedSet<String>>,
     /// Lookup map for next token ID to mint for a given metadata ID
     pub next_token_id: LookupMap<u64, u64>,
     /// The number of tokens this `Store` has minted. Used to generate
@@ -153,7 +142,7 @@ impl MintbaseStore {
             token_royalty: LookupMap::new(b"c".to_vec()),
             tokens: TreeMap::new(b"d".to_vec()),
             tokens_per_owner: LookupMap::new(b"e".to_vec()),
-            composeables: LookupMap::new(b"f".to_vec()),
+            composables: LookupMap::new(b"f".to_vec()),
             next_token_id: LookupMap::new(b"g".to_vec()),
             tokens_minted: 0,
             tokens_burned: 0,

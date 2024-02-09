@@ -338,7 +338,7 @@ impl MintbaseStore {
                 split_owners: x.split_owners,
                 minter: x.minter,
                 loan: x.loan,
-                composeable_stats: x.composeable_stats,
+                composable_stats: x.composable_stats,
                 origin_key: x.origin_key,
             }
         })
