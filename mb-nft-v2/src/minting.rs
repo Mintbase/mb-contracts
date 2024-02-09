@@ -2,35 +2,21 @@ use std::convert::TryInto;
 
 use mb_sdk::{
     constants::{
-        MAX_LEN_ROYALTIES,
-        MAX_LEN_SPLITS,
-        MINIMUM_FREE_STORAGE_STAKE,
+        MAX_LEN_ROYALTIES, MAX_LEN_SPLITS, MINIMUM_FREE_STORAGE_STAKE,
         MINTING_FEE,
     },
     data::store::{
-        ComposableStats,
-        Royalty,
-        RoyaltyArgs,
-        SplitBetweenUnparsed,
+        ComposableStats, Royalty, RoyaltyArgs, SplitBetweenUnparsed,
         TokenMetadata,
     },
     events::store::{
-        CreateMetadataData,
-        MbStoreChangeSettingDataV020,
-        NftMintLog,
+        CreateMetadataData, MbStoreChangeSettingDataV020, NftMintLog,
         NftMintLogMemo,
     },
-    near_assert,
-    near_panic,
+    near_assert, near_panic,
     near_sdk::{
-        self,
-        assert_one_yocto,
-        env,
-        near_bindgen,
-        serde_json,
-        AccountId,
-        Balance,
-        Promise,
+        self, assert_one_yocto, env, near_bindgen, serde_json, AccountId,
+        Balance, Promise,
     },
 };
 
@@ -174,8 +160,9 @@ impl MintbaseStore {
         // are storage deposit and price attached?
         let storage_usage = self.storage_cost_to_mint(num_to_mint, num_splits);
         let attached_deposit = env::attached_deposit();
-        let min_attached_deposit =
-            storage_usage + minting_metadata.price + MINTING_FEE;
+        let min_attached_deposit = storage_usage
+            + minting_metadata.price * num_to_mint as u128
+            + MINTING_FEE;
         near_assert!(
             attached_deposit >= min_attached_deposit,
             "Attached deposit must cover storage usage, token price and minting fee ({})",
