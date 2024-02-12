@@ -174,8 +174,9 @@ impl MintbaseStore {
         // are storage deposit and price attached?
         let storage_usage = self.storage_cost_to_mint(num_to_mint, num_splits);
         let attached_deposit = env::attached_deposit();
-        let min_attached_deposit =
-            storage_usage + minting_metadata.price + MINTING_FEE;
+        let min_attached_deposit = storage_usage
+            + minting_metadata.price * num_to_mint as u128
+            + MINTING_FEE;
         near_assert!(
             attached_deposit >= min_attached_deposit,
             "Attached deposit must cover storage usage, token price and minting fee ({})",

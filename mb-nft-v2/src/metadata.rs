@@ -1,8 +1,14 @@
 use mb_sdk::{
-    data::store::{NFTContractMetadata, TokenMetadata},
+    data::store::{
+        NFTContractMetadata,
+        TokenMetadata,
+    },
     events::store::NftContractMetadataUpdateLog,
     near_panic,
-    near_sdk::{self, near_bindgen},
+    near_sdk::{
+        self,
+        near_bindgen,
+    },
 };
 
 use crate::*;
