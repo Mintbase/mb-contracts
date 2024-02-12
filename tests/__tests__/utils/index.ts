@@ -69,7 +69,7 @@ export async function batchMint({
       num_to_mint,
       owner_id,
     },
-    { attachedDeposit: NEAR(0.05) }
+    { attachedDeposit: NEAR(0.05).muln(num_to_mint) }
   );
 
   // return parseEvent(mintCall.logs[0]).data[0].token_ids;
