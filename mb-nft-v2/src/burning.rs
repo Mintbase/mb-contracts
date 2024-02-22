@@ -31,13 +31,14 @@ impl MintbaseStore {
         let mut set_owned =
             self.tokens_per_owner.get(&account_id).expect("none owned");
 
-        token_ids_iter.for_each(|token_id| {
-            let token = self.nft_token_internal(token_id);
+        token_ids_iter.for_each(|token_id_tuple| {
+            let token = self.nft_token_internal(token_id_tuple);
             assert_token_unloaned!(token);
             assert_token_owned_by!(token, &account_id);
 
             // update the counts on token metadata and royalties stored
-            let metadata_id = self.nft_token_internal(token_id).metadata_id;
+            let metadata_id =
+                self.nft_token_internal(token_id_tuple).metadata_id;
             let mut minting_metadata =
                 self.token_metadata.get(&metadata_id).unwrap();
             let count = minting_metadata.minted - minting_metadata.burned;
@@ -49,8 +50,14 @@ impl MintbaseStore {
                 self.token_royalty.remove(&metadata_id);
             }
 
-            set_owned.remove(&token_id);
-            self.tokens.remove(&token_id);
+            set_owned.remove(&token_id_tuple);
+            let (metadata_id, token_id) = token.id_tuple();
+            let mut metadata_tokens = self
+                .tokens
+                .get(&metadata_id)
+                .expect("This metadata does not yet exist in storage!");
+            metadata_tokens.remove(&token_id);
+            self.tokens.insert(&metadata_id, &metadata_tokens);
         });
 
         if set_owned.is_empty() {

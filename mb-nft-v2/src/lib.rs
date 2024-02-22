@@ -83,7 +83,7 @@ pub struct MintbaseStore {
     /// the number reaches zero (ie, when tokens are burnt).
     pub token_royalty: LookupMap<u64, Royalty>,
     /// Tokens this Store has minted, excluding those that have been burned.
-    pub tokens: TreeMap<(u64, u64), Token>,
+    pub tokens: TreeMap<u64, TreeMap<u64, Token>>,
     /// A mapping from each user to the tokens owned by that user. The owner
     /// of the token is also stored on the token itself.
     pub tokens_per_owner: LookupMap<AccountId, UnorderedSet<(u64, u64)>>,
@@ -267,6 +267,17 @@ impl MintbaseStore {
             prefix.extend_from_slice(account_id.as_bytes());
             UnorderedSet::new(prefix)
         })
+    }
+
+    /// Insert modified token into storage
+    pub(crate) fn save_token(&mut self, token: &Token) {
+        let (metadata_id, token_id) = token.id_tuple();
+        let mut metadata_tokens = self
+            .tokens
+            .get(&metadata_id)
+            .expect("This metadata does not yet exist in storage!");
+        metadata_tokens.insert(&token_id, token);
+        self.tokens.insert(&metadata_id, &metadata_tokens);
     }
 }
 

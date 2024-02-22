@@ -79,7 +79,7 @@ impl MintbaseStore {
         assert_one_yocto();
 
         if token.approvals.remove(&account_id).is_some() {
-            self.tokens.insert(&token_id_tuple, &token);
+            self.save_token(&token);
             log_revoke(token_id_tuple, &account_id);
             PromiseOrValue::Promise(
                 Promise::new(env::predecessor_account_id())
@@ -104,7 +104,7 @@ impl MintbaseStore {
 
         if !token.approvals.is_empty() {
             token.approvals.clear();
-            self.tokens.insert(&token_id_tuple, &token);
+            self.save_token(&token);
             log_revoke_all(token_id_tuple);
         }
         Promise::new(env::predecessor_account_id()).transfer(refund)
@@ -213,7 +213,7 @@ impl MintbaseStore {
         let approval_id = self.num_approved;
         self.num_approved += 1;
         token.approvals.insert(account_id.clone(), approval_id);
-        self.tokens.insert(&token_id_tuple, &token);
+        self.save_token(&token);
         approval_id
     }
 

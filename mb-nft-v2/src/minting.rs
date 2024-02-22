@@ -41,6 +41,7 @@ use crate::*;
 impl MintbaseStore {
     // -------------------------- change methods ---------------------------
     #[payable]
+    // FIXME: need to update deposit
     pub fn create_metadata(
         &mut self,
         metadata: TokenMetadata,
@@ -126,6 +127,10 @@ impl MintbaseStore {
             free_storage_stake
         );
 
+        self.tokens.insert(
+            &metadata_id,
+            &TreeMap::new(format!("d{}", metadata_id).as_bytes().to_vec()),
+        );
         log_create_metadata(metadata_id, creator, minters_allowlist, price.0);
 
         metadata_id.to_string()
@@ -247,7 +252,7 @@ impl MintbaseStore {
                 },
                 origin_key: None,
             };
-            self.tokens.insert(&(metadata_id, id), &token);
+            self.save_token(&token);
             owned_set.insert(&(metadata_id, id));
         }
         minting_metadata.minted += num_to_mint as u32;
@@ -425,6 +430,10 @@ impl MintbaseStore {
         num_to_mint: Option<u16>,
         token_ids: Option<Vec<U64>>,
     ) -> (u16, Vec<u64>) {
+        let metadata_tokens = self
+            .tokens
+            .get(&metadata_id)
+            .expect("metadata existence was checked earlier");
         match (num_to_mint, token_ids) {
             (None, None) => near_panic!(
                 "You are required to either specify num_to_mint or token_ids"
@@ -436,8 +445,9 @@ impl MintbaseStore {
                     .next_token_id
                     .get(&metadata_id)
                     .expect("metadata existence was checked earlier");
+
                 while generated < n {
-                    if !self.tokens.contains_key(&(metadata_id, minted_id)) {
+                    if !metadata_tokens.contains_key(&minted_id) {
                         token_ids.push(minted_id);
                         generated += 1;
                     }
@@ -447,11 +457,15 @@ impl MintbaseStore {
             }
             (None, Some(ids)) => (
                 ids.len() as u16,
-                self.process_tokens_ids_arg(metadata_id, ids),
+                self.process_tokens_ids_arg(metadata_id, &metadata_tokens, ids),
             ),
             (Some(n), Some(ids)) => {
                 near_assert!(n == ids.len() as u16, "num_to_mint does not match the number of specified token IDs");
-                let ids = self.process_tokens_ids_arg(metadata_id, ids);
+                let ids = self.process_tokens_ids_arg(
+                    metadata_id,
+                    &metadata_tokens,
+                    ids,
+                );
                 (n, ids)
             }
         }
@@ -460,13 +474,14 @@ impl MintbaseStore {
     fn process_tokens_ids_arg(
         &self,
         metadata_id: u64,
+        metadata_tokens: &TreeMap<u64, Token>,
         token_ids: Vec<U64>,
     ) -> Vec<u64> {
         token_ids
             .into_iter()
             .map(|id| {
                 near_assert!(
-                    !self.tokens.contains_key(&(metadata_id, id.0)),
+                    !metadata_tokens.contains_key(&id.0),
                     "Token with ID {}:{} already exists",
                     metadata_id,
                     id.0
