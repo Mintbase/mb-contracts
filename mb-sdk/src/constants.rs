@@ -1,9 +1,5 @@
 use near_sdk::{
-    borsh::{
-        self,
-        BorshDeserialize,
-        BorshSerialize,
-    },
+    borsh::{self, BorshDeserialize, BorshSerialize},
     json_types::U128,
     Balance,
 };
@@ -21,6 +17,9 @@ pub const NO_DEPOSIT: Balance = 0;
 
 /// Miniscule minting fee (1 milliNEAR) to allow tracking by DappRadar
 pub const MINTING_FEE: Balance = 1_000_000_000_000_000_000_000;
+
+/// Maximum number of tokens to be minted on unlocked (dynamic) metadata
+pub const DYNAMIC_METADATA_MAX_TOKENS: u32 = 1000;
 
 /// This module holds gas costs for common operations
 pub mod gas {

@@ -1,30 +1,13 @@
-use std::{
-    collections::HashMap,
-    fmt,
-};
+use std::{collections::HashMap, fmt};
 
 use near_sdk::{
-    borsh::{
-        self,
-        BorshDeserialize,
-        BorshSerialize,
-    },
-    json_types::{
-        Base64VecU8,
-        U128,
-    },
-    serde::{
-        ser::Serializer,
-        Deserialize,
-        Serialize,
-    },
+    borsh::{self, BorshDeserialize, BorshSerialize},
+    json_types::{Base64VecU8, U128},
+    serde::{ser::Serializer, Deserialize, Serialize},
     AccountId,
 };
 
-use crate::utils::{
-    SafeFraction,
-    TokenKey,
-};
+use crate::utils::{SafeFraction, TokenKey};
 
 // ------------------------ token and token metadata ------------------------ //
 /// Supports NEP-171, 177, 178, 181. Ref:
@@ -263,6 +246,10 @@ pub struct MintingMetadata {
     pub last_possible_mint: Option<u64>,
     /// Creator of this metadata
     pub creator: AccountId,
+    /// A locked metadata may not be updated. By default all metadata is
+    /// locked. To enable dynamic NFTs metadata may be unlocked on mint.
+    /// Locking metadata is irreversible.
+    pub is_locked: bool,
     /// The actual metadata
     pub metadata: TokenMetadata,
 }

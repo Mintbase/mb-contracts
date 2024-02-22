@@ -1,11 +1,6 @@
 use mb_sdk::{
     data::store::TokenCompliant,
-    near_sdk::{
-        self,
-        json_types::U64,
-        near_bindgen,
-        AccountId,
-    },
+    near_sdk::{self, json_types::U64, near_bindgen, AccountId},
 };
 
 use crate::*;

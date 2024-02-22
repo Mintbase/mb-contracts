@@ -1,40 +1,17 @@
 use mb_sdk::{
-    constants::{
-        storage_stake,
-        StorageCosts,
-        YOCTO_PER_BYTE,
-    },
+    constants::{storage_stake, StorageCosts, YOCTO_PER_BYTE},
     data::store::{
-        MintingMetadata,
-        NFTContractMetadata,
-        Royalty,
-        SplitOwners,
-        Token,
+        MintingMetadata, NFTContractMetadata, Royalty, SplitOwners, Token,
         TokenMetadataCompliant,
     },
-    near_assert,
-    near_panic,
+    near_assert, near_panic,
     near_sdk::{
         self,
-        borsh::{
-            self,
-            BorshDeserialize,
-            BorshSerialize,
-        },
-        collections::{
-            LookupMap,
-            TreeMap,
-            UnorderedSet,
-        },
-        env,
-        ext_contract,
-        json_types::{
-            U128,
-            U64,
-        },
-        near_bindgen,
-        AccountId,
-        StorageUsage,
+        borsh::{self, BorshDeserialize, BorshSerialize},
+        collections::{LookupMap, TreeMap, UnorderedSet},
+        env, ext_contract,
+        json_types::{U128, U64},
+        near_bindgen, AccountId, StorageUsage,
     },
 };
 
@@ -54,6 +31,8 @@ mod minting;
 mod ownership;
 /// Implementing payouts as [described in the Nomicon](https://nomicon.io/Standards/NonFungibleToken/Payout).
 mod payout;
+/// Implementing NFT updates as [described in the Nomicon](https://nomicon.io/Standards/NonFungibleToken/Payout).
+mod update;
 
 // ----------------------------- smart contract ----------------------------- //
 

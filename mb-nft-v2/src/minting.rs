@@ -2,35 +2,21 @@ use std::convert::TryInto;
 
 use mb_sdk::{
     constants::{
-        MAX_LEN_ROYALTIES,
-        MAX_LEN_SPLITS,
-        MINIMUM_FREE_STORAGE_STAKE,
-        MINTING_FEE,
+        DYNAMIC_METADATA_MAX_TOKENS, MAX_LEN_ROYALTIES, MAX_LEN_SPLITS,
+        MINIMUM_FREE_STORAGE_STAKE, MINTING_FEE,
     },
     data::store::{
-        ComposableStats,
-        Royalty,
-        RoyaltyArgs,
-        SplitBetweenUnparsed,
+        ComposableStats, Royalty, RoyaltyArgs, SplitBetweenUnparsed,
         TokenMetadata,
     },
     events::store::{
-        CreateMetadataData,
-        MbStoreChangeSettingDataV020,
-        NftMintLog,
+        CreateMetadataData, MbStoreChangeSettingDataV020, NftMintLog,
         NftMintLogMemo,
     },
-    near_assert,
-    near_panic,
+    near_assert, near_panic,
     near_sdk::{
-        self,
-        assert_one_yocto,
-        env,
-        near_bindgen,
-        serde_json,
-        AccountId,
-        Balance,
-        Promise,
+        self, assert_one_yocto, env, near_bindgen, serde_json, AccountId,
+        Balance, Promise,
     },
 };
 
@@ -48,11 +34,14 @@ impl MintbaseStore {
         minters_allowlist: Option<Vec<AccountId>>,
         max_supply: Option<u32>,
         last_possible_mint: Option<U64>,
+        is_dynamic: Option<bool>,
         price: U128,
     ) -> String {
         // metadata ID: either predefined (must not conflict with existing), or
         // increasing the counter for it
         let metadata_id = self.get_metadata_id(metadata_id);
+
+        let is_locked = !is_dynamic.unwrap_or(false);
 
         // creator needs to be allowed to create metadata on this smart contract
         let creator = env::predecessor_account_id();
@@ -103,6 +92,7 @@ impl MintbaseStore {
                 allowlist: minters_allowlist.clone(),
                 last_possible_mint: last_possible_mint.map(|t| t.0),
                 creator: creator.clone(),
+                is_locked,
                 metadata,
             },
         );
@@ -139,12 +129,7 @@ impl MintbaseStore {
         let minter = env::predecessor_account_id();
 
         // make sure metadata exists
-        let mut minting_metadata = match self.token_metadata.get(&metadata_id) {
-            None => {
-                near_panic!("Metadata with ID {} does not exist", metadata_id)
-            }
-            Some(metadata) => metadata,
-        };
+        let mut minting_metadata = self.get_minting_metadata(metadata_id);
 
         // check if this account is allowed to mint this metadata
         if let Some(ref allowlist) = minting_metadata.allowlist {
@@ -155,9 +140,26 @@ impl MintbaseStore {
             )
         }
 
+        // TODO: Cannot specify token IDs for dynamic metadata, as we need to
+        // determine all token IDs for the update event. If they are not
+        // incremental, this would require iterating over all tokens in this
+        // smart contract.
+        // Alternative: Nested TreeMap for storing tokens
+        // near_assert!();
+
         // make sure token_ids and num_to_mint are not conflicting, create valid IDs if necessary
         let (num_to_mint, token_ids) =
             self.get_token_ids(metadata_id, num_to_mint, token_ids);
+
+        // Cannot mint more than NFTs than the threshold for dynamic metadata,
+        // as that would exceed the log limit when emitting the event
+        near_assert!(
+            minting_metadata.is_locked
+                || minting_metadata.minted + (num_to_mint as u32)
+                    < DYNAMIC_METADATA_MAX_TOKENS,
+            "Cannot mint more than {} tokens on dynamic metadata",
+            DYNAMIC_METADATA_MAX_TOKENS
+        );
 
         // check that splits are not too long and parse properly
         let num_splits = split_owners
@@ -484,6 +486,18 @@ impl MintbaseStore {
 
         // rest goes to the creator
         Promise::new(creator).transfer(balance);
+    }
+
+    pub(crate) fn get_minting_metadata(
+        &self,
+        metadata_id: u64,
+    ) -> MintingMetadata {
+        match self.token_metadata.get(&metadata_id) {
+            None => {
+                near_panic!("Metadata with ID {} does not exist", metadata_id)
+            }
+            Some(metadata) => metadata,
+        }
     }
 }
 
