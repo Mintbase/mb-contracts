@@ -1,6 +1,9 @@
 use mb_sdk::{
     data::store::TokenMetadata,
-    near_sdk::{self, near_bindgen},
+    near_sdk::{
+        self,
+        near_bindgen,
+    },
 };
 
 use crate::*;
@@ -24,7 +27,7 @@ impl MintbaseStore {
         );
 
         // Metadata must not be locked
-        near_assert!(minting_metadata.is_locked == false, "Metadata is locked");
+        near_assert!(!minting_metadata.is_locked, "Metadata is locked");
 
         // Update the metadata
         minting_metadata.metadata = metadata;
@@ -52,10 +55,7 @@ impl MintbaseStore {
         );
 
         // Must not be locked already
-        near_assert!(
-            minting_metadata.is_locked == false,
-            "Metadata is already locked"
-        );
+        near_assert!(!minting_metadata.is_locked, "Metadata is already locked");
 
         // Lock it
         minting_metadata.is_locked = true;

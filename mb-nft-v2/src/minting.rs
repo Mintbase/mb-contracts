@@ -2,21 +2,36 @@ use std::convert::TryInto;
 
 use mb_sdk::{
     constants::{
-        DYNAMIC_METADATA_MAX_TOKENS, MAX_LEN_ROYALTIES, MAX_LEN_SPLITS,
-        MINIMUM_FREE_STORAGE_STAKE, MINTING_FEE,
+        DYNAMIC_METADATA_MAX_TOKENS,
+        MAX_LEN_ROYALTIES,
+        MAX_LEN_SPLITS,
+        MINIMUM_FREE_STORAGE_STAKE,
+        MINTING_FEE,
     },
     data::store::{
-        ComposableStats, Royalty, RoyaltyArgs, SplitBetweenUnparsed,
+        ComposableStats,
+        Royalty,
+        RoyaltyArgs,
+        SplitBetweenUnparsed,
         TokenMetadata,
     },
     events::store::{
-        CreateMetadataData, MbStoreChangeSettingDataV020, NftMintLog,
+        CreateMetadataData,
+        MbStoreChangeSettingDataV020,
+        NftMintLog,
         NftMintLogMemo,
     },
-    near_assert, near_panic,
+    near_assert,
+    near_panic,
     near_sdk::{
-        self, assert_one_yocto, env, near_bindgen, serde_json, AccountId,
-        Balance, Promise,
+        self,
+        assert_one_yocto,
+        env,
+        near_bindgen,
+        serde_json,
+        AccountId,
+        Balance,
+        Promise,
     },
 };
 
