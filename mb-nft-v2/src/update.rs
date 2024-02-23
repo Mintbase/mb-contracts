@@ -1,7 +1,13 @@
 use mb_sdk::{
     data::store::TokenMetadata,
-    events::store::NftMetadataUpdateLog,
-    near_sdk::{self, near_bindgen},
+    events::store::{
+        MintingMetadataUpdateData,
+        NftMetadataUpdateLog,
+    },
+    near_sdk::{
+        self,
+        near_bindgen,
+    },
 };
 
 use crate::*;
@@ -64,10 +70,22 @@ impl MintbaseStore {
             .insert(&metadata_id.0, &minting_metadata);
 
         // Emit event
-        // TODO:
+        log_token_lock(metadata_id.0);
     }
 }
 
 fn log_nft_metadata_update(token_ids: Vec<String>) {
     env::log_str(&NftMetadataUpdateLog { token_ids }.serialize_event())
+}
+
+fn log_token_lock(metadata_id: u64) {
+    env::log_str(
+        &MintingMetadataUpdateData {
+            metadata_id,
+            minters_allowlist: None,
+            price: None,
+            is_dynamic: Some(false),
+        }
+        .serialize_event(),
+    )
 }

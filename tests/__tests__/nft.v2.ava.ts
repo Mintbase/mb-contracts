@@ -170,6 +170,7 @@ test("v2::minting_cap", async (test) => {
       price: NEAR(0.01),
     },
   });
+  // FIXME: assert logs with minting cap
 
   // No minting cap exists initially
   test.is(await store.view("get_minting_cap"), null);
@@ -234,7 +235,7 @@ test("v2::minting_cap", async (test) => {
     "This mint would exceed the smart contracts minting cap",
     "Minting beyond cap"
   );
-  // TODO: (low priority) cannot set set beyond already minted tokens
+  // TODO: (low priority) cannot set cap beyond already minted tokens
   // TODO: (low priority) requires yoctoNEAR deposit
 });
 
@@ -264,9 +265,13 @@ test("v2::create_metadata", async (test) => {
         event: "create_metadata",
         data: {
           creator: alice.accountId,
-          metadata_id: 0,
+          metadata_id: "0",
           minters_allowlist: null,
           price: NEAR(0.01).toString(),
+          royalty: null,
+          max_supply: null,
+          last_possible_mint: null,
+          is_locked: true,
         },
       },
     ],
@@ -292,9 +297,13 @@ test("v2::create_metadata", async (test) => {
         event: "create_metadata",
         data: {
           creator: alice.accountId,
-          metadata_id: 12,
+          metadata_id: "12",
           minters_allowlist: null,
           price: NEAR(0.01).toString(),
+          royalty: null,
+          max_supply: null,
+          last_possible_mint: null,
+          is_locked: true,
         },
       },
     ],
@@ -328,9 +337,21 @@ test("v2::create_metadata", async (test) => {
         event: "create_metadata",
         data: {
           creator: alice.accountId,
-          metadata_id: 1,
+          metadata_id: "1",
           minters_allowlist: null,
           price: NEAR(0.01).toString(),
+          royalty: {
+            percentage: { numerator: 2000 },
+            split_between: (() => {
+              const r: Record<string, { numerator: number }> = {};
+              r[alice.accountId] = { numerator: 6000 };
+              r[bob.accountId] = { numerator: 4000 };
+              return r;
+            })(),
+          },
+          max_supply: null,
+          last_possible_mint: null,
+          is_locked: true,
         },
       },
     ],
@@ -480,9 +501,13 @@ test("v2::minters_allowlist", async (test) => {
         event: "create_metadata",
         data: {
           creator: alice.accountId,
-          metadata_id: 0,
+          metadata_id: "0",
           minters_allowlist: [bob.accountId],
           price: NEAR(0.01).toString(),
+          royalty: null,
+          max_supply: null,
+          last_possible_mint: null,
+          is_locked: true,
         },
       },
     ],
@@ -540,6 +565,7 @@ test("v2::royalties", async (test) => {
       price: NEAR(0.01),
     },
   });
+  // FIXME: assert event logs
 
   const mintOnMetadataCall = await mintOnMetadata({
     bob,

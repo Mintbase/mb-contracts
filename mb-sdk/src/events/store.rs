@@ -1,9 +1,15 @@
-use near_events::{near_event_data, near_event_data_log};
+use near_events::{
+    near_event_data,
+    near_event_data_log,
+};
 #[cfg(feature = "de")]
 use near_sdk::serde::Deserialize;
 #[cfg(feature = "ser")]
 use near_sdk::serde::Serialize;
-use near_sdk::{json_types::U64, AccountId};
+use near_sdk::{
+    json_types::U64,
+    AccountId,
+};
 
 // ----------------------------- Core (NEP171) ------------------------------ //
 #[cfg_attr(feature = "all", derive(Clone, Debug))]
@@ -91,30 +97,30 @@ pub struct NftMetadataUpdateLog {
     event = "create_metadata"
 )]
 pub struct CreateMetadataData {
-    pub metadata_id: u64,
+    pub metadata_id: U64, // TODO: make sure the indexer picks this up correctly!
     pub creator: AccountId,
     pub minters_allowlist: Option<Vec<AccountId>>,
     pub price: near_sdk::json_types::U128,
-    // TODO: royalties?
-    // TODO: max_supply?
-    // TODO: last_possible_mint?
-    // TODO: is_dynamic
+    pub royalty: Option<crate::data::store::Royalty>,
+    pub max_supply: Option<u32>,
+    pub last_possible_mint: Option<U64>,
+    pub is_locked: bool,
 }
 
-// TODO: minting_metadata_update
-// #[cfg_attr(feature = "all", derive(Debug, Clone))]
-// #[near_event_data(
-//     standard = "mb_store",
-//     version = "2.0.0",
-//     event = "minting_metadata_update"
-// )]
-// pub struct MintingMetadataUpdateData {
-//     pub metadata_id: u64,
-//     pub minters_allowlist: Option<Vec<AccountId>>,
-//     pub price: near_sdk::json_types::U128,
-//     // TODO: last_possible_mint?
-//     // TODO: is_dynamic
-// }
+#[cfg_attr(feature = "all", derive(Debug, Clone))]
+#[near_event_data(
+    standard = "mb_store",
+    version = "2.0.0",
+    event = "minting_metadata_update"
+)]
+pub struct MintingMetadataUpdateData {
+    pub metadata_id: u64,
+    // TODO: method
+    pub minters_allowlist: Option<Vec<AccountId>>,
+    // TODO: method
+    pub price: Option<near_sdk::json_types::U128>,
+    pub is_dynamic: Option<bool>,
+}
 
 // ------------------------------- Approvals -------------------------------- //
 #[cfg_attr(feature = "ser", derive(near_sdk::serde::Serialize))]

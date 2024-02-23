@@ -98,22 +98,26 @@ impl MintbaseStore {
         );
 
         // insert metadata and royalties
-        self.token_metadata.insert(
-            &metadata_id,
-            &MintingMetadata {
-                minted: 0,
-                burned: 0,
-                price: price.0,
-                max_supply,
-                allowlist: minters_allowlist.clone(),
-                last_possible_mint: last_possible_mint.map(|t| t.0),
-                creator: creator.clone(),
-                is_locked,
-                metadata,
-            },
-        );
-        checked_royalty.map(|r| self.token_royalty.insert(&metadata_id, &r));
+        let minting_metadata = MintingMetadata {
+            minted: 0,
+            burned: 0,
+            price: price.0,
+            max_supply,
+            allowlist: minters_allowlist.clone(),
+            last_possible_mint: last_possible_mint.map(|t| t.0),
+            creator: creator.clone(),
+            is_locked,
+            metadata,
+        };
+        self.token_metadata.insert(&metadata_id, &minting_metadata);
+        checked_royalty
+            .as_ref()
+            .map(|r| self.token_royalty.insert(&metadata_id, r));
         self.next_token_id.insert(&metadata_id, &0);
+        self.tokens.insert(
+            &metadata_id,
+            &TreeMap::new(format!("d{}", metadata_id).as_bytes().to_vec()),
+        );
 
         // padding for updates required
         let used_storage_stake: Balance =
@@ -127,11 +131,7 @@ impl MintbaseStore {
             free_storage_stake
         );
 
-        self.tokens.insert(
-            &metadata_id,
-            &TreeMap::new(format!("d{}", metadata_id).as_bytes().to_vec()),
-        );
-        log_create_metadata(metadata_id, creator, minters_allowlist, price.0);
+        log_create_metadata(metadata_id, minting_metadata, checked_royalty);
 
         metadata_id.to_string()
     }
@@ -540,16 +540,21 @@ fn option_string_is_u64(opt_s: &Option<String>) -> bool {
 
 fn log_create_metadata(
     metadata_id: u64,
-    creator: AccountId,
-    minters_allowlist: Option<Vec<AccountId>>,
-    price: Balance,
+    minting_metadata: MintingMetadata,
+    royalty: Option<Royalty>,
 ) {
     env::log_str(
         CreateMetadataData {
-            metadata_id,
-            creator,
-            minters_allowlist,
-            price: price.into(),
+            metadata_id: metadata_id.into(),
+            creator: minting_metadata.creator,
+            minters_allowlist: minting_metadata.allowlist,
+            price: minting_metadata.price.into(),
+            royalty,
+            max_supply: minting_metadata.max_supply,
+            last_possible_mint: minting_metadata
+                .last_possible_mint
+                .map(Into::into),
+            is_locked: minting_metadata.is_locked,
         }
         .serialize_event()
         .as_str(),
