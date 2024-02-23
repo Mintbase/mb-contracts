@@ -1,15 +1,9 @@
-use near_events::{
-    near_event_data,
-    near_event_data_log,
-};
+use near_events::{near_event_data, near_event_data_log};
 #[cfg(feature = "de")]
 use near_sdk::serde::Deserialize;
 #[cfg(feature = "ser")]
 use near_sdk::serde::Serialize;
-use near_sdk::{
-    json_types::U64,
-    AccountId,
-};
+use near_sdk::{json_types::U64, AccountId};
 
 // ----------------------------- Core (NEP171) ------------------------------ //
 #[cfg_attr(feature = "all", derive(Clone, Debug))]
@@ -24,9 +18,6 @@ pub struct NftMintLog {
     pub memo: Option<String>,
 }
 
-// #[near_event_data(standard = "nep171", version = "1.0.0", event = "nft_mint")]
-// pub struct NftMintData(Vec<NftMintLog>);
-
 #[near_event_data_log(
     standard = "nep171",
     version = "1.0.0",
@@ -38,9 +29,6 @@ pub struct NftBurnLog {
     pub token_ids: Vec<String>,
     pub memo: Option<String>,
 }
-
-// #[near_event_data(standard = "nep171", version = "1.0.0", event = "nft_burn")]
-// pub struct NftBurnData(Vec<NftBurnLog>);
 
 #[cfg_attr(feature = "ser", derive(Serialize))]
 #[cfg_attr(feature = "de", derive(Deserialize))]
@@ -86,6 +74,15 @@ pub struct NftContractMetadataUpdateLog {
     pub memo: Option<String>,
 }
 
+#[near_event_data_log(
+    standard = "nep171",
+    version = "1.2.0",
+    event = "nft_metadata_update"
+)]
+pub struct NftMetadataUpdateLog {
+    pub token_ids: Vec<String>,
+}
+
 // --------------------------- Metadata creation ---------------------------- //
 #[cfg_attr(feature = "all", derive(Debug, Clone))]
 #[near_event_data(
@@ -98,7 +95,26 @@ pub struct CreateMetadataData {
     pub creator: AccountId,
     pub minters_allowlist: Option<Vec<AccountId>>,
     pub price: near_sdk::json_types::U128,
+    // TODO: royalties?
+    // TODO: max_supply?
+    // TODO: last_possible_mint?
+    // TODO: is_dynamic
 }
+
+// TODO: minting_metadata_update
+// #[cfg_attr(feature = "all", derive(Debug, Clone))]
+// #[near_event_data(
+//     standard = "mb_store",
+//     version = "2.0.0",
+//     event = "minting_metadata_update"
+// )]
+// pub struct MintingMetadataUpdateData {
+//     pub metadata_id: u64,
+//     pub minters_allowlist: Option<Vec<AccountId>>,
+//     pub price: near_sdk::json_types::U128,
+//     // TODO: last_possible_mint?
+//     // TODO: is_dynamic
+// }
 
 // ------------------------------- Approvals -------------------------------- //
 #[cfg_attr(feature = "ser", derive(near_sdk::serde::Serialize))]

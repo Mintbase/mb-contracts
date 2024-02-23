@@ -1,9 +1,7 @@
 use mb_sdk::{
     data::store::TokenMetadata,
-    near_sdk::{
-        self,
-        near_bindgen,
-    },
+    events::store::NftMetadataUpdateLog,
+    near_sdk::{self, near_bindgen},
 };
 
 use crate::*;
@@ -34,12 +32,15 @@ impl MintbaseStore {
         self.token_metadata
             .insert(&metadata_id.0, &minting_metadata);
 
-        // TODO: events
-        // Figure out token IDs and emit the event
-        // Problem: specified token IDs
-        //   Solution 1: Iterate over all minted tokens on a smart contract -> might fail
-        //   Solution 2: Cannot specify token IDs for unlocked metadata.
-        //   Solution 3: Nested structure for self.tokens
+        // Get token IDs and emit the event
+        let token_ids: Vec<_> = self
+            .tokens
+            .get(&metadata_id.0)
+            .expect("metadata existence was verified earlier")
+            .into_iter()
+            .map(|(token_id, _)| format!("{}:{}", metadata_id.0, token_id))
+            .collect();
+        log_nft_metadata_update(token_ids);
     }
 
     #[payable]
@@ -65,4 +66,8 @@ impl MintbaseStore {
         // Emit event
         // TODO:
     }
+}
+
+fn log_nft_metadata_update(token_ids: Vec<String>) {
+    env::log_str(&NftMetadataUpdateLog { token_ids }.serialize_event())
 }
