@@ -170,7 +170,6 @@ test("v2::minting_cap", async (test) => {
       price: NEAR(0.01),
     },
   });
-  // FIXME: assert logs with minting cap
 
   // No minting cap exists initially
   test.is(await store.view("get_minting_cap"), null);
@@ -278,6 +277,7 @@ test("v2::create_metadata", async (test) => {
     "creating metadata"
   );
 
+  // create metadata with explicit metadata ID
   const createMetadataCall1 = await createMetadata({
     alice,
     store,
@@ -307,55 +307,7 @@ test("v2::create_metadata", async (test) => {
         },
       },
     ],
-    "creating metadata"
-  );
-
-  const createMetadataCall2 = await createMetadata({
-    alice,
-    store,
-    args: {
-      metadata: {},
-      royalty_args: {
-        split_between: (() => {
-          const s: Record<string, number> = {};
-          s[alice.accountId] = 6000;
-          s[bob.accountId] = 4000;
-          return s;
-        })(),
-        percentage: 2000,
-      },
-      price: NEAR(0.01),
-    },
-  });
-  assertEventLogs(
-    test,
-    (createMetadataCall2 as TransactionResult).logs,
-    [
-      {
-        standard: "mb_store",
-        version: "2.0.0",
-        event: "create_metadata",
-        data: {
-          creator: alice.accountId,
-          metadata_id: "1",
-          minters_allowlist: null,
-          price: NEAR(0.01).toString(),
-          royalty: {
-            percentage: { numerator: 2000 },
-            split_between: (() => {
-              const r: Record<string, { numerator: number }> = {};
-              r[alice.accountId] = { numerator: 6000 };
-              r[bob.accountId] = { numerator: 4000 };
-              return r;
-            })(),
-          },
-          max_supply: null,
-          last_possible_mint: null,
-          is_locked: true,
-        },
-      },
-    ],
-    "creating metadata"
+    "creating metadata with explicit metadata ID"
   );
 });
 
@@ -545,7 +497,6 @@ test("v2::minters_allowlist", async (test) => {
   );
 });
 
-// TODO: verify if redundant with payout tests?
 test("v2::royalties", async (test) => {
   if (MB_VERSION == "v1") {
     test.pass();
@@ -553,7 +504,7 @@ test("v2::royalties", async (test) => {
   }
 
   const { alice, bob, store } = test.context.accounts;
-  await createMetadata({
+  const createMetadataCall = await createMetadata({
     alice,
     store,
     args: {
@@ -565,7 +516,34 @@ test("v2::royalties", async (test) => {
       price: NEAR(0.01),
     },
   });
-  // FIXME: assert event logs
+  assertEventLogs(
+    test,
+    (createMetadataCall as TransactionResult).logs,
+    [
+      {
+        standard: "mb_store",
+        version: "2.0.0",
+        event: "create_metadata",
+        data: {
+          creator: alice.accountId,
+          metadata_id: "0",
+          minters_allowlist: null,
+          price: NEAR(0.01).toString(),
+          royalty: {
+            percentage: { numerator: 2000 },
+            split_between: {
+              "a.near": { numerator: 6000 },
+              "b.near": { numerator: 4000 },
+            },
+          },
+          max_supply: null,
+          last_possible_mint: null,
+          is_locked: true,
+        },
+      },
+    ],
+    "creating metadata with royalties"
+  );
 
   const mintOnMetadataCall = await mintOnMetadata({
     bob,
@@ -612,3 +590,184 @@ test("v2::royalties", async (test) => {
     }
   );
 });
+
+test("v2::per_metadata_max_supply", async (test) => {
+  if (MB_VERSION == "v1") {
+    test.pass();
+    return;
+  }
+
+  const { alice, bob, store } = test.context.accounts;
+  const createMetadataCall = await createMetadata({
+    alice,
+    store,
+    args: {
+      metadata: {},
+      max_supply: 1,
+      price: NEAR(0.01),
+    },
+  });
+  assertEventLogs(
+    test,
+    (createMetadataCall as TransactionResult).logs,
+    [
+      {
+        standard: "mb_store",
+        version: "2.0.0",
+        event: "create_metadata",
+        data: {
+          creator: alice.accountId,
+          metadata_id: "0",
+          minters_allowlist: null,
+          price: NEAR(0.01).toString(),
+          royalty: null,
+          max_supply: 1,
+          last_possible_mint: null,
+          is_locked: true,
+        },
+      },
+    ],
+    "creating metadata with royalties"
+  );
+
+  await mintOnMetadata({
+    bob,
+    store,
+    args: {
+      metadata_id: "0",
+      num_to_mint: 1,
+      owner_id: bob.accountId,
+    },
+    deposit: 0.05,
+  }).catch(failPromiseRejection(test, "minting within max supply"));
+  // should be successful
+
+  await assertContractPanic(
+    test,
+    async () => {
+      await mintOnMetadata({
+        bob,
+        store,
+        args: {
+          metadata_id: "0",
+          num_to_mint: 1,
+          owner_id: bob.accountId,
+        },
+        deposit: 0.05,
+      });
+    },
+    "This mint would exceed the metadatas minting cap",
+    "Minting beyong max_supply"
+  );
+});
+
+test("v2::metadata_expiry", async (test) => {
+  if (MB_VERSION == "v1") {
+    test.pass();
+    return;
+  }
+
+  const last_possible_mint = (Date.now() - 1000).toString();
+  const { alice, bob, store } = test.context.accounts;
+  const createMetadataCall = await createMetadata({
+    alice,
+    store,
+    args: {
+      metadata: {},
+      last_possible_mint,
+      price: NEAR(0.01),
+    },
+  });
+  assertEventLogs(
+    test,
+    (createMetadataCall as TransactionResult).logs,
+    [
+      {
+        standard: "mb_store",
+        version: "2.0.0",
+        event: "create_metadata",
+        data: {
+          creator: alice.accountId,
+          metadata_id: "0",
+          minters_allowlist: null,
+          price: NEAR(0.01).toString(),
+          royalty: null,
+          max_supply: null,
+          last_possible_mint,
+          is_locked: true,
+        },
+      },
+    ],
+    "creating metadata with royalties"
+  );
+
+  await assertContractPanic(
+    test,
+    async () => {
+      await mintOnMetadata({
+        bob,
+        store,
+        args: {
+          metadata_id: "0",
+          num_to_mint: 1,
+          owner_id: bob.accountId,
+        },
+        deposit: 0.05,
+      });
+    },
+    "This metadata has expired and can no longer be minted on",
+    "Minting after metadata expiry"
+  );
+});
+
+// test("v2::dynamic_nfts", async (test) => {
+//   if (MB_VERSION == "v1") {
+//     test.pass();
+//     return;
+//   }
+
+//   const { alice, bob, store } = test.context.accounts;
+//   const createMetadataCall = await createMetadata({
+//     alice,
+//     store,
+//     args: {
+//       metadata: {},
+//       is_dynamic: true,
+//       price: NEAR(0.01),
+//     },
+//   });
+//   assertEventLogs(
+//     test,
+//     (createMetadataCall as TransactionResult).logs,
+//     [
+//       {
+//         standard: "mb_store",
+//         version: "2.0.0",
+//         event: "create_metadata",
+//         data: {
+//           creator: alice.accountId,
+//           metadata_id: "0",
+//           minters_allowlist: null,
+//           price: NEAR(0.01).toString(),
+//           royalty: null,
+//           max_supply: null,
+//           last_possible_mint: null,
+//           is_locked: false,
+//         },
+//       },
+//     ],
+//     "creating dynamic metadata"
+//   );
+
+//   // TODO: mint some normally
+//   // TODO: mint some with specified token ID
+
+//   // TODO: mint update
+//   // TODO: assert event
+//   // TODO: check that metadata has changed on the smart contract
+
+//   // TODO: lock metadata
+//   // TODO: assert event
+
+//   // TODO: assert that trying to update fails now
+// });
