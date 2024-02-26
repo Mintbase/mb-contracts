@@ -382,9 +382,9 @@ impl MintbaseStore {
             // create a royalty record
             + num_royalties as u128 * self.storage_costs.common
             // store the minters list
-            + num_minters as u128 * self.storage_costs.account_id
+            + num_minters as u128 * self.storage_costs.common
             // store the creator
-            + self.storage_costs.account_id
+            + self.storage_costs.common
             // price, burned, minted, max_supply, expiry, is_locked
             + self.storage_costs.common
     }
