@@ -2,36 +2,21 @@ use std::convert::TryInto;
 
 use mb_sdk::{
     constants::{
-        DYNAMIC_METADATA_MAX_TOKENS,
-        MAX_LEN_ROYALTIES,
-        MAX_LEN_SPLITS,
-        MINIMUM_FREE_STORAGE_STAKE,
-        MINTING_FEE,
+        DYNAMIC_METADATA_MAX_TOKENS, MAX_LEN_ROYALTIES, MAX_LEN_SPLITS,
+        MINIMUM_FREE_STORAGE_STAKE, MINTING_FEE,
     },
     data::store::{
-        ComposableStats,
-        Royalty,
-        RoyaltyArgs,
-        SplitBetweenUnparsed,
+        ComposableStats, Royalty, RoyaltyArgs, SplitBetweenUnparsed,
         TokenMetadata,
     },
     events::store::{
-        CreateMetadataData,
-        MbStoreChangeSettingDataV020,
-        NftMintLog,
+        CreateMetadataData, MbStoreChangeSettingDataV020, NftMintLog,
         NftMintLogMemo,
     },
-    near_assert,
-    near_panic,
+    near_assert, near_panic,
     near_sdk::{
-        self,
-        assert_one_yocto,
-        env,
-        near_bindgen,
-        serde_json,
-        AccountId,
-        Balance,
-        Promise,
+        self, assert_one_yocto, env, near_bindgen, serde_json, AccountId,
+        Balance, Promise,
     },
 };
 
@@ -159,13 +144,6 @@ impl MintbaseStore {
                 minter
             )
         }
-
-        // TODO: Cannot specify token IDs for dynamic metadata, as we need to
-        // determine all token IDs for the update event. If they are not
-        // incremental, this would require iterating over all tokens in this
-        // smart contract.
-        // Alternative: Nested TreeMap for storing tokens
-        // near_assert!();
 
         // make sure token_ids and num_to_mint are not conflicting, create valid IDs if necessary
         let (num_to_mint, token_ids) =
