@@ -2,21 +2,36 @@ use std::convert::TryInto;
 
 use mb_sdk::{
     constants::{
-        DYNAMIC_METADATA_MAX_TOKENS, MAX_LEN_ROYALTIES, MAX_LEN_SPLITS,
-        MINIMUM_FREE_STORAGE_STAKE, MINTING_FEE,
+        DYNAMIC_METADATA_MAX_TOKENS,
+        MAX_LEN_ROYALTIES,
+        MAX_LEN_SPLITS,
+        MINIMUM_FREE_STORAGE_STAKE,
+        MINTING_FEE,
     },
     data::store::{
-        ComposableStats, Royalty, RoyaltyArgs, SplitBetweenUnparsed,
+        ComposableStats,
+        Royalty,
+        RoyaltyArgs,
+        SplitBetweenUnparsed,
         TokenMetadata,
     },
     events::store::{
-        CreateMetadataData, MbStoreChangeSettingDataV020, NftMintLog,
+        CreateMetadataData,
+        MbStoreChangeSettingDataV020,
+        NftMintLog,
         NftMintLogMemo,
     },
-    near_assert, near_panic,
+    near_assert,
+    near_panic,
     near_sdk::{
-        self, assert_one_yocto, env, near_bindgen, serde_json, AccountId,
-        Balance, Promise,
+        self,
+        assert_one_yocto,
+        env,
+        near_bindgen,
+        serde_json,
+        AccountId,
+        Balance,
+        Promise,
     },
 };
 
@@ -26,7 +41,6 @@ use crate::*;
 impl MintbaseStore {
     // -------------------------- change methods ---------------------------
     #[payable]
-    // FIXME: need to update deposit
     pub fn create_metadata(
         &mut self,
         metadata: TokenMetadata,
@@ -79,7 +93,7 @@ impl MintbaseStore {
             covered_storage >= expected_storage_consumption,
             "This mint would exceed the current storage coverage of {} yoctoNEAR. Requires at least {} yoctoNEAR",
             covered_storage,
-            expected_storage_consumption
+            expected_storage_consumption + MINTING_FEE
         );
 
         // insert metadata and royalties
@@ -354,16 +368,25 @@ impl MintbaseStore {
         num_royalties: u32,
         num_minters: u64,
     ) -> near_sdk::Balance {
-        // create a metadata record
+        // - metadata_storage
+        // - minters allowlist: account_id * length
+        // - creator: account_id
+        // - royalties
+        // - burned: 5 bytes
+        // - minted: 5 bytes
+        // - max_supply: 5 bytes
+        // - expiry: 9 bytes
+        // - price: 16 bytes
+        // - is_locked: 1 bytes
         metadata_storage as u128 * self.storage_costs.storage_price_per_byte
             // create a royalty record
             + num_royalties as u128 * self.storage_costs.common
             // store the minters list
             + num_minters as u128 * self.storage_costs.account_id
-            // store the price
-            + self.storage_costs.balance
             // store the creator
             + self.storage_costs.account_id
+            // price, burned, minted, max_supply, expiry, is_locked
+            + self.storage_costs.common
     }
 
     /// Get the storage in bytes to mint `num_tokens` each with

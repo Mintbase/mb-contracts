@@ -1,10 +1,19 @@
 use mb_sdk::{
     data::store::TokenMetadata,
-    events::store::{MintingMetadataUpdateData, NftMetadataUpdateLog},
-    near_sdk::{self, near_bindgen},
+    events::store::{
+        MintingMetadataUpdateData,
+        NftMetadataUpdateLog,
+    },
+    near_sdk::{
+        self,
+        near_bindgen,
+    },
 };
 
-use crate::{minting::validate_metadata, *};
+use crate::{
+    minting::validate_metadata,
+    *,
+};
 
 #[near_bindgen]
 impl MintbaseStore {
