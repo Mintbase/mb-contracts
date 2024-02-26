@@ -18,7 +18,7 @@ use crate::{
 #[near_bindgen]
 impl MintbaseStore {
     #[payable]
-    pub fn nft_metadata_update(
+    pub fn update_metadata(
         &mut self,
         metadata_id: U64,
         metadata: TokenMetadata,

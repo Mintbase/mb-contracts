@@ -797,7 +797,7 @@ test("v2::dynamic_nfts", async (test) => {
   // update metadata
   const updateMetadataCall = await alice.callRaw(
     store,
-    "nft_metadata_update",
+    "update_metadata",
     { metadata_id: "0", metadata: { media: "bar" } },
     { attachedDeposit: "1" }
   );
@@ -822,7 +822,7 @@ test("v2::dynamic_nfts", async (test) => {
   await assertContractPanic(
     test,
     async () => {
-      await alice.call(store, "nft_metadata_update", {
+      await alice.call(store, "update_metadata", {
         metadata_id: "0",
         metadata: { media: "baz" },
       });
@@ -836,7 +836,7 @@ test("v2::dynamic_nfts", async (test) => {
     async () => {
       await bob.call(
         store,
-        "nft_metadata_update",
+        "update_metadata",
         {
           metadata_id: "0",
           metadata: { media: "baz" },
