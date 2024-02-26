@@ -1,7 +1,13 @@
 use mb_sdk::{
     data::store::TokenMetadata,
-    events::store::{MintingMetadataUpdateData, NftMetadataUpdateLog},
-    near_sdk::{self, near_bindgen},
+    events::store::{
+        MintingMetadataUpdateData,
+        NftMetadataUpdateLog,
+    },
+    near_sdk::{
+        self,
+        near_bindgen,
+    },
 };
 
 use crate::*;
@@ -21,7 +27,7 @@ impl MintbaseStore {
         near_sdk::assert_one_yocto();
         near_assert!(
             minting_metadata.creator == env::predecessor_account_id(),
-            "This method can only be called by the store owner"
+            "This method can only be called by the metadata creator"
         );
 
         // Metadata must not be locked
@@ -53,7 +59,7 @@ impl MintbaseStore {
         near_sdk::assert_one_yocto();
         near_assert!(
             minting_metadata.creator == env::predecessor_account_id(),
-            "This method can only be called by the store owner"
+            "This method can only be called by the metadata creator"
         );
 
         // Must not be locked already
@@ -76,7 +82,7 @@ fn log_nft_metadata_update(token_ids: Vec<String>) {
 fn log_token_lock(metadata_id: u64) {
     env::log_str(
         &MintingMetadataUpdateData {
-            metadata_id,
+            metadata_id: metadata_id.into(),
             minters_allowlist: None,
             price: None,
             is_dynamic: Some(false),

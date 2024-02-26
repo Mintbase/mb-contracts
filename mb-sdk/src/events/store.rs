@@ -114,7 +114,7 @@ pub struct CreateMetadataData {
     event = "minting_metadata_update"
 )]
 pub struct MintingMetadataUpdateData {
-    pub metadata_id: u64,
+    pub metadata_id: U64,
     // TODO: method
     pub minters_allowlist: Option<Vec<AccountId>>,
     // TODO: method

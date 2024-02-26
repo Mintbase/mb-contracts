@@ -720,54 +720,198 @@ test("v2::metadata_expiry", async (test) => {
   );
 });
 
-// test("v2::dynamic_nfts", async (test) => {
-//   if (MB_VERSION == "v1") {
-//     test.pass();
-//     return;
-//   }
+test("v2::dynamic_nfts", async (test) => {
+  if (MB_VERSION == "v1") {
+    test.pass();
+    return;
+  }
 
-//   const { alice, bob, store } = test.context.accounts;
-//   const createMetadataCall = await createMetadata({
-//     alice,
-//     store,
-//     args: {
-//       metadata: {},
-//       is_dynamic: true,
-//       price: NEAR(0.01),
-//     },
-//   });
-//   assertEventLogs(
-//     test,
-//     (createMetadataCall as TransactionResult).logs,
-//     [
-//       {
-//         standard: "mb_store",
-//         version: "2.0.0",
-//         event: "create_metadata",
-//         data: {
-//           creator: alice.accountId,
-//           metadata_id: "0",
-//           minters_allowlist: null,
-//           price: NEAR(0.01).toString(),
-//           royalty: null,
-//           max_supply: null,
-//           last_possible_mint: null,
-//           is_locked: false,
-//         },
-//       },
-//     ],
-//     "creating dynamic metadata"
-//   );
+  const { alice, bob, store } = test.context.accounts;
+  const getMedia = async (token_id: string): Promise<string> => {
+    const token: { metadata: { media: string } } = await store.view(
+      "nft_token",
+      { token_id }
+    );
+    return token.metadata.media;
+  };
 
-//   // TODO: mint some normally
-//   // TODO: mint some with specified token ID
+  const createMetadataCall = await createMetadata({
+    alice,
+    store,
+    args: {
+      metadata: { media: "foo" },
+      is_dynamic: true,
+      price: NEAR(0.01),
+    },
+  });
+  assertEventLogs(
+    test,
+    (createMetadataCall as TransactionResult).logs,
+    [
+      {
+        standard: "mb_store",
+        version: "2.0.0",
+        event: "create_metadata",
+        data: {
+          creator: alice.accountId,
+          metadata_id: "0",
+          minters_allowlist: null,
+          price: NEAR(0.01).toString(),
+          royalty: null,
+          max_supply: null,
+          last_possible_mint: null,
+          is_locked: false,
+        },
+      },
+    ],
+    "creating dynamic metadata"
+  );
 
-//   // TODO: mint update
-//   // TODO: assert event
-//   // TODO: check that metadata has changed on the smart contract
+  // mint some normally
+  await mintOnMetadata({
+    bob,
+    store,
+    args: {
+      metadata_id: "0",
+      num_to_mint: 1,
+      owner_id: bob.accountId,
+    },
+    deposit: 0.02,
+  });
+  // mint some with specified token ID
+  await mintOnMetadata({
+    bob,
+    store,
+    args: {
+      metadata_id: "0",
+      token_ids: ["12"],
+      owner_id: bob.accountId,
+    },
+    deposit: 0.02,
+  });
 
-//   // TODO: lock metadata
-//   // TODO: assert event
+  // assert that media is foo
+  const oldMedia = await getMedia("0:12");
+  test.is(oldMedia, "foo");
 
-//   // TODO: assert that trying to update fails now
-// });
+  // update metadata
+  const updateMetadataCall = await alice.callRaw(
+    store,
+    "nft_metadata_update",
+    { metadata_id: "0", metadata: { media: "bar" } },
+    { attachedDeposit: "1" }
+  );
+  assertEventLogs(
+    test,
+    (updateMetadataCall as TransactionResult).logs,
+    [
+      {
+        standard: "nep171",
+        version: "1.2.0",
+        event: "nft_metadata_update",
+        data: [{ token_ids: ["0:0", "0:12"] }],
+      },
+    ],
+    "updating metadata"
+  );
+  // check that metadata has changed on the smart contract
+  const newMedia = await getMedia("0:12");
+  test.is(newMedia, "bar");
+
+  // alice cannot update without yocto deposit
+  await assertContractPanic(
+    test,
+    async () => {
+      await alice.call(store, "nft_metadata_update", {
+        metadata_id: "0",
+        metadata: { media: "baz" },
+      });
+    },
+    "Requires attached deposit of exactly 1 yoctoNEAR",
+    "Updating NFT without yoctoNEAR deposit"
+  );
+  // bob cannot update at all
+  await assertContractPanic(
+    test,
+    async () => {
+      await bob.call(
+        store,
+        "nft_metadata_update",
+        {
+          metadata_id: "0",
+          metadata: { media: "baz" },
+        },
+        { attachedDeposit: "1" }
+      );
+    },
+    "This method can only be called by the metadata creator",
+    "Updating metadata by NFT owner"
+  );
+  // alice cannot lock without yocto deposit
+  await assertContractPanic(
+    test,
+    async () => {
+      await alice.call(store, "lock_metadata", {
+        metadata_id: "0",
+      });
+    },
+    "Requires attached deposit of exactly 1 yoctoNEAR",
+    "Updating NFT without yoctoNEAR deposit"
+  );
+  // bob cannot lock at all
+  await assertContractPanic(
+    test,
+    async () => {
+      await bob.call(
+        store,
+        "lock_metadata",
+        { metadata_id: "0" },
+        { attachedDeposit: "1" }
+      );
+    },
+    "This method can only be called by the metadata creator",
+    "Updating metadata by NFT owner"
+  );
+
+  // lock metadata
+  const lockMetadataCall = await alice.callRaw(
+    store,
+    "lock_metadata",
+    { metadata_id: "0" },
+    { attachedDeposit: "1" }
+  );
+  // assert event
+  assertEventLogs(
+    test,
+    (lockMetadataCall as TransactionResult).logs,
+    [
+      {
+        standard: "mb_store",
+        version: "2.0.0",
+        event: "minting_metadata_update",
+        data: {
+          metadata_id: "0",
+          minters_allowlist: null,
+          price: null,
+          is_dynamic: false,
+        },
+      },
+    ],
+    "locking metadata"
+  );
+
+  // assert that trying to update fails now
+  await assertContractPanic(
+    test,
+    async () => {
+      await alice.call(
+        store,
+        "lock_metadata",
+        { metadata_id: "0" },
+        { attachedDeposit: "1" }
+      );
+    },
+    "Metadata is already locked",
+    "Locking metadata twice"
+  );
+});
