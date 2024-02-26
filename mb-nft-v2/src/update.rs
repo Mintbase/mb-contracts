@@ -1,16 +1,10 @@
 use mb_sdk::{
     data::store::TokenMetadata,
-    events::store::{
-        MintingMetadataUpdateData,
-        NftMetadataUpdateLog,
-    },
-    near_sdk::{
-        self,
-        near_bindgen,
-    },
+    events::store::{MintingMetadataUpdateData, NftMetadataUpdateLog},
+    near_sdk::{self, near_bindgen},
 };
 
-use crate::*;
+use crate::{minting::validate_metadata, *};
 
 #[near_bindgen]
 impl MintbaseStore {
@@ -33,7 +27,9 @@ impl MintbaseStore {
         // Metadata must not be locked
         near_assert!(!minting_metadata.is_locked, "Metadata is locked");
 
-        // FIXME: new metadata needs to be validated
+        // Metadata must be valid
+        validate_metadata(&metadata);
+
         // Update the metadata
         minting_metadata.metadata = metadata;
         self.token_metadata

@@ -596,7 +596,7 @@ fn parent_account_id(child: &AccountId) -> Option<AccountId> {
         .ok()
 }
 
-fn validate_metadata(metadata: &TokenMetadata) {
+pub(crate) fn validate_metadata(metadata: &TokenMetadata) {
     near_assert!(
         option_string_is_u64(&metadata.starts_at),
         "`metadata.starts_at` needs to parse to a u64"
