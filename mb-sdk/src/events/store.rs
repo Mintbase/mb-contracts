@@ -97,7 +97,7 @@ pub struct NftMetadataUpdateLog {
     event = "create_metadata"
 )]
 pub struct CreateMetadataData {
-    pub metadata_id: U64, // TODO: make sure the indexer picks this up correctly!
+    pub metadata_id: U64,
     pub creator: AccountId,
     pub minters_allowlist: Option<Vec<AccountId>>,
     pub price: near_sdk::json_types::U128,
