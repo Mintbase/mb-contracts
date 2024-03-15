@@ -212,7 +212,7 @@ impl MintbaseStore {
     fn lock_token(&mut self, token: &mut Token) {
         if let Owner::Account(ref s) = token.owner_id {
             token.owner_id = Owner::Lock(s.clone());
-            self.tokens.insert(&token.id_tuple(), token);
+            self.save_token(token);
         }
     }
 
@@ -220,7 +220,7 @@ impl MintbaseStore {
     fn unlock_token(&mut self, token: &mut Token) {
         if let Owner::Lock(ref s) = token.owner_id {
             token.owner_id = Owner::Account(s.clone());
-            self.tokens.insert(&token.id_tuple(), token);
+            self.save_token(token);
         }
     }
 }
@@ -300,14 +300,17 @@ impl MintbaseStore {
         );
         token.owner_id = Owner::Account(to);
         token.approvals.clear();
-        self.tokens.insert(&token.id_tuple(), token);
+        self.save_token(token);
     }
 
     /// Gets the token as stored on the smart contract
     pub(crate) fn nft_token_internal(&self, token_id: (u64, u64)) -> Token {
-        self.tokens.get(&token_id).unwrap_or_else(|| {
-            panic!("token: {}:{} doesn't exist", token_id.0, token_id.1)
-        })
+        self.tokens
+            .get(&token_id.0)
+            .and_then(|metadata_tokens| metadata_tokens.get(&token_id.1))
+            .unwrap_or_else(|| {
+                panic!("token: {}:{} doesn't exist", token_id.0, token_id.1)
+            })
     }
 
     /// Gets the token as specified by relevant NEPs.
@@ -315,23 +318,26 @@ impl MintbaseStore {
         &self,
         token_id: &(u64, u64),
     ) -> Option<TokenCompliant> {
-        self.tokens.get(token_id).map(|x| {
-            let token_id_string = fmt_token_id(*token_id);
-            let metadata = self.nft_token_metadata(token_id_string.clone());
-            let royalty = self.get_token_royalty(token_id_string);
-            TokenCompliant {
-                token_id: format!("{}:{}", x.metadata_id, x.id),
-                owner_id: x.owner_id,
-                approved_account_ids: x.approvals,
-                metadata: metadata.into(),
-                royalty,
-                split_owners: x.split_owners,
-                minter: x.minter,
-                loan: x.loan,
-                composable_stats: x.composable_stats,
-                origin_key: x.origin_key,
-            }
-        })
+        self.tokens
+            .get(&token_id.0)
+            .and_then(|metadata_tokens| metadata_tokens.get(&token_id.1))
+            .map(|x| {
+                let token_id_string = fmt_token_id(*token_id);
+                let metadata = self.nft_token_metadata(token_id_string.clone());
+                let royalty = self.get_token_royalty(token_id_string);
+                TokenCompliant {
+                    token_id: format!("{}:{}", x.metadata_id, x.id),
+                    owner_id: x.owner_id,
+                    approved_account_ids: x.approvals,
+                    metadata: metadata.into(),
+                    royalty,
+                    split_owners: x.split_owners,
+                    minter: x.minter,
+                    loan: x.loan,
+                    composable_stats: x.composable_stats,
+                    origin_key: x.origin_key,
+                }
+            })
     }
 }
 

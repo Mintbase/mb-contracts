@@ -28,9 +28,19 @@ impl MintbaseStore {
     ) -> Vec<TokenCompliant> {
         self.tokens
             .iter()
+            .flat_map(|(metadata_id, metadata_tokens)| {
+                metadata_tokens
+                    .iter()
+                    .flat_map(|(token_id, _)| {
+                        self.nft_token_compliant_internal(&(
+                            metadata_id,
+                            token_id,
+                        ))
+                    })
+                    .collect::<Vec<_>>()
+            })
             .skip(from_index.unwrap_or(U128(0)).0 as usize)
             .take(limit.unwrap_or(u32::MAX) as usize)
-            .flat_map(|(id, _)| self.nft_token_compliant_internal(&id))
             .collect()
     }
 

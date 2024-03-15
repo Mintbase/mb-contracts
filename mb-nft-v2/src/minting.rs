@@ -2,6 +2,7 @@ use std::convert::TryInto;
 
 use mb_sdk::{
     constants::{
+        DYNAMIC_METADATA_MAX_TOKENS,
         MAX_LEN_ROYALTIES,
         MAX_LEN_SPLITS,
         MINIMUM_FREE_STORAGE_STAKE,
@@ -48,11 +49,14 @@ impl MintbaseStore {
         minters_allowlist: Option<Vec<AccountId>>,
         max_supply: Option<u32>,
         last_possible_mint: Option<U64>,
+        is_dynamic: Option<bool>,
         price: U128,
     ) -> String {
         // metadata ID: either predefined (must not conflict with existing), or
         // increasing the counter for it
         let metadata_id = self.get_metadata_id(metadata_id);
+
+        let is_locked = !is_dynamic.unwrap_or(false);
 
         // creator needs to be allowed to create metadata on this smart contract
         let creator = env::predecessor_account_id();
@@ -89,25 +93,30 @@ impl MintbaseStore {
             covered_storage >= expected_storage_consumption,
             "This mint would exceed the current storage coverage of {} yoctoNEAR. Requires at least {} yoctoNEAR",
             covered_storage,
-            expected_storage_consumption
+            expected_storage_consumption + MINTING_FEE
         );
 
         // insert metadata and royalties
-        self.token_metadata.insert(
-            &metadata_id,
-            &MintingMetadata {
-                minted: 0,
-                burned: 0,
-                price: price.0,
-                max_supply,
-                allowlist: minters_allowlist.clone(),
-                last_possible_mint: last_possible_mint.map(|t| t.0),
-                creator: creator.clone(),
-                metadata,
-            },
-        );
-        checked_royalty.map(|r| self.token_royalty.insert(&metadata_id, &r));
+        let minting_metadata = MintingMetadata {
+            minted: 0,
+            burned: 0,
+            price: price.0,
+            max_supply,
+            allowlist: minters_allowlist.clone(),
+            last_possible_mint: last_possible_mint.map(|t| t.0),
+            creator: creator.clone(),
+            is_locked,
+            metadata,
+        };
+        self.token_metadata.insert(&metadata_id, &minting_metadata);
+        checked_royalty
+            .as_ref()
+            .map(|r| self.token_royalty.insert(&metadata_id, r));
         self.next_token_id.insert(&metadata_id, &0);
+        self.tokens.insert(
+            &metadata_id,
+            &TreeMap::new(format!("d{}", metadata_id).as_bytes().to_vec()),
+        );
 
         // padding for updates required
         let used_storage_stake: Balance =
@@ -121,7 +130,7 @@ impl MintbaseStore {
             free_storage_stake
         );
 
-        log_create_metadata(metadata_id, creator, minters_allowlist, price.0);
+        log_create_metadata(metadata_id, minting_metadata, checked_royalty);
 
         metadata_id.to_string()
     }
@@ -139,12 +148,7 @@ impl MintbaseStore {
         let minter = env::predecessor_account_id();
 
         // make sure metadata exists
-        let mut minting_metadata = match self.token_metadata.get(&metadata_id) {
-            None => {
-                near_panic!("Metadata with ID {} does not exist", metadata_id)
-            }
-            Some(metadata) => metadata,
-        };
+        let mut minting_metadata = self.get_minting_metadata(metadata_id);
 
         // check if this account is allowed to mint this metadata
         if let Some(ref allowlist) = minting_metadata.allowlist {
@@ -158,6 +162,16 @@ impl MintbaseStore {
         // make sure token_ids and num_to_mint are not conflicting, create valid IDs if necessary
         let (num_to_mint, token_ids) =
             self.get_token_ids(metadata_id, num_to_mint, token_ids);
+
+        // Cannot mint more than NFTs than the threshold for dynamic metadata,
+        // as that would exceed the log limit when emitting the event
+        near_assert!(
+            minting_metadata.is_locked
+                || minting_metadata.minted + (num_to_mint as u32)
+                    < DYNAMIC_METADATA_MAX_TOKENS,
+            "Cannot mint more than {} tokens on dynamic metadata",
+            DYNAMIC_METADATA_MAX_TOKENS
+        );
 
         // check that splits are not too long and parse properly
         let num_splits = split_owners
@@ -230,7 +244,7 @@ impl MintbaseStore {
                 },
                 origin_key: None,
             };
-            self.tokens.insert(&(metadata_id, id), &token);
+            self.save_token(&token);
             owned_set.insert(&(metadata_id, id));
         }
         minting_metadata.minted += num_to_mint as u32;
@@ -354,16 +368,25 @@ impl MintbaseStore {
         num_royalties: u32,
         num_minters: u64,
     ) -> near_sdk::Balance {
-        // create a metadata record
+        // - metadata_storage
+        // - minters allowlist: account_id * length
+        // - creator: account_id
+        // - royalties
+        // - burned: 5 bytes
+        // - minted: 5 bytes
+        // - max_supply: 5 bytes
+        // - expiry: 9 bytes
+        // - price: 16 bytes
+        // - is_locked: 1 bytes
         metadata_storage as u128 * self.storage_costs.storage_price_per_byte
             // create a royalty record
             + num_royalties as u128 * self.storage_costs.common
             // store the minters list
-            + num_minters as u128 * self.storage_costs.account_id
-            // store the price
-            + self.storage_costs.balance
+            + num_minters as u128 * self.storage_costs.common
             // store the creator
-            + self.storage_costs.account_id
+            + self.storage_costs.common
+            // price, burned, minted, max_supply, expiry, is_locked
+            + self.storage_costs.common
     }
 
     /// Get the storage in bytes to mint `num_tokens` each with
@@ -408,6 +431,10 @@ impl MintbaseStore {
         num_to_mint: Option<u16>,
         token_ids: Option<Vec<U64>>,
     ) -> (u16, Vec<u64>) {
+        let metadata_tokens = self
+            .tokens
+            .get(&metadata_id)
+            .expect("metadata existence was checked earlier");
         match (num_to_mint, token_ids) {
             (None, None) => near_panic!(
                 "You are required to either specify num_to_mint or token_ids"
@@ -419,8 +446,9 @@ impl MintbaseStore {
                     .next_token_id
                     .get(&metadata_id)
                     .expect("metadata existence was checked earlier");
+
                 while generated < n {
-                    if !self.tokens.contains_key(&(metadata_id, minted_id)) {
+                    if !metadata_tokens.contains_key(&minted_id) {
                         token_ids.push(minted_id);
                         generated += 1;
                     }
@@ -430,11 +458,15 @@ impl MintbaseStore {
             }
             (None, Some(ids)) => (
                 ids.len() as u16,
-                self.process_tokens_ids_arg(metadata_id, ids),
+                self.process_tokens_ids_arg(metadata_id, &metadata_tokens, ids),
             ),
             (Some(n), Some(ids)) => {
                 near_assert!(n == ids.len() as u16, "num_to_mint does not match the number of specified token IDs");
-                let ids = self.process_tokens_ids_arg(metadata_id, ids);
+                let ids = self.process_tokens_ids_arg(
+                    metadata_id,
+                    &metadata_tokens,
+                    ids,
+                );
                 (n, ids)
             }
         }
@@ -443,13 +475,14 @@ impl MintbaseStore {
     fn process_tokens_ids_arg(
         &self,
         metadata_id: u64,
+        metadata_tokens: &TreeMap<u64, Token>,
         token_ids: Vec<U64>,
     ) -> Vec<u64> {
         token_ids
             .into_iter()
             .map(|id| {
                 near_assert!(
-                    !self.tokens.contains_key(&(metadata_id, id.0)),
+                    !metadata_tokens.contains_key(&id.0),
                     "Token with ID {}:{} already exists",
                     metadata_id,
                     id.0
@@ -485,6 +518,18 @@ impl MintbaseStore {
         // rest goes to the creator
         Promise::new(creator).transfer(balance);
     }
+
+    pub(crate) fn get_minting_metadata(
+        &self,
+        metadata_id: u64,
+    ) -> MintingMetadata {
+        match self.token_metadata.get(&metadata_id) {
+            None => {
+                near_panic!("Metadata with ID {} does not exist", metadata_id)
+            }
+            Some(metadata) => metadata,
+        }
+    }
 }
 
 fn option_string_is_u64(opt_s: &Option<String>) -> bool {
@@ -496,16 +541,21 @@ fn option_string_is_u64(opt_s: &Option<String>) -> bool {
 
 fn log_create_metadata(
     metadata_id: u64,
-    creator: AccountId,
-    minters_allowlist: Option<Vec<AccountId>>,
-    price: Balance,
+    minting_metadata: MintingMetadata,
+    royalty: Option<Royalty>,
 ) {
     env::log_str(
         CreateMetadataData {
-            metadata_id,
-            creator,
-            minters_allowlist,
-            price: price.into(),
+            metadata_id: metadata_id.into(),
+            creator: minting_metadata.creator,
+            minters_allowlist: minting_metadata.allowlist,
+            price: minting_metadata.price.into(),
+            royalty,
+            max_supply: minting_metadata.max_supply,
+            last_possible_mint: minting_metadata
+                .last_possible_mint
+                .map(Into::into),
+            is_locked: minting_metadata.is_locked,
         }
         .serialize_event()
         .as_str(),
@@ -569,7 +619,7 @@ fn parent_account_id(child: &AccountId) -> Option<AccountId> {
         .ok()
 }
 
-fn validate_metadata(metadata: &TokenMetadata) {
+pub(crate) fn validate_metadata(metadata: &TokenMetadata) {
     near_assert!(
         option_string_is_u64(&metadata.starts_at),
         "`metadata.starts_at` needs to parse to a u64"

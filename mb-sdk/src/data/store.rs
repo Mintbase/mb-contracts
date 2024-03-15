@@ -263,6 +263,10 @@ pub struct MintingMetadata {
     pub last_possible_mint: Option<u64>,
     /// Creator of this metadata
     pub creator: AccountId,
+    /// A locked metadata may not be updated. By default all metadata is
+    /// locked. To enable dynamic NFTs metadata may be unlocked on mint.
+    /// Locking metadata is irreversible.
+    pub is_locked: bool,
     /// The actual metadata
     pub metadata: TokenMetadata,
 }

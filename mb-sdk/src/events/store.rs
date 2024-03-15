@@ -24,9 +24,6 @@ pub struct NftMintLog {
     pub memo: Option<String>,
 }
 
-// #[near_event_data(standard = "nep171", version = "1.0.0", event = "nft_mint")]
-// pub struct NftMintData(Vec<NftMintLog>);
-
 #[near_event_data_log(
     standard = "nep171",
     version = "1.0.0",
@@ -38,9 +35,6 @@ pub struct NftBurnLog {
     pub token_ids: Vec<String>,
     pub memo: Option<String>,
 }
-
-// #[near_event_data(standard = "nep171", version = "1.0.0", event = "nft_burn")]
-// pub struct NftBurnData(Vec<NftBurnLog>);
 
 #[cfg_attr(feature = "ser", derive(Serialize))]
 #[cfg_attr(feature = "de", derive(Deserialize))]
@@ -86,6 +80,15 @@ pub struct NftContractMetadataUpdateLog {
     pub memo: Option<String>,
 }
 
+#[near_event_data_log(
+    standard = "nep171",
+    version = "1.2.0",
+    event = "nft_metadata_update"
+)]
+pub struct NftMetadataUpdateLog {
+    pub token_ids: Vec<String>,
+}
+
 // --------------------------- Metadata creation ---------------------------- //
 #[cfg_attr(feature = "all", derive(Debug, Clone))]
 #[near_event_data(
@@ -94,10 +97,29 @@ pub struct NftContractMetadataUpdateLog {
     event = "create_metadata"
 )]
 pub struct CreateMetadataData {
-    pub metadata_id: u64,
+    pub metadata_id: U64,
     pub creator: AccountId,
     pub minters_allowlist: Option<Vec<AccountId>>,
     pub price: near_sdk::json_types::U128,
+    pub royalty: Option<crate::data::store::Royalty>,
+    pub max_supply: Option<u32>,
+    pub last_possible_mint: Option<U64>,
+    pub is_locked: bool,
+}
+
+#[cfg_attr(feature = "all", derive(Debug, Clone))]
+#[near_event_data(
+    standard = "mb_store",
+    version = "2.0.0",
+    event = "minting_metadata_update"
+)]
+pub struct MintingMetadataUpdateData {
+    pub metadata_id: U64,
+    // TODO: method
+    pub minters_allowlist: Option<Vec<AccountId>>,
+    // TODO: method
+    pub price: Option<near_sdk::json_types::U128>,
+    pub is_dynamic: Option<bool>,
 }
 
 // ------------------------------- Approvals -------------------------------- //

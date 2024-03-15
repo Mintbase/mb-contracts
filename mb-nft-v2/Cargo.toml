@@ -7,4 +7,4 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-mb-sdk = { path = "../mb-sdk", features = ["store-wasm", "storage-v2"] }
+mb-sdk = { path = "../mb-sdk", features = ["store-wasm"] }
