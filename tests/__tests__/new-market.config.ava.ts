@@ -10,7 +10,7 @@ import setup from "./setup.js";
 
 const test = setup(avaTest);
 
-test("Properly initialized", async (t) => {
+test("interop-market::init", async (t) => {
   const { newMarket: market, root } = t.context.accounts;
 
   t.is(await market.view("get_mintbase_cut"), 5000);
@@ -21,7 +21,7 @@ test("Properly initialized", async (t) => {
   t.deepEqual(await market.view("banned_accounts"), []);
 });
 
-test("Owner can set config", async (test) => {
+test("interop-market::config", async (test) => {
   const { root, alice, newMarket: market } = test.context.accounts;
 
   await root.call(
@@ -95,7 +95,7 @@ test("Owner can set config", async (test) => {
   test.is(await market.view("get_owner"), alice.accountId);
 });
 
-test("Deposits work", async (test) => {
+test("interop-market::deposits", async (test) => {
   const { alice, newMarket: market } = test.context.accounts;
   const assertDeposit = async (account: NearAccount, deposit: string) => {
     test.is(

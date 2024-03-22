@@ -23,20 +23,24 @@ impl MintbaseStore {
     /// [NEP-181](https://nomicon.io/Standards/Tokens/NonFungibleToken/Enumeration)
     pub fn nft_tokens(
         &self,
-        from_index: Option<String>, // default: "0"
-        limit: Option<u32>,         // default: = self.nft_total_supply()
+        from_index: Option<U128>, // default: "0"
+        limit: Option<u32>,       // default: = self.nft_total_supply()
     ) -> Vec<TokenCompliant> {
-        let from_index: u64 = from_index
-            .unwrap_or_else(|| "0".to_string())
-            .parse()
-            .unwrap();
-        let to_index = match limit {
-            Some(limit) => from_index + limit as u64,
-            None => self.tokens_minted,
-        };
-        (from_index..to_index)
-            .into_iter()
-            .flat_map(|token_id| self.nft_token_compliant_internal(token_id))
+        self.tokens
+            .iter()
+            .flat_map(|(metadata_id, metadata_tokens)| {
+                metadata_tokens
+                    .iter()
+                    .flat_map(|(token_id, _)| {
+                        self.nft_token_compliant_internal(&(
+                            metadata_id,
+                            token_id,
+                        ))
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .skip(from_index.unwrap_or(U128(0)).0 as usize)
+            .take(limit.unwrap_or(u32::MAX) as usize)
             .collect()
     }
 
@@ -75,7 +79,7 @@ impl MintbaseStore {
                     .try_into()
                     .expect("Too many tokens to convert into wasm32 usize"),
             )
-            .flat_map(|x| self.nft_token_compliant_internal(x))
+            .flat_map(|id| self.nft_token_compliant_internal(&id))
             .collect::<Vec<_>>()
     }
 }

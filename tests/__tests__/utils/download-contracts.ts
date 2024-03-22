@@ -16,7 +16,7 @@ function getNear(network: string): Near {
   return new Near({
     networkId: "mainnet",
     keyStore: new keyStores.InMemoryKeyStore(),
-    nodeUrl: "https://rpc.mainnet.near.org",
+    nodeUrl: "https://1rpc.io/near",
     // archivalUrl: "https://archival-rpc.mainnet.near.org",
     walletUrl: "https://wallet.mainnet.near.org",
     helperUrl: "https://helper.mainnet.near.org",
@@ -49,14 +49,7 @@ async function downloadContract(
 }
 
 export async function downloadContracts() {
-  await downloadContract("store", "testnet", "whatever123.mintspace2.testnet");
   await downloadContract("store", "mainnet", "mintbase.mintbase1.near");
-  await downloadContract("factory", "testnet", "mintspace2.testnet");
   await downloadContract("factory", "mainnet", "mintbase1.near");
-  await downloadContract(
-    "legacy-market",
-    "testnet",
-    "market.mintspace2.testnet"
-  );
   await downloadContract("legacy-market", "mainnet", "market.mintbase1.near");
 }

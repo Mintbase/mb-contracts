@@ -9,8 +9,10 @@ import {
   failPromiseRejection,
   Tgas,
   mintingDeposit,
+  batchMint,
+  getTokenIds,
 } from "./utils/index.js";
-import { setup } from "./setup.js";
+import { MB_VERSION, setup } from "./setup.js";
 
 const test = setup(avaTest);
 
@@ -41,20 +43,8 @@ test("core", async (test) => {
   //  - taken names, in this case "alice"
 
   // minting
-  const mintCall = await alice
-    .callRaw(
-      store,
-      "nft_batch_mint",
-      { owner_id: alice.accountId, metadata: {}, num_to_mint: 6 },
-      {
-        attachedDeposit: mintingDeposit({
-          n_tokens: 6,
-          n_royalties: 0,
-          n_splits: 0,
-        }),
-      }
-    )
-    .catch(failPromiseRejection(test, "minting"));
+  const mintCall = await batchMint({ owner: alice, store, num_to_mint: 6 });
+  const tokenIds = getTokenIds(mintCall);
 
   // check minting logs
   assertEventLogs(
@@ -68,8 +58,7 @@ test("core", async (test) => {
         data: [
           {
             owner_id: "alice.test.near",
-            token_ids: ["0", "1", "2", "3", "4", "5"],
-            // memo should be a string, as it's standardized like that!
+            token_ids: tokenIds,
             memo: JSON.stringify({
               royalty: null,
               split_owners: null,
@@ -87,51 +76,46 @@ test("core", async (test) => {
   // inspecting minted tokens (implicitly tests `nft_token`)
   await assertContractTokenOwners(
     { test, store },
-    [
-      { token_id: "0", owner_id: alice.accountId },
-      { token_id: "1", owner_id: alice.accountId },
-      { token_id: "2", owner_id: alice.accountId },
-      { token_id: "3", owner_id: alice.accountId },
-      { token_id: "4", owner_id: alice.accountId },
-      { token_id: "5", owner_id: alice.accountId },
-    ],
+    tokenIds.map((id) => ({ token_id: id, owner_id: alice.accountId })),
     "After minting"
   ).catch(failPromiseRejection(test, "checking token format"));
 
-  await assertContractPanics(test, [
-    // try to mint while not being minter
-    [
-      async () => {
-        await bob.call(
-          store,
-          "nft_batch_mint",
-          { owner_id: bob.accountId, metadata: {}, num_to_mint: 1 },
-          { attachedDeposit: "1" }
-        );
-      },
-      `${bob.accountId} is not allowed to mint on this store`,
-      "Bob tried minting without minter permission",
-    ],
-    // try minting without yoctoNEAR deposit
-    [
-      async () => {
-        await alice.call(store, "nft_batch_mint", {
-          owner_id: alice.accountId,
-          metadata: {},
-          num_to_mint: 1,
-        });
-      },
-      "Requires deposit of at least 1 yoctoNEAR",
-      "Alice tried minting without yoctoNEAR deposit",
-    ],
-  ]);
+  if (MB_VERSION == "v1") {
+    await assertContractPanics(test, [
+      // try to mint while not being minter
+      [
+        async () => {
+          await bob.call(
+            store,
+            "nft_batch_mint",
+            { owner_id: bob.accountId, metadata: {}, num_to_mint: 1 },
+            { attachedDeposit: "1" }
+          );
+        },
+        `${bob.accountId} is not allowed to mint on this store`,
+        "Bob tried minting without minter permission",
+      ],
+      // try minting without yoctoNEAR deposit
+      [
+        async () => {
+          await alice.call(store, "nft_batch_mint", {
+            owner_id: alice.accountId,
+            metadata: {},
+            num_to_mint: 1,
+          });
+        },
+        "Requires deposit of at least 1 yoctoNEAR",
+        "Alice tried minting without yoctoNEAR deposit",
+      ],
+    ]);
+  }
 
   // transfering a single token
   const transferCall = await alice
     .callRaw(
       store,
       "nft_transfer",
-      { receiver_id: bob.accountId, token_id: "0" },
+      { receiver_id: bob.accountId, token_id: tokenIds[0] },
       { attachedDeposit: "1" }
     )
     .catch(failPromiseRejection(test, "transferring"));
@@ -150,7 +134,7 @@ test("core", async (test) => {
             authorized_id: null,
             old_owner_id: "alice.test.near",
             new_owner_id: "bob.test.near",
-            token_ids: ["0"],
+            token_ids: [tokenIds[0]],
             memo: null,
           },
         ],
@@ -166,7 +150,7 @@ test("core", async (test) => {
         await bob.call(
           store,
           "nft_transfer",
-          { receiver_id: bob.accountId, token_id: "1" },
+          { receiver_id: bob.accountId, token_id: tokenIds[1] },
           { attachedDeposit: "1" }
         );
       },
@@ -179,7 +163,7 @@ test("core", async (test) => {
         await alice.call(
           store,
           "nft_transfer",
-          { receiver_id: alice.accountId, token_id: "0" },
+          { receiver_id: alice.accountId, token_id: tokenIds[0] },
           { attachedDeposit: "1" }
         );
       },
@@ -199,8 +183,8 @@ test("core", async (test) => {
       // TODO::contracts::low: missing memo parameter?
       {
         token_ids: [
-          ["1", bob.accountId],
-          ["2", carol.accountId],
+          [tokenIds[1], bob.accountId],
+          [tokenIds[2], carol.accountId],
         ],
       },
       { attachedDeposit: "1" }
@@ -225,14 +209,14 @@ test("core", async (test) => {
             authorized_id: null,
             old_owner_id: "alice.test.near",
             new_owner_id: "bob.test.near",
-            token_ids: ["1"],
+            token_ids: [tokenIds[1]],
             memo: null,
           },
           {
             authorized_id: null,
             old_owner_id: "alice.test.near",
             new_owner_id: "carol.test.near",
-            token_ids: ["2"],
+            token_ids: [tokenIds[2]],
             memo: null,
           },
         ],
@@ -250,8 +234,8 @@ test("core", async (test) => {
           "nft_batch_transfer",
           {
             token_ids: [
-              ["1", carol.accountId],
-              ["2", bob.accountId],
+              [tokenIds[1], carol.accountId],
+              [tokenIds[2], bob.accountId],
             ],
           },
           { attachedDeposit: "1" }
@@ -268,8 +252,8 @@ test("core", async (test) => {
           "nft_batch_transfer",
           {
             token_ids: [
-              ["0", alice.accountId],
-              ["1", alice.accountId],
+              [tokenIds[0], alice.accountId],
+              [tokenIds[1], alice.accountId],
             ],
           },
           { attachedDeposit: "1" }
@@ -283,8 +267,8 @@ test("core", async (test) => {
       async () => {
         await alice.call(store, "nft_batch_transfer", {
           token_ids: [
-            ["0", alice.accountId],
-            ["1", alice.accountId],
+            [tokenIds[0], alice.accountId],
+            [tokenIds[1], alice.accountId],
           ],
         });
       },
@@ -297,12 +281,12 @@ test("core", async (test) => {
   await assertContractTokenOwners(
     { test, store },
     [
-      { token_id: "0", owner_id: bob.accountId },
-      { token_id: "1", owner_id: bob.accountId },
-      { token_id: "2", owner_id: carol.accountId },
-      { token_id: "3", owner_id: alice.accountId },
-      { token_id: "4", owner_id: alice.accountId },
-      { token_id: "5", owner_id: alice.accountId },
+      { token_id: tokenIds[0], owner_id: bob.accountId },
+      { token_id: tokenIds[1], owner_id: bob.accountId },
+      { token_id: tokenIds[2], owner_id: carol.accountId },
+      { token_id: tokenIds[3], owner_id: alice.accountId },
+      { token_id: tokenIds[4], owner_id: alice.accountId },
+      { token_id: tokenIds[5], owner_id: alice.accountId },
     ],
     "After transfers"
   ).catch(failPromiseRejection(test, "checking token ownership"));
@@ -312,7 +296,7 @@ test("core", async (test) => {
     .callRaw(
       store,
       "nft_batch_burn",
-      { token_ids: ["4", "5"] },
+      { token_ids: [tokenIds[4], tokenIds[5]] },
       { attachedDeposit: "1" }
     )
     .catch(failPromiseRejection(test, "burning"));
@@ -330,7 +314,7 @@ test("core", async (test) => {
           {
             owner_id: "alice.test.near",
             authorized_id: null,
-            token_ids: ["4", "5"],
+            token_ids: [tokenIds[4], tokenIds[5]],
             memo: null,
           },
         ],
@@ -346,7 +330,7 @@ test("core", async (test) => {
         await bob.call(
           store,
           "nft_batch_burn",
-          { token_ids: ["1", "2"] },
+          { token_ids: [tokenIds[1], tokenIds[2]] },
           { attachedDeposit: "1" }
         );
       },
@@ -359,7 +343,7 @@ test("core", async (test) => {
         await alice.call(
           store,
           "nft_batch_burn",
-          { token_ids: ["0"] },
+          { token_ids: [tokenIds[0]] },
           { attachedDeposit: "1" }
         );
       },
@@ -370,7 +354,7 @@ test("core", async (test) => {
     [
       async () => {
         await alice.call(store, "nft_batch_burn", {
-          token_ids: ["3"],
+          token_ids: [tokenIds[3]],
         });
       },
       "Requires attached deposit of exactly 1 yoctoNEAR",
@@ -390,6 +374,11 @@ test("core", async (test) => {
 });
 
 test("batch-mint", async (test) => {
+  if (MB_VERSION == "v2") {
+    test.pass();
+    return;
+  }
+
   const { alice, store } = test.context.accounts;
 
   const mintCall = await alice.callRaw(

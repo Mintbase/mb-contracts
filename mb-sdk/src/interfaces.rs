@@ -53,7 +53,7 @@ pub trait ExtNftOnApprove {
     ///    parameters to pass to that fn.
     fn nft_on_approve(
         &mut self,
-        token_id: U64,
+        token_id: String,
         owner_id: AccountId,
         approval_id: u64,
         msg: String,
@@ -61,7 +61,7 @@ pub trait ExtNftOnApprove {
     /// Batched version of `nft_on_approve`, not standardized!
     fn nft_on_batch_approve(
         &mut self,
-        tokens: Vec<U64>,
+        tokens: Vec<String>,
         approvals: Vec<U64>,
         owner_id: AccountId,
         msg: String,
@@ -89,7 +89,7 @@ pub trait ExtNftOnTransfer {
         &mut self,
         sender_id: AccountId,
         previous_owner_id: AccountId,
-        token_id: U64,
+        token_id: String,
         msg: String,
     ) -> Promise;
 }

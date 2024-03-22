@@ -5,23 +5,19 @@ import {
   getBalance,
   diffCheck,
   nearToBn,
-  mintingDeposit,
 } from "./utils/balances.js";
 import { getEvent } from "./utils/events.js";
 import { getPanic } from "./utils/panics.js";
 import setup from "./setup.js";
+import { batchMint, getTokenIds } from "./utils/index.js";
 
 const test = setup(avaTest);
 
-test("Approvals create listings", async (test) => {
+test("interop-market::create-listing", async (test) => {
   const { alice, bob, newMarket: market, store } = test.context.accounts;
 
-  await alice.call(
-    store,
-    "nft_batch_mint",
-    { owner_id: alice, metadata: {}, num_to_mint: 1 },
-    { attachedDeposit: mintingDeposit({ n_tokens: 1 }) }
-  );
+  const mintCall = await batchMint({ owner: alice, store, num_to_mint: 1 });
+  const tokenId = getTokenIds(mintCall)[0];
 
   await alice.call(
     market,
@@ -35,7 +31,7 @@ test("Approvals create listings", async (test) => {
     store,
     "nft_approve",
     {
-      token_id: "0",
+      token_id: tokenId,
       account_id: market.accountId,
       msg: JSON.stringify({ price: nearToYocto("1") }),
     },
@@ -53,7 +49,7 @@ test("Approvals create listings", async (test) => {
     data: {
       kind: "simple",
       nft_contract_id: store.accountId,
-      nft_token_id: "0",
+      nft_token_id: tokenId,
       nft_approval_id: 0,
       nft_owner_id: alice.accountId,
       currency: "near",
@@ -64,10 +60,10 @@ test("Approvals create listings", async (test) => {
   test.like(
     await market.view("get_listing", {
       nft_contract_id: store.accountId,
-      token_id: "0",
+      token_id: tokenId,
     }),
     {
-      nft_token_id: "0",
+      nft_token_id: tokenId,
       nft_contract_id: store.accountId,
       nft_approval_id: 0,
       nft_owner_id: alice.accountId,
@@ -99,7 +95,7 @@ test("Approvals create listings", async (test) => {
   const unlistCallBob = await bob.callRaw(
     market,
     "unlist",
-    { nft_contract_id: store.accountId, token_ids: ["0"] },
+    { nft_contract_id: store.accountId, token_ids: [tokenId] },
     { attachedDeposit: "1" }
   );
   test.is(
@@ -110,7 +106,7 @@ test("Approvals create listings", async (test) => {
   // yocto deposit required to unlist
   const unlistCallNoYocto = await alice.callRaw(market, "unlist", {
     nft_contract_id: store.accountId,
-    token_ids: ["0"],
+    token_ids: [tokenId],
   });
   test.is(
     getPanic(unlistCallNoYocto),
@@ -122,7 +118,7 @@ test("Approvals create listings", async (test) => {
   const unlistCall = await alice.callRaw(
     market,
     "unlist",
-    { nft_contract_id: store.accountId, token_ids: ["0"] },
+    { nft_contract_id: store.accountId, token_ids: [tokenId] },
     { attachedDeposit: "1" }
   );
   // check event
@@ -133,7 +129,7 @@ test("Approvals create listings", async (test) => {
     event: "nft_unlist",
     data: {
       nft_contract_id: store.accountId,
-      nft_token_id: "0",
+      nft_token_id: tokenId,
       nft_approval_id: 0,
     },
   });
@@ -150,21 +146,17 @@ test("Approvals create listings", async (test) => {
   );
 });
 
-test("Cannot list without deposit", async (test) => {
+test("interop-market::listing-deposit", async (test) => {
   const { alice, newMarket: market, store } = test.context.accounts;
 
-  await alice.call(
-    store,
-    "nft_batch_mint",
-    { owner_id: alice, metadata: {}, num_to_mint: 1 },
-    { attachedDeposit: mintingDeposit({ n_tokens: 1 }) }
-  );
+  const mintCall = await batchMint({ owner: alice, store, num_to_mint: 1 });
+  const tokenId = getTokenIds(mintCall)[0];
 
   const approveCall = await alice.callRaw(
     store,
     "nft_approve",
     {
-      token_id: "0",
+      token_id: tokenId,
       account_id: market.accountId,
       msg: JSON.stringify({ price: nearToYocto("1") }),
     },

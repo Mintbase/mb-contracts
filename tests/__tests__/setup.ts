@@ -1,7 +1,19 @@
 import { TestFn } from "ava";
 import { Worker, NearAccount } from "near-workspaces";
 import * as nearAPI from "near-api-js";
-import { DEPLOY_STORE_RENT, DEPLOY_STORE_GAS } from "./utils/balances.js";
+import {
+  DEPLOY_STORE_RENT,
+  DEPLOY_STORE_GAS,
+  mintingDeposit,
+  NEAR,
+} from "./utils/balances.js";
+import { getEvent } from "./utils/events.js";
+
+export const MB_VERSION = process.env.MB_VERSION || "v1";
+export const CHANGE_SETTING_VERSION = {
+  v1: "0.1.0",
+  v2: "0.2.0",
+}[MB_VERSION];
 
 const createSubaccount = async (
   root: NearAccount,
@@ -40,7 +52,7 @@ export const deployStore = async ({
   owner: NearAccount;
   name: string;
 }): Promise<NearAccount> => {
-  await owner.call(
+  const res = await owner.callRaw(
     factory,
     "create_store",
     {
@@ -80,7 +92,7 @@ export const setup = (test: TestFn): TestFn<TestContext> => {
 
     const factory = await createAndDeploy(root, "factory", {
       initialBalanceNear: "10",
-      codePath: "../wasm/factory.wasm",
+      codePath: `../wasm/factory-${MB_VERSION}.wasm`,
       initMethod: "new",
       initArgs: {},
     });

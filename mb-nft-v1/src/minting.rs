@@ -15,7 +15,7 @@ use mb_sdk::{
         TokenMetadata,
     },
     events::store::{
-        MbStoreChangeSettingData,
+        MbStoreChangeSettingDataV010,
         NftMintLog,
         NftMintLogMemo,
     },
@@ -78,20 +78,6 @@ impl MintbaseStore {
             minter_id
         );
 
-        near_assert!(
-            !option_string_starts_with(
-                &metadata.reference,
-                &self.metadata.base_uri
-            ),
-            "`metadata.reference` must not start with contract base URI"
-        );
-        near_assert!(
-            !option_string_starts_with(
-                &metadata.media,
-                &self.metadata.base_uri
-            ),
-            "`metadata.media` must not start with contract base URI"
-        );
         near_assert!(
             option_string_is_u64(&metadata.starts_at),
             "`metadata.starts_at` needs to parse to a u64"
@@ -308,16 +294,6 @@ impl MintbaseStore {
     }
 }
 
-fn option_string_starts_with(
-    string: &Option<String>,
-    prefix: &Option<String>,
-) -> bool {
-    match (string, prefix) {
-        (Some(s), Some(p)) => s.starts_with(p),
-        _ => false,
-    }
-}
-
 fn option_string_is_u64(opt_s: &Option<String>) -> bool {
     opt_s
         .as_ref()
@@ -358,9 +334,9 @@ fn log_nft_batch_mint(
 
 pub(crate) fn log_grant_minter(account_id: &AccountId) {
     env::log_str(
-        &MbStoreChangeSettingData {
+        &MbStoreChangeSettingDataV010 {
             granted_minter: Some(account_id.to_string()),
-            ..MbStoreChangeSettingData::empty()
+            ..MbStoreChangeSettingDataV010::empty()
         }
         .serialize_event(),
     );
@@ -368,9 +344,9 @@ pub(crate) fn log_grant_minter(account_id: &AccountId) {
 
 pub(crate) fn log_revoke_minter(account_id: &AccountId) {
     env::log_str(
-        &MbStoreChangeSettingData {
+        &MbStoreChangeSettingDataV010 {
             revoked_minter: Some(account_id.to_string()),
-            ..MbStoreChangeSettingData::empty()
+            ..MbStoreChangeSettingDataV010::empty()
         }
         .serialize_event(),
     );

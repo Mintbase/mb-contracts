@@ -3,3 +3,5 @@ wasm/*
 tests/node_modules
 tests/downloads
 target
+
+.DS_Store

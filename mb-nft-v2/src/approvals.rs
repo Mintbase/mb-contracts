@@ -37,17 +37,17 @@ impl MintbaseStore {
     #[payable]
     pub fn nft_approve(
         &mut self,
-        token_id: U64,
+        token_id: String,
         account_id: AccountId,
         msg: Option<String>,
     ) -> Option<Promise> {
         // Note: This method only guarantees that the store-storage is covered.
         // The market may still reject.
         assert_storage_deposit!(self.storage_costs.common);
-        let token_idu64 = token_id.into();
+        let token_id_tuple = parse_token_id(&token_id);
         // validates owner and loaned
-        let approval_id = self.approve_internal(token_idu64, &account_id);
-        log_approve(token_idu64, approval_id, &account_id);
+        let approval_id = self.approve_internal(token_id_tuple, &account_id);
+        log_approve(token_id_tuple, approval_id, &account_id);
 
         if let Some(msg) = msg {
             ext_nft_on_approve::ext(account_id)
@@ -69,18 +69,18 @@ impl MintbaseStore {
     #[payable]
     pub fn nft_revoke(
         &mut self,
-        token_id: U64,
+        token_id: String,
         account_id: AccountId,
     ) -> PromiseOrValue<()> {
-        let token_idu64 = token_id.into();
-        let mut token = self.nft_token_internal(token_idu64);
+        let token_id_tuple = parse_token_id(&token_id);
+        let mut token = self.nft_token_internal(token_id_tuple);
         assert_token_unloaned!(token);
         assert_token_owned_by_predecessor!(token);
         assert_one_yocto();
 
         if token.approvals.remove(&account_id).is_some() {
-            self.tokens.insert(&token_idu64, &token);
-            log_revoke(token_idu64, &account_id);
+            self.save_token(&token);
+            log_revoke(token_id_tuple, &account_id);
             PromiseOrValue::Promise(
                 Promise::new(env::predecessor_account_id())
                     .transfer(self.storage_costs.common),
@@ -93,9 +93,9 @@ impl MintbaseStore {
     /// Revokes all NFT transfer approvals as specified by
     /// as specified by [NEP-178](https://nomicon.io/Standards/Tokens/NonFungibleToken/ApprovalManagement)
     #[payable]
-    pub fn nft_revoke_all(&mut self, token_id: U64) -> Promise {
-        let token_idu64 = token_id.into();
-        let mut token = self.nft_token_internal(token_idu64);
+    pub fn nft_revoke_all(&mut self, token_id: String) -> Promise {
+        let token_id_tuple = parse_token_id(&token_id);
+        let mut token = self.nft_token_internal(token_id_tuple);
         assert_token_unloaned!(token);
         assert_token_owned_by_predecessor!(token);
         assert_one_yocto();
@@ -104,8 +104,8 @@ impl MintbaseStore {
 
         if !token.approvals.is_empty() {
             token.approvals.clear();
-            self.tokens.insert(&token_idu64, &token);
-            log_revoke_all(token_idu64);
+            self.save_token(&token);
+            log_revoke_all(token_id_tuple);
         }
         Promise::new(env::predecessor_account_id()).transfer(refund)
     }
@@ -113,12 +113,13 @@ impl MintbaseStore {
     // -------------------------- view methods -----------------------------
     pub fn nft_is_approved(
         &self,
-        token_id: U64,
+        token_id: String,
         approved_account_id: AccountId,
         approval_id: Option<u64>,
     ) -> bool {
+        let token_id_tuple = parse_token_id(&token_id);
         self.nft_is_approved_internal(
-            &self.nft_token_internal(token_id.into()),
+            &self.nft_token_internal(token_id_tuple),
             &approved_account_id,
             approval_id,
         )
@@ -136,7 +137,7 @@ impl MintbaseStore {
     #[payable]
     pub fn nft_batch_approve(
         &mut self,
-        token_ids: Vec<U64>,
+        token_ids: Vec<String>,
         account_id: AccountId,
         msg: Option<String>,
     ) -> Option<Promise> {
@@ -150,11 +151,12 @@ impl MintbaseStore {
         let approval_ids: Vec<U64> = token_ids
             .iter()
             // validates owner and loaned
-            .map(|&token_id| {
-                self.approve_internal(token_id.into(), &account_id).into()
+            .map(|token_id| {
+                let token_id_tuple = parse_token_id(token_id);
+                self.approve_internal(token_id_tuple, &account_id).into()
             })
             .collect();
-        log_batch_approve(&token_ids, &approval_ids, &account_id);
+        log_batch_approve(token_ids.clone(), &approval_ids, &account_id);
 
         if let Some(msg) = msg {
             ext_nft_on_approve::ext(account_id)
@@ -180,10 +182,11 @@ impl MintbaseStore {
     /// Panics if the token doesn't exist.
     pub fn nft_approval_id(
         &self,
-        token_id: U64,
+        token_id: String,
         account_id: AccountId,
     ) -> Option<u64> {
-        let token = self.nft_token_internal(token_id.into());
+        let token_id_tuple = parse_token_id(&token_id);
+        let token = self.nft_token_internal(token_id_tuple);
         token.approvals.get(&account_id).cloned()
     }
 
@@ -193,10 +196,10 @@ impl MintbaseStore {
     /// Called from nft_approve and nft_batch_approve.
     fn approve_internal(
         &mut self,
-        token_idu64: u64,
+        token_id_tuple: (u64, u64),
         account_id: &AccountId,
     ) -> u64 {
-        let mut token = self.nft_token_internal(token_idu64);
+        let mut token = self.nft_token_internal(token_id_tuple);
         // token.assert_unloaned();
         // token.assert_owned_by_predecessor();
         assert_token_unloaned!(token);
@@ -210,7 +213,7 @@ impl MintbaseStore {
         let approval_id = self.num_approved;
         self.num_approved += 1;
         token.approvals.insert(account_id.clone(), approval_id);
-        self.tokens.insert(&token_idu64, &token);
+        self.save_token(&token);
         approval_id
     }
 
@@ -236,12 +239,12 @@ impl MintbaseStore {
 }
 
 pub(crate) fn log_approve(
-    token_id: u64,
+    token_id: (u64, u64),
     approval_id: u64,
     account_id: &AccountId,
 ) {
     let data = NftApproveData(vec![NftApproveLog {
-        token_id: token_id.into(),
+        token_id: fmt_token_id(token_id),
         approval_id,
         account_id: account_id.to_string(),
     }]);
@@ -249,16 +252,16 @@ pub(crate) fn log_approve(
 }
 
 fn log_batch_approve(
-    tokens: &[U64],
-    approvals: &[U64],
+    token_ids: Vec<String>,
+    approval_ids: &[U64],
     account_id: &AccountId,
 ) {
     let data = NftApproveData(
-        approvals
+        approval_ids
             .iter()
-            .zip(tokens.iter())
+            .zip(token_ids)
             .map(|(approval_id, token_id)| NftApproveLog {
-                token_id: *token_id,
+                token_id,
                 approval_id: approval_id.0,
                 account_id: account_id.to_string(),
             })
@@ -267,20 +270,20 @@ fn log_batch_approve(
     env::log_str(&data.serialize_event());
 }
 
-fn log_revoke(token_id: u64, account_id: &AccountId) {
+fn log_revoke(token_id: (u64, u64), account_id: &AccountId) {
     env::log_str(
         &NftRevokeData {
-            token_id: token_id.into(),
+            token_id: fmt_token_id(token_id),
             account_id: account_id.to_string(),
         }
         .serialize_event(),
     );
 }
 
-fn log_revoke_all(token_id: u64) {
+fn log_revoke_all(token_id: (u64, u64)) {
     env::log_str(
         &NftRevokeAllData {
-            token_id: token_id.into(),
+            token_id: fmt_token_id(token_id),
         }
         .serialize_event(),
     );

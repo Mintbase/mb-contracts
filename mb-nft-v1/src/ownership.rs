@@ -1,6 +1,6 @@
 use mb_sdk::{
     constants::StorageCostsJson,
-    events::store::MbStoreChangeSettingData,
+    events::store::MbStoreChangeSettingDataV010,
     near_assert,
     near_sdk::{
         self,
@@ -135,9 +135,9 @@ impl MintbaseStore {
 
 fn log_transfer_store(account_id: &AccountId) {
     env::log_str(
-        &MbStoreChangeSettingData {
+        &MbStoreChangeSettingDataV010 {
             new_owner: Some(account_id.to_string()),
-            ..MbStoreChangeSettingData::empty()
+            ..MbStoreChangeSettingDataV010::empty()
         }
         .serialize_event(),
     );
