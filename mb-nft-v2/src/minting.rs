@@ -10,6 +10,7 @@ use mb_sdk::{
     },
     data::store::{
         ComposableStats,
+        MintingPayment,
         Royalty,
         RoyaltyArgs,
         SplitBetweenUnparsed,
@@ -51,6 +52,7 @@ impl MintbaseStore {
         last_possible_mint: Option<U64>,
         is_dynamic: Option<bool>,
         price: U128,
+        ft_contract_id: Option<AccountId>,
     ) -> String {
         // metadata ID: either predefined (must not conflict with existing), or
         // increasing the counter for it
@@ -88,9 +90,9 @@ impl MintbaseStore {
                 roy_len,
                 minters_allowlist.as_ref().map(|l| l.len()).unwrap_or(0) as u64,
             );
-        let covered_storage = env::attached_deposit() - MINTING_FEE;
+        let covered_storage = env::attached_deposit();
         near_assert!(
-            covered_storage >= expected_storage_consumption,
+            covered_storage >= expected_storage_consumption + MINTING_FEE,
             "This mint would exceed the current storage coverage of {} yoctoNEAR. Requires at least {} yoctoNEAR",
             covered_storage,
             expected_storage_consumption + MINTING_FEE
@@ -101,6 +103,10 @@ impl MintbaseStore {
             minted: 0,
             burned: 0,
             price: price.0,
+            payment_method: match ft_contract_id {
+                Some(id) => MintingPayment::Ft(id),
+                None => MintingPayment::Near,
+            },
             max_supply,
             allowlist: minters_allowlist.clone(),
             last_possible_mint: last_possible_mint.map(|t| t.0),
@@ -185,6 +191,13 @@ impl MintbaseStore {
             MAX_LEN_SPLITS
         );
 
+        // correct payment method?
+        near_assert!(
+            minting_metadata.payment_method.is_near(),
+            "This mint is required to be paid via FT: {}",
+            minting_metadata.payment_method.get_ft_contract_id()
+        );
+
         // are storage deposit and price attached?
         let storage_usage = self.storage_cost_to_mint(num_to_mint, num_splits);
         let attached_deposit = env::attached_deposit();
@@ -197,7 +210,7 @@ impl MintbaseStore {
             min_attached_deposit
         );
 
-        // TODO: is this still necessary with a per-token minting cap?
+        // is this still necessary with a per-token minting cap?
         if let Some(minting_cap) = self.minting_cap {
             near_assert!(
                 self.tokens_minted + num_to_mint as u64 <= minting_cap,
@@ -268,6 +281,7 @@ impl MintbaseStore {
         // payout for creator(s) and minting fee
         self.minting_payout(
             metadata_id,
+            minting_metadata.payment_method,
             attached_deposit - storage_usage - MINTING_FEE,
             minting_metadata.creator,
         );
@@ -495,13 +509,13 @@ impl MintbaseStore {
     fn minting_payout(
         &self,
         metadata_id: u64,
+        payment_method: MintingPayment,
         mut balance: u128,
         creator: AccountId,
     ) {
         // pay minting fee to parent account
         if let Some(factory) = parent_account_id(&env::current_account_id()) {
             Promise::new(factory).transfer(MINTING_FEE);
-            balance -= MINTING_FEE
         }
 
         // pay out royalty holders
@@ -509,8 +523,10 @@ impl MintbaseStore {
             let royalties_total =
                 royalties.percentage.multiply_balance(balance);
             for (account_id, percentage) in royalties.split_between.iter() {
-                Promise::new(account_id.clone())
-                    .transfer(percentage.multiply_balance(royalties_total));
+                payment_method.create_payment_promise(
+                    account_id.to_owned(),
+                    percentage.multiply_balance(royalties_total),
+                );
             }
             balance -= royalties_total;
         }

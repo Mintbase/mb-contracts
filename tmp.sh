@@ -8,4 +8,4 @@ near create-account sailgp.yadda.testnet \
 
 near deploy sailgp.yadda.testnet wasm/mb-nft-v2.wasm \
     --initFunction new \
-    --initArgs '{"metadata":{"spec":"nft-1.0.0","name":"Testing shtuff for SailGP","symbol":"SAILGP"},"owner_id":"yadda.testnet"}'
+    --initArgs '{"metadata":{"spec":"nft-1.0.0","name":"Testing shtuff for SailGP","symbol":"SAILGP","base_uri":"https://arweave.net"},"owner_id":"yadda.testnet"}'
