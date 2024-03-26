@@ -38,11 +38,19 @@ const mintOnMetadata = async ({
   args: Record<string, any>;
   deposit: number;
 }) => {
-  const call = await bob.callRaw(store, "mint_on_metadata", args, {
+  const depositCall = await bob.callRaw(
+    store,
+    "deposit_storage",
+    { args },
+    { attachedDeposit: NEAR(0.05) }
+  );
+  if (depositCall.failed) throw new Error(JSON.stringify(depositCall));
+
+  const mintCall = await bob.callRaw(store, "mint_on_metadata", args, {
     attachedDeposit: NEAR(deposit),
   });
-  if (call.failed) throw new Error(JSON.stringify(call));
-  return call;
+  if (mintCall.failed) throw new Error(JSON.stringify(mintCall));
+  return mintCall;
 };
 
 const mint = async ({ store, alice, bob }: Record<string, NearAccount>) => {
@@ -421,7 +429,7 @@ test("v2::mint_on_metadata", async (test) => {
         deposit: 0.005,
       });
     },
-    "Attached deposit must cover storage usage, token price and minting fee",
+    "Attached deposit does not cover the total price of 10000000000000000000000 yoctoNEAR",
     "Minting with insufficient deposit"
   );
 });

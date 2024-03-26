@@ -2,21 +2,37 @@ use std::convert::TryInto;
 
 use mb_sdk::{
     constants::{
-        DYNAMIC_METADATA_MAX_TOKENS, MAX_LEN_ROYALTIES, MAX_LEN_SPLITS,
-        MINIMUM_FREE_STORAGE_STAKE, MINTING_FEE,
+        DYNAMIC_METADATA_MAX_TOKENS,
+        MAX_LEN_ROYALTIES,
+        MAX_LEN_SPLITS,
+        MINIMUM_FREE_STORAGE_STAKE,
+        MINTING_FEE,
     },
     data::store::{
-        ComposableStats, MintingPayment, Royalty, RoyaltyArgs,
-        SplitBetweenUnparsed, TokenMetadata,
+        ComposableStats,
+        MintingPayment,
+        Royalty,
+        RoyaltyArgs,
+        SplitBetweenUnparsed,
+        TokenMetadata,
     },
     events::store::{
-        CreateMetadataData, MbStoreChangeSettingDataV020, NftMintLog,
+        CreateMetadataData,
+        MbStoreChangeSettingDataV020,
+        NftMintLog,
         NftMintLogMemo,
     },
-    near_assert, near_panic,
+    near_assert,
+    near_panic,
     near_sdk::{
-        self, assert_one_yocto, env, near_bindgen, serde_json, AccountId,
-        Balance, Promise,
+        self,
+        assert_one_yocto,
+        env,
+        near_bindgen,
+        serde_json,
+        AccountId,
+        Balance,
+        Promise,
     },
     serde::Deserialize,
 };
@@ -153,22 +169,33 @@ impl MintbaseStore {
             args.minting_metadata.payment_method.get_ft_contract_id()
         );
 
-        // TODO: different storage coverage mechanism
-        // are storage deposit and price attached?
+        // is the storage deposited?
         let storage_usage =
             self.storage_cost_to_mint(args.num_to_mint, args.num_splits);
+        if let Some(deposit) = self.subtract_storage_deposit(
+            &args.minter_id,
+            args.metadata_id,
+            storage_usage,
+        ) {
+            near_panic!(
+                "This mint requires a storage deposit of {} yoctoNEAR, you have {}",
+                storage_usage + MINTING_FEE,
+                deposit
+            );
+        };
+
+        // is the price attached?
         let attached_deposit = env::attached_deposit();
-        let min_attached_deposit = storage_usage
-            + args.minting_metadata.price * args.num_to_mint as u128
-            + MINTING_FEE;
+        let total_price =
+            args.minting_metadata.price * args.num_to_mint as u128;
         near_assert!(
-            attached_deposit >= min_attached_deposit,
-            "Attached deposit must cover storage usage, token price and minting fee ({})",
-            min_attached_deposit
+            attached_deposit > total_price,
+            "Attached deposit does not cover the total price of {} yoctoNEAR",
+            total_price
         );
 
         // process mint
-        self.process_mint(args, attached_deposit - storage_usage - MINTING_FEE);
+        self.process_mint(args, env::attached_deposit());
     }
 
     /// Tries to remove an acount ID from the minters list, will only fail
@@ -182,6 +209,62 @@ impl MintbaseStore {
         if self.creators.remove(account_id) {
             log_revoke_creator(account_id);
         }
+    }
+
+    /// Deposit storage onto this smart contract, which is being used for
+    /// minting. You can either deposit storage for yourself (no arguments
+    /// required), for someone else (use the `account_id` argument), or sponsor
+    /// mints for a certain metadata (use the `metadata_id` argument)
+    #[payable]
+    pub fn deposit_storage(
+        &mut self,
+        account_id: Option<AccountId>,
+        metadata_id: Option<U64>,
+    ) {
+        near_assert!(
+            account_id.is_none() || metadata_id.is_none(),
+            "Cannot specify both account ID and metadata ID"
+        );
+
+        let amount = env::attached_deposit();
+        if let Some(U64(metadata_id)) = metadata_id {
+            let new_deposit =
+                match self.storage_deposit_by_metadata.get(&metadata_id) {
+                    // subtract common for entry creation
+                    None => amount - mb_sdk::constants::storage_stake::COMMON,
+                    Some(old_deposit) => old_deposit + amount,
+                };
+            self.storage_deposit_by_metadata
+                .insert(&metadata_id, &new_deposit);
+        } else {
+            let account_id =
+                account_id.unwrap_or(env::predecessor_account_id());
+            let new_deposit =
+                match self.storage_deposit_by_account.get(&account_id) {
+                    // subtract common for entry creation
+                    None => amount - mb_sdk::constants::storage_stake::COMMON,
+                    Some(old_deposit) => old_deposit + amount,
+                };
+            self.storage_deposit_by_account
+                .insert(&account_id, &new_deposit);
+        }
+    }
+
+    /// Getter for storage by account
+    pub fn get_storage_deposit_by_account(
+        &self,
+        account_id: Option<AccountId>,
+    ) -> Option<Balance> {
+        let account_id = account_id.unwrap_or(env::predecessor_account_id());
+        self.storage_deposit_by_account.get(&account_id)
+    }
+
+    /// Getter for storage by metadata
+    pub fn get_storage_deposit_by_metadata(
+        &self,
+        metadata_id: U64,
+    ) -> Option<Balance> {
+        self.storage_deposit_by_metadata.get(&metadata_id.0)
     }
 
     /// Allows batched granting and revoking of minting rights in a single
@@ -257,7 +340,23 @@ impl MintbaseStore {
             ft_contract_id
         );
 
-        // FIXME: storage coverage!
+        // is the storage deposited?
+        let storage_usage =
+            self.storage_cost_to_mint(args.num_to_mint, args.num_splits);
+        self.subtract_storage_deposit(
+            &args.minter_id,
+            args.metadata_id,
+            storage_usage,
+        );
+
+        // does the FT transfer cover the price?
+        let total_price =
+            args.minting_metadata.price * args.num_to_mint as u128;
+        near_assert!(
+            amount.0 > total_price,
+            "The FT transfer does not cover the minting price of {} atomic FT units",
+            total_price
+        );
 
         // process_mint
         self.process_mint(args, amount.0);
@@ -440,6 +539,41 @@ impl MintbaseStore {
             amount,
             args.minting_metadata.creator,
         );
+    }
+
+    /// Subtract the storage deposit from either sponsored mints per metadata
+    /// (preferential) or predeposited storage by the user.
+    fn subtract_storage_deposit(
+        &mut self,
+        account_id: &AccountId,
+        metadata_id: u64,
+        storage_usage: Balance,
+    ) -> Option<u128> {
+        let storage_usage = storage_usage + MINTING_FEE;
+
+        // Try subtracting from sponsored mints first
+        if let Some(deposit) =
+            self.storage_deposit_by_metadata.get(&metadata_id)
+        {
+            if deposit > storage_usage {
+                self.storage_deposit_by_metadata
+                    .insert(&metadata_id, &(deposit - storage_usage));
+                return None;
+            }
+        }
+
+        // Try subtracting from user
+        if let Some(deposit) = self.storage_deposit_by_account.get(account_id) {
+            if deposit > storage_usage {
+                self.storage_deposit_by_account
+                    .insert(account_id, &(deposit - storage_usage));
+                return None;
+            } else {
+                return Some(deposit);
+            }
+        }
+
+        Some(0)
     }
 
     /// Get the storage in bytes to create metadata each with

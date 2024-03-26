@@ -118,6 +118,10 @@ pub struct MintbaseStore {
     /// Possibly limit minting to this number of tokens, cannot be changed once
     /// set
     pub minting_cap: Option<u64>,
+    /// Pre-purchased storage for minting on a per-account basis
+    pub storage_deposit_by_account: LookupMap<AccountId, near_sdk::Balance>,
+    /// Pre-purchased storage for minting on a per-metadata basis
+    pub storage_deposit_by_metadata: LookupMap<u64, near_sdk::Balance>,
 }
 
 impl Default for MintbaseStore {
@@ -153,6 +157,8 @@ impl MintbaseStore {
             storage_costs: StorageCosts::new(YOCTO_PER_BYTE), // 10^19
             allow_moves: true,
             minting_cap: None,
+            storage_deposit_by_account: LookupMap::new(b"h".to_vec()),
+            storage_deposit_by_metadata: LookupMap::new(b"j".to_vec()),
         }
     }
 
