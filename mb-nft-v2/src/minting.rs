@@ -2,38 +2,23 @@ use std::convert::TryInto;
 
 use mb_sdk::{
     constants::{
-        DYNAMIC_METADATA_MAX_TOKENS,
-        MAX_LEN_ROYALTIES,
-        MAX_LEN_SPLITS,
-        MINIMUM_FREE_STORAGE_STAKE,
-        MINTING_FEE,
+        DYNAMIC_METADATA_MAX_TOKENS, MAX_LEN_ROYALTIES, MAX_LEN_SPLITS,
+        MINIMUM_FREE_STORAGE_STAKE, MINTING_FEE,
     },
     data::store::{
-        ComposableStats,
-        MintingPayment,
-        Royalty,
-        RoyaltyArgs,
-        SplitBetweenUnparsed,
-        TokenMetadata,
+        ComposableStats, MintingPayment, Royalty, RoyaltyArgs,
+        SplitBetweenUnparsed, TokenMetadata,
     },
     events::store::{
-        CreateMetadataData,
-        MbStoreChangeSettingDataV020,
-        NftMintLog,
+        CreateMetadataData, MbStoreChangeSettingDataV020, NftMintLog,
         NftMintLogMemo,
     },
-    near_assert,
-    near_panic,
+    near_assert, near_panic,
     near_sdk::{
-        self,
-        assert_one_yocto,
-        env,
-        near_bindgen,
-        serde_json,
-        AccountId,
-        Balance,
-        Promise,
+        self, assert_one_yocto, env, near_bindgen, serde_json, AccountId,
+        Balance, Promise,
     },
+    serde::Deserialize,
 };
 
 use crate::*;
@@ -150,59 +135,31 @@ impl MintbaseStore {
         token_ids: Option<Vec<U64>>,
         split_owners: Option<SplitBetweenUnparsed>,
     ) {
-        let metadata_id = metadata_id.0;
-        let minter = env::predecessor_account_id();
-
-        // make sure metadata exists
-        let mut minting_metadata = self.get_minting_metadata(metadata_id);
-
-        // check if this account is allowed to mint this metadata
-        if let Some(ref allowlist) = minting_metadata.allowlist {
-            near_assert!(
-                allowlist.contains(&minter),
-                "{} is not allowed to mint this metadata",
-                minter
-            )
-        }
-
-        // make sure token_ids and num_to_mint are not conflicting, create valid IDs if necessary
-        let (num_to_mint, token_ids) =
-            self.get_token_ids(metadata_id, num_to_mint, token_ids);
-
-        // Cannot mint more than NFTs than the threshold for dynamic metadata,
-        // as that would exceed the log limit when emitting the event
-        near_assert!(
-            minting_metadata.is_locked
-                || minting_metadata.minted + (num_to_mint as u32)
-                    < DYNAMIC_METADATA_MAX_TOKENS,
-            "Cannot mint more than {} tokens on dynamic metadata",
-            DYNAMIC_METADATA_MAX_TOKENS
-        );
-
-        // check that splits are not too long and parse properly
-        let num_splits = split_owners
-            .as_ref()
-            .map(|pre_split| pre_split.len() as u32)
-            .unwrap_or(0);
-        let split_owners = split_owners.map(SplitOwners::new);
-        near_assert!(
-            num_splits <= MAX_LEN_SPLITS,
-            "Number of split holders may not exceed {}",
-            MAX_LEN_SPLITS
+        let args = self.preprocess_mint(
+            env::predecessor_account_id(),
+            MintingArgs {
+                metadata_id,
+                owner_id,
+                num_to_mint,
+                token_ids,
+                split_owners,
+            },
         );
 
         // correct payment method?
         near_assert!(
-            minting_metadata.payment_method.is_near(),
+            args.minting_metadata.payment_method.is_near(),
             "This mint is required to be paid via FT: {}",
-            minting_metadata.payment_method.get_ft_contract_id()
+            args.minting_metadata.payment_method.get_ft_contract_id()
         );
 
+        // TODO: different storage coverage mechanism
         // are storage deposit and price attached?
-        let storage_usage = self.storage_cost_to_mint(num_to_mint, num_splits);
+        let storage_usage =
+            self.storage_cost_to_mint(args.num_to_mint, args.num_splits);
         let attached_deposit = env::attached_deposit();
         let min_attached_deposit = storage_usage
-            + minting_metadata.price * num_to_mint as u128
+            + args.minting_metadata.price * args.num_to_mint as u128
             + MINTING_FEE;
         near_assert!(
             attached_deposit >= min_attached_deposit,
@@ -210,81 +167,8 @@ impl MintbaseStore {
             min_attached_deposit
         );
 
-        // is this still necessary with a per-token minting cap?
-        if let Some(minting_cap) = self.minting_cap {
-            near_assert!(
-                self.tokens_minted + num_to_mint as u64 <= minting_cap,
-                "This mint would exceed the smart contracts minting cap"
-            );
-        }
-
-        if let Some(max_supply) = minting_metadata.max_supply {
-            near_assert!(
-                minting_metadata.minted + num_to_mint as u32 <= max_supply,
-                "This mint would exceed the metadatas minting cap"
-            );
-        }
-
-        if let Some(expiry) = minting_metadata.last_possible_mint {
-            near_assert!(
-                env::block_timestamp() <= expiry,
-                "This metadata has expired and can no longer be minted on"
-            );
-        }
-
-        // mint the tokens, store splits
-        let royalty_id = match self.token_royalty.contains_key(&metadata_id) {
-            true => Some(metadata_id),
-            false => None,
-        };
-        let mut owned_set = self.get_or_make_new_owner_set(&owner_id);
-        self.tokens_minted += num_to_mint as u64;
-        for &id in token_ids.iter() {
-            let token = Token {
-                id,
-                owner_id: mb_sdk::data::store::Owner::Account(owner_id.clone()),
-                approvals: std::collections::HashMap::new(),
-                metadata_id,
-                royalty_id,
-                split_owners: split_owners.clone(),
-                minter: minter.clone(),
-                // These fields are theoretically unused, but stay here to share
-                // this type with NFT v1
-                loan: None,
-                composable_stats: ComposableStats {
-                    local_depth: 0,
-                    cross_contract_children: 0,
-                },
-                origin_key: None,
-            };
-            self.save_token(&token);
-            owned_set.insert(&(metadata_id, id));
-        }
-        minting_metadata.minted += num_to_mint as u32;
-        self.token_metadata.insert(&metadata_id, &minting_metadata);
-        self.tokens_per_owner.insert(&owner_id, &owned_set);
-
-        // emit event
-        log_nft_batch_mint(
-            token_ids
-                .into_iter()
-                .map(|id| fmt_token_id((metadata_id, id)))
-                .collect(),
-            minter.as_str(),
-            owner_id.as_str(),
-            &self.token_royalty.get(&metadata_id),
-            &split_owners,
-            &minting_metadata.metadata.reference,
-            &minting_metadata.metadata.extra,
-        );
-
-        // payout for creator(s) and minting fee
-        self.minting_payout(
-            metadata_id,
-            minting_metadata.payment_method,
-            attached_deposit - storage_usage - MINTING_FEE,
-            minting_metadata.creator,
-        );
+        // process mint
+        self.process_mint(args, attached_deposit - storage_usage - MINTING_FEE);
     }
 
     /// Tries to remove an acount ID from the minters list, will only fail
@@ -347,6 +231,40 @@ impl MintbaseStore {
         self.revoke_creator_internal(&env::predecessor_account_id())
     }
 
+    /// FT transfer hook to mint tokens NFTs.
+    pub fn ft_on_transfer(
+        &mut self,
+        sender_id: AccountId,
+        amount: U128,
+        msg: String,
+    ) -> U128 {
+        let pre_args: MintingArgs = match serde_json::from_str(msg.as_str()) {
+            Ok(args) => args,
+            Err(e) => near_panic!("Cannot parse message: {}", e),
+        };
+        let args = self.preprocess_mint(sender_id, pre_args);
+
+        // correct payment method?
+        near_assert!(
+            args.minting_metadata.payment_method.is_near(),
+            "This mint is required to be paid via NEAR",
+        );
+        let ft_contract_id =
+            args.minting_metadata.payment_method.get_ft_contract_id();
+        near_assert!(
+            &env::predecessor_account_id() == ft_contract_id,
+            "You need to use the correct FT to buy this token: {}",
+            ft_contract_id
+        );
+
+        // FIXME: storage coverage!
+
+        // process_mint
+        self.process_mint(args, amount.0);
+
+        0.into()
+    }
+
     // -------------------------- view methods -----------------------------
 
     /// Check if `account_id` is a minter.
@@ -372,6 +290,157 @@ impl MintbaseStore {
 
     // -------------------------- private methods --------------------------
     // -------------------------- internal methods -------------------------
+
+    /// Ensure the mint is valid, parse data structures, fill in defaults
+    fn preprocess_mint(
+        &self,
+        minter_id: AccountId,
+        args: MintingArgs,
+    ) -> ProcessedMintingArgs {
+        let metadata_id = args.metadata_id.0;
+
+        // make sure metadata exists
+        let minting_metadata = self.get_minting_metadata(metadata_id);
+
+        // check if this account is allowed to mint this metadata
+        if let Some(ref allowlist) = minting_metadata.allowlist {
+            near_assert!(
+                allowlist.contains(&minter_id),
+                "{} is not allowed to mint this metadata",
+                minter_id
+            )
+        }
+
+        // must not mint on expired metadata
+        if let Some(expiry) = minting_metadata.last_possible_mint {
+            near_assert!(
+                env::block_timestamp() <= expiry,
+                "This metadata has expired and can no longer be minted on"
+            );
+        }
+
+        // make sure token_ids and num_to_mint are not conflicting, create valid IDs if necessary
+        let (num_to_mint, token_ids) =
+            self.get_token_ids(metadata_id, args.num_to_mint, args.token_ids);
+
+        // check contract-wide minting cap
+        if let Some(minting_cap) = self.minting_cap {
+            near_assert!(
+                self.tokens_minted + num_to_mint as u64 <= minting_cap,
+                "This mint would exceed the smart contracts minting cap"
+            );
+        }
+
+        // check per-metadata minting cap
+        if let Some(max_supply) = minting_metadata.max_supply {
+            near_assert!(
+                minting_metadata.minted + num_to_mint as u32 <= max_supply,
+                "This mint would exceed the metadatas minting cap"
+            );
+        }
+
+        // Cannot mint more than NFTs than the threshold for dynamic metadata,
+        // as that would exceed the log limit when emitting the event
+        near_assert!(
+            minting_metadata.is_locked
+                || minting_metadata.minted + (num_to_mint as u32)
+                    < DYNAMIC_METADATA_MAX_TOKENS,
+            "Cannot mint more than {} tokens on dynamic metadata",
+            DYNAMIC_METADATA_MAX_TOKENS
+        );
+
+        let num_splits = args
+            .split_owners
+            .as_ref()
+            .map(|pre_split| pre_split.len() as u32)
+            .unwrap_or(0);
+
+        // check that splits are not too long and parse properly
+        near_assert!(
+            num_splits <= MAX_LEN_SPLITS,
+            "Number of split holders may not exceed {}",
+            MAX_LEN_SPLITS
+        );
+
+        let split_owners = args.split_owners.map(SplitOwners::new);
+
+        ProcessedMintingArgs {
+            metadata_id,
+            minting_metadata,
+            owner_id: args.owner_id,
+            minter_id,
+            num_to_mint,
+            token_ids,
+            num_splits,
+            split_owners,
+        }
+    }
+
+    /// Create all necessary data, store it, emit event, pay out
+    /// creators/royalty holders
+    fn process_mint(
+        &mut self,
+        mut args: ProcessedMintingArgs,
+        amount: Balance,
+    ) {
+        // mint the tokens, store splits
+        let royalty_id =
+            match self.token_royalty.contains_key(&args.metadata_id) {
+                true => Some(args.metadata_id),
+                false => None,
+            };
+        let mut owned_set = self.get_or_make_new_owner_set(&args.owner_id);
+        self.tokens_minted += args.num_to_mint as u64;
+        for &id in args.token_ids.iter() {
+            let token = Token {
+                id,
+                owner_id: mb_sdk::data::store::Owner::Account(
+                    args.owner_id.clone(),
+                ),
+                approvals: std::collections::HashMap::new(),
+                metadata_id: args.metadata_id,
+                royalty_id,
+                split_owners: args.split_owners.clone(),
+                minter: args.minter_id.clone(),
+                // These fields are theoretically unused, but stay here to share
+                // this type with NFT v1
+                loan: None,
+                composable_stats: ComposableStats {
+                    local_depth: 0,
+                    cross_contract_children: 0,
+                },
+                origin_key: None,
+            };
+            self.save_token(&token);
+            owned_set.insert(&(args.metadata_id, id));
+        }
+        args.minting_metadata.minted += args.num_to_mint as u32;
+        self.token_metadata
+            .insert(&args.metadata_id, &args.minting_metadata);
+        self.tokens_per_owner.insert(&args.owner_id, &owned_set);
+
+        // emit event
+        log_nft_batch_mint(
+            args.token_ids
+                .iter()
+                .map(|id| fmt_token_id((args.metadata_id, *id)))
+                .collect(),
+            args.minter_id.as_str(),
+            args.owner_id.as_str(),
+            &self.token_royalty.get(&args.metadata_id),
+            &args.split_owners,
+            &args.minting_metadata.metadata.reference,
+            &args.minting_metadata.metadata.extra,
+        );
+
+        // payout for creator(s) and minting fee
+        self.minting_payout(
+            args.metadata_id,
+            args.minting_metadata.payment_method,
+            amount,
+            args.minting_metadata.creator,
+        );
+    }
 
     /// Get the storage in bytes to create metadata each with
     /// `metadata_storage` and `len_map` royalty receivers.
@@ -546,6 +615,27 @@ impl MintbaseStore {
             Some(metadata) => metadata,
         }
     }
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(crate = "near_sdk::serde")]
+pub struct MintingArgs {
+    metadata_id: U64,
+    owner_id: AccountId,
+    num_to_mint: Option<u16>,
+    token_ids: Option<Vec<U64>>,
+    split_owners: Option<SplitBetweenUnparsed>,
+}
+
+struct ProcessedMintingArgs {
+    metadata_id: u64,
+    minting_metadata: MintingMetadata,
+    owner_id: AccountId,
+    minter_id: AccountId,
+    num_to_mint: u16,
+    token_ids: Vec<u64>,
+    num_splits: u32,
+    split_owners: Option<SplitOwners>,
 }
 
 fn option_string_is_u64(opt_s: &Option<String>) -> bool {
