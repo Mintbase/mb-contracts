@@ -137,6 +137,7 @@ impl MintbaseStore {
             free_storage_stake
         );
 
+        // FIXME: needs ft_contract_id!
         log_create_metadata(metadata_id, minting_metadata, checked_royalty);
 
         metadata_id.to_string()
@@ -189,7 +190,7 @@ impl MintbaseStore {
         let total_price =
             args.minting_metadata.price * args.num_to_mint as u128;
         near_assert!(
-            attached_deposit > total_price,
+            attached_deposit >= total_price,
             "Attached deposit does not cover the total price of {} yoctoNEAR",
             total_price
         );
@@ -353,7 +354,7 @@ impl MintbaseStore {
         let total_price =
             args.minting_metadata.price * args.num_to_mint as u128;
         near_assert!(
-            amount.0 > total_price,
+            amount.0 >= total_price,
             "The FT transfer does not cover the minting price of {} atomic FT units",
             total_price
         );

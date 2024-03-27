@@ -923,3 +923,55 @@ test("v2::dynamic_nfts", async (test) => {
     "Locking metadata twice"
   );
 });
+
+test("v2::minting_deposit", async (test) => {
+  if (MB_VERSION == "v1") {
+    test.pass();
+    return;
+  }
+
+  const { alice, bob, store } = test.context.accounts;
+  await createMetadata({
+    alice,
+    store,
+    args: {
+      metadata_id: "1",
+      metadata: {},
+      price: NEAR(0.01),
+    },
+  });
+
+  // minting fails if no storage has been deposited
+  await assertContractPanic(
+    test,
+    () =>
+      bob.call(
+        store,
+        "mint_on_metadata",
+        { metadata_id: "1", num_to_mint: 1, owner_id: bob.accountId },
+        {
+          attachedDeposit: NEAR(0.01),
+        }
+      ),
+    "This mint requires a storage deposit of 5400000000000000000000 yoctoNEAR, you have 0",
+    "minting without deposit"
+  );
+
+  // sponsored mints work
+  await alice.call(
+    store,
+    "deposit_storage",
+    { metadata_id: "1" },
+    { attachedDeposit: NEAR(0.05) }
+  );
+  await bob.call(
+    store,
+    "mint_on_metadata",
+    { metadata_id: "1", num_to_mint: 1, owner_id: bob.accountId },
+    {
+      attachedDeposit: NEAR(0.01),
+    }
+  );
+});
+
+// TODO: mint via FT
