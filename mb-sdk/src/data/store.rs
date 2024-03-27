@@ -1,31 +1,13 @@
-use std::{
-    collections::HashMap,
-    fmt,
-};
+use std::{collections::HashMap, fmt};
 
 use near_sdk::{
-    borsh::{
-        self,
-        BorshDeserialize,
-        BorshSerialize,
-    },
-    json_types::{
-        Base64VecU8,
-        U128,
-    },
-    serde::{
-        ser::Serializer,
-        Deserialize,
-        Serialize,
-    },
-    AccountId,
-    Balance,
+    borsh::{self, BorshDeserialize, BorshSerialize},
+    json_types::{Base64VecU8, U128},
+    serde::{ser::Serializer, Deserialize, Serialize},
+    AccountId, Balance,
 };
 
-use crate::utils::{
-    SafeFraction,
-    TokenKey,
-};
+use crate::utils::{SafeFraction, TokenKey};
 
 // ------------------------ token and token metadata ------------------------ //
 /// Supports NEP-171, 177, 178, 181. Ref:
@@ -285,12 +267,10 @@ impl MintingPayment {
         matches!(self, Self::Near)
     }
 
-    pub fn get_ft_contract_id(&self) -> &AccountId {
+    pub fn get_ft_contract_id(&self) -> Option<&AccountId> {
         match self {
-            Self::Near => {
-                panic!("Cannot get FT contract ID from non-FT payment method")
-            }
-            Self::Ft(id) => id,
+            Self::Near => None,
+            Self::Ft(id) => Some(id),
         }
     }
 

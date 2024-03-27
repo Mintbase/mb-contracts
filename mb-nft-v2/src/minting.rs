@@ -2,37 +2,21 @@ use std::convert::TryInto;
 
 use mb_sdk::{
     constants::{
-        DYNAMIC_METADATA_MAX_TOKENS,
-        MAX_LEN_ROYALTIES,
-        MAX_LEN_SPLITS,
-        MINIMUM_FREE_STORAGE_STAKE,
-        MINTING_FEE,
+        DYNAMIC_METADATA_MAX_TOKENS, MAX_LEN_ROYALTIES, MAX_LEN_SPLITS,
+        MINIMUM_FREE_STORAGE_STAKE, MINTING_FEE,
     },
     data::store::{
-        ComposableStats,
-        MintingPayment,
-        Royalty,
-        RoyaltyArgs,
-        SplitBetweenUnparsed,
-        TokenMetadata,
+        ComposableStats, MintingPayment, Royalty, RoyaltyArgs,
+        SplitBetweenUnparsed, TokenMetadata,
     },
     events::store::{
-        CreateMetadataData,
-        MbStoreChangeSettingDataV020,
-        NftMintLog,
+        CreateMetadataData, MbStoreChangeSettingDataV020, NftMintLog,
         NftMintLogMemo,
     },
-    near_assert,
-    near_panic,
+    near_assert, near_panic,
     near_sdk::{
-        self,
-        assert_one_yocto,
-        env,
-        near_bindgen,
-        serde_json,
-        AccountId,
-        Balance,
-        Promise,
+        self, assert_one_yocto, env, near_bindgen, serde_json, AccountId,
+        Balance, Promise,
     },
     serde::Deserialize,
 };
@@ -137,7 +121,6 @@ impl MintbaseStore {
             free_storage_stake
         );
 
-        // FIXME: needs ft_contract_id!
         log_create_metadata(metadata_id, minting_metadata, checked_royalty);
 
         metadata_id.to_string()
@@ -167,7 +150,10 @@ impl MintbaseStore {
         near_assert!(
             args.minting_metadata.payment_method.is_near(),
             "This mint is required to be paid via FT: {}",
-            args.minting_metadata.payment_method.get_ft_contract_id()
+            args.minting_metadata
+                .payment_method
+                .get_ft_contract_id()
+                .unwrap() // variant has been checked
         );
 
         // is the storage deposited?
@@ -330,11 +316,14 @@ impl MintbaseStore {
 
         // correct payment method?
         near_assert!(
-            args.minting_metadata.payment_method.is_near(),
+            !args.minting_metadata.payment_method.is_near(),
             "This mint is required to be paid via NEAR",
         );
-        let ft_contract_id =
-            args.minting_metadata.payment_method.get_ft_contract_id();
+        let ft_contract_id = args
+            .minting_metadata
+            .payment_method
+            .get_ft_contract_id()
+            .unwrap(); // unwrap ok because variant has been checked
         near_assert!(
             &env::predecessor_account_id() == ft_contract_id,
             "You need to use the correct FT to buy this token: {}",
@@ -791,6 +780,10 @@ fn log_create_metadata(
             creator: minting_metadata.creator,
             minters_allowlist: minting_metadata.allowlist,
             price: minting_metadata.price.into(),
+            ft_contract_id: minting_metadata
+                .payment_method
+                .get_ft_contract_id()
+                .map(AccountId::to_owned),
             royalty,
             max_supply: minting_metadata.max_supply,
             last_possible_mint: minting_metadata

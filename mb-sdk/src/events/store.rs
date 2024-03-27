@@ -1,15 +1,9 @@
-use near_events::{
-    near_event_data,
-    near_event_data_log,
-};
+use near_events::{near_event_data, near_event_data_log};
 #[cfg(feature = "de")]
 use near_sdk::serde::Deserialize;
 #[cfg(feature = "ser")]
 use near_sdk::serde::Serialize;
-use near_sdk::{
-    json_types::U64,
-    AccountId,
-};
+use near_sdk::{json_types::U64, AccountId};
 
 // ----------------------------- Core (NEP171) ------------------------------ //
 #[cfg_attr(feature = "all", derive(Clone, Debug))]
@@ -101,6 +95,7 @@ pub struct CreateMetadataData {
     pub creator: AccountId,
     pub minters_allowlist: Option<Vec<AccountId>>,
     pub price: near_sdk::json_types::U128,
+    pub ft_contract_id: Option<AccountId>,
     pub royalty: Option<crate::data::store::Royalty>,
     pub max_supply: Option<u32>,
     pub last_possible_mint: Option<U64>,
