@@ -37,13 +37,20 @@ const mint = async ({
 
   await alice.call(
     store,
+    "deposit_storage",
+    {},
+    { attachedDeposit: NEAR(0.05) }
+  );
+
+  await alice.call(
+    store,
     "mint_on_metadata",
     {
       metadata_id: "0",
       num_to_mint: 2,
       owner_id: alice.accountId,
     },
-    { attachedDeposit: NEAR(0.05) }
+    { attachedDeposit: NEAR(0.02) }
   );
 
   return "0:0";

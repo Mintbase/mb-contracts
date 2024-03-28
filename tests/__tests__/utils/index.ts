@@ -60,7 +60,12 @@ export async function batchMint({
     { metadata: {}, price: NEAR(0.01) },
     { attachedDeposit: NEAR(0.1) }
   );
-
+  await owner.call(
+    store,
+    "deposit_storage",
+    { metadata_id: "0" },
+    { attachedDeposit: NEAR(0.05).muln(num_to_mint) }
+  );
   return owner.callRaw(
     store,
     "mint_on_metadata",
@@ -69,7 +74,7 @@ export async function batchMint({
       num_to_mint,
       owner_id,
     },
-    { attachedDeposit: NEAR(0.05).muln(num_to_mint) }
+    { attachedDeposit: NEAR(0.01).muln(num_to_mint) }
   );
 
   // return parseEvent(mintCall.logs[0]).data[0].token_ids;

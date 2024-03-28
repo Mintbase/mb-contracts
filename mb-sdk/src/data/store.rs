@@ -19,6 +19,7 @@ use near_sdk::{
         Serialize,
     },
     AccountId,
+    Balance,
 };
 
 use crate::utils::{
@@ -254,6 +255,8 @@ pub struct MintingMetadata {
     pub burned: u32,
     /// Price required to mint on this metadata
     pub price: near_sdk::Balance,
+    /// How the minting price is to be paid
+    pub payment_method: MintingPayment,
     /// Maximum amount of tokens allowed to be minted, no restrictions if `None`
     pub max_supply: Option<u32>,
     /// Accounts allowed to mint on this metadata, no restrictions if `None`
@@ -269,6 +272,40 @@ pub struct MintingMetadata {
     pub is_locked: bool,
     /// The actual metadata
     pub metadata: TokenMetadata,
+}
+
+#[derive(Clone, BorshDeserialize, BorshSerialize)]
+pub enum MintingPayment {
+    Near,
+    Ft(near_sdk::AccountId),
+}
+
+impl MintingPayment {
+    pub fn is_near(&self) -> bool {
+        matches!(self, Self::Near)
+    }
+
+    pub fn get_ft_contract_id(&self) -> Option<&AccountId> {
+        match self {
+            Self::Near => None,
+            Self::Ft(id) => Some(id),
+        }
+    }
+
+    pub fn create_payment_promise(
+        &self,
+        receiver_id: AccountId,
+        amount: Balance,
+    ) -> near_sdk::Promise {
+        match self {
+            Self::Near => near_sdk::Promise::new(receiver_id).transfer(amount),
+            Self::Ft(ft_contract_id) => {
+                crate::interfaces::ext_ft::ext(ft_contract_id.to_owned())
+                    .with_attached_deposit(1)
+                    .ft_transfer(receiver_id, amount.into(), None)
+            }
+        }
+    }
 }
 
 // -------- token owner

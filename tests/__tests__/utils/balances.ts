@@ -99,9 +99,8 @@ export const MAX_U64 = new BN("ffffffffffffffff", 16);
 /** Gas cost for deploying a store (taken from mintbase-js) */
 export const DEPLOY_STORE_GAS = Tgas(250);
 /** Storage rent for deploying a store (taken from mintbase-js) */
-export const DEPLOY_STORE_RENT = NEAR(3.7);
-/** Storage rent for deploying a store (taken from mintbase-js) */
-
+export const DEPLOY_STORE_RENT = NEAR(4);
+// 139860 000000 000000 000000
 export const mintingDeposit = ({
   n_tokens,
   n_royalties,

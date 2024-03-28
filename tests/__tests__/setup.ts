@@ -1,13 +1,7 @@
 import { TestFn } from "ava";
 import { Worker, NearAccount } from "near-workspaces";
 import * as nearAPI from "near-api-js";
-import {
-  DEPLOY_STORE_RENT,
-  DEPLOY_STORE_GAS,
-  mintingDeposit,
-  NEAR,
-} from "./utils/balances.js";
-import { getEvent } from "./utils/events.js";
+import { DEPLOY_STORE_RENT, DEPLOY_STORE_GAS } from "./utils/balances.js";
 
 export const MB_VERSION = process.env.MB_VERSION || "v1";
 export const CHANGE_SETTING_VERSION = {
@@ -52,7 +46,7 @@ export const deployStore = async ({
   owner: NearAccount;
   name: string;
 }): Promise<NearAccount> => {
-  const res = await owner.callRaw(
+  await owner.call(
     factory,
     "create_store",
     {
