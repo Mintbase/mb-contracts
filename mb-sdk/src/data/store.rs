@@ -301,6 +301,7 @@ impl MintingPayment {
             Self::Near => near_sdk::Promise::new(receiver_id).transfer(amount),
             Self::Ft(ft_contract_id) => {
                 crate::interfaces::ext_ft::ext(ft_contract_id.to_owned())
+                    .with_attached_deposit(1)
                     .ft_transfer(receiver_id, amount.into(), None)
             }
         }

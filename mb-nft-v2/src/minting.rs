@@ -741,7 +741,7 @@ impl MintbaseStore {
         }
 
         // rest goes to the creator
-        Promise::new(creator).transfer(balance);
+        payment_method.create_payment_promise(creator, balance);
     }
 
     pub(crate) fn get_minting_metadata(
