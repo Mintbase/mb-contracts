@@ -1061,8 +1061,6 @@ test("v2::ft_minting", async (test) => {
     },
     { attachedDeposit: "1", gas: Tgas(300) }
   );
-  console.log(mintOnMetadataCall);
-  console.log(JSON.stringify(mintOnMetadataCall));
 
   assertEventLogs(
     test,
