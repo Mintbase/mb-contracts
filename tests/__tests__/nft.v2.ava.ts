@@ -1,5 +1,5 @@
 import avaTest from "ava";
-import { NearAccount, TransactionResult } from "near-workspaces";
+import { BN, NearAccount, TransactionResult } from "near-workspaces";
 import {
   assertEventLogs,
   failPromiseRejection,
@@ -7,8 +7,14 @@ import {
   changeSettingsData,
   assertContractPanic,
   NEAR,
+  Tgas,
 } from "./utils/index.js";
-import { setup, MB_VERSION, CHANGE_SETTING_VERSION } from "./setup.js";
+import {
+  setup,
+  MB_VERSION,
+  CHANGE_SETTING_VERSION,
+  createAndDeploy,
+} from "./setup.js";
 
 const test = setup(avaTest);
 
@@ -38,11 +44,19 @@ const mintOnMetadata = async ({
   args: Record<string, any>;
   deposit: number;
 }) => {
-  const call = await bob.callRaw(store, "mint_on_metadata", args, {
+  const depositCall = await bob.callRaw(
+    store,
+    "deposit_storage",
+    { args },
+    { attachedDeposit: NEAR(0.05) }
+  );
+  if (depositCall.failed) throw new Error(JSON.stringify(depositCall));
+
+  const mintCall = await bob.callRaw(store, "mint_on_metadata", args, {
     attachedDeposit: NEAR(deposit),
   });
-  if (call.failed) throw new Error(JSON.stringify(call));
-  return call;
+  if (mintCall.failed) throw new Error(JSON.stringify(mintCall));
+  return mintCall;
 };
 
 const mint = async ({ store, alice, bob }: Record<string, NearAccount>) => {
@@ -267,6 +281,7 @@ test("v2::create_metadata", async (test) => {
           metadata_id: "0",
           minters_allowlist: null,
           price: NEAR(0.01).toString(),
+          ft_contract_id: null,
           royalty: null,
           max_supply: null,
           last_possible_mint: null,
@@ -300,6 +315,7 @@ test("v2::create_metadata", async (test) => {
           metadata_id: "12",
           minters_allowlist: null,
           price: NEAR(0.01).toString(),
+          ft_contract_id: null,
           royalty: null,
           max_supply: null,
           last_possible_mint: null,
@@ -421,7 +437,7 @@ test("v2::mint_on_metadata", async (test) => {
         deposit: 0.005,
       });
     },
-    "Attached deposit must cover storage usage, token price and minting fee",
+    "Attached deposit does not cover the total price of 10000000000000000000000 yoctoNEAR",
     "Minting with insufficient deposit"
   );
 });
@@ -456,6 +472,7 @@ test("v2::minters_allowlist", async (test) => {
           metadata_id: "0",
           minters_allowlist: [bob.accountId],
           price: NEAR(0.01).toString(),
+          ft_contract_id: null,
           royalty: null,
           max_supply: null,
           last_possible_mint: null,
@@ -529,6 +546,7 @@ test("v2::royalties", async (test) => {
           metadata_id: "0",
           minters_allowlist: null,
           price: NEAR(0.01).toString(),
+          ft_contract_id: null,
           royalty: {
             percentage: { numerator: 2000 },
             split_between: {
@@ -620,6 +638,7 @@ test("v2::per_metadata_max_supply", async (test) => {
           metadata_id: "0",
           minters_allowlist: null,
           price: NEAR(0.01).toString(),
+          ft_contract_id: null,
           royalty: null,
           max_supply: 1,
           last_possible_mint: null,
@@ -691,6 +710,7 @@ test("v2::metadata_expiry", async (test) => {
           metadata_id: "0",
           minters_allowlist: null,
           price: NEAR(0.01).toString(),
+          ft_contract_id: null,
           royalty: null,
           max_supply: null,
           last_possible_mint,
@@ -757,6 +777,7 @@ test("v2::dynamic_nfts", async (test) => {
           metadata_id: "0",
           minters_allowlist: null,
           price: NEAR(0.01).toString(),
+          ft_contract_id: null,
           royalty: null,
           max_supply: null,
           last_possible_mint: null,
@@ -913,5 +934,196 @@ test("v2::dynamic_nfts", async (test) => {
     },
     "Metadata is already locked",
     "Locking metadata twice"
+  );
+});
+
+test("v2::minting_deposit", async (test) => {
+  if (MB_VERSION == "v1") {
+    test.pass();
+    return;
+  }
+
+  const { alice, bob, store } = test.context.accounts;
+  await createMetadata({
+    alice,
+    store,
+    args: {
+      metadata_id: "1",
+      metadata: {},
+      price: NEAR(0.01),
+    },
+  });
+
+  // minting fails if no storage has been deposited
+  await assertContractPanic(
+    test,
+    () =>
+      bob.call(
+        store,
+        "mint_on_metadata",
+        { metadata_id: "1", num_to_mint: 1, owner_id: bob.accountId },
+        {
+          attachedDeposit: NEAR(0.01),
+        }
+      ),
+    "This mint requires a storage deposit of 5400000000000000000000 yoctoNEAR, you have 0",
+    "minting without deposit"
+  );
+
+  // sponsored mints work
+  await alice.call(
+    store,
+    "deposit_storage",
+    { metadata_id: "1" },
+    { attachedDeposit: NEAR(0.05) }
+  );
+  await bob.call(
+    store,
+    "mint_on_metadata",
+    { metadata_id: "1", num_to_mint: 1, owner_id: bob.accountId },
+    {
+      attachedDeposit: NEAR(0.01),
+    }
+  );
+});
+
+// TODO: mint via FT
+test("v2::ft_minting", async (test) => {
+  if (MB_VERSION == "v1") {
+    test.pass();
+    return;
+  }
+
+  const { alice, bob, store, root } = test.context.accounts;
+  const deployWnear = (name: string) =>
+    createAndDeploy(root, name, {
+      initialBalanceNear: "10",
+      codePath: "../wasm/wnear.wasm",
+      initMethod: "new",
+      initArgs: {},
+    });
+  const wnear = await deployWnear("wnear");
+  const wnear2 = await deployWnear("wnear2");
+  const wrapNear = (account: NearAccount, wnear: NearAccount, amount: number) =>
+    account.call(
+      wnear,
+      "near_deposit",
+      {},
+      { attachedDeposit: NEAR(amount).toString() }
+    );
+  await Promise.all([
+    wrapNear(alice, wnear, 1),
+    wrapNear(alice, wnear2, 1),
+    wrapNear(bob, wnear, 1),
+    wrapNear(bob, wnear2, 1),
+    root.call(
+      wnear,
+      "storage_deposit",
+      { account_id: store.accountId },
+      { attachedDeposit: NEAR(0.1) }
+    ),
+    root.call(
+      wnear2,
+      "storage_deposit",
+      { account_id: store.accountId },
+      { attachedDeposit: NEAR(0.1) }
+    ),
+  ]);
+  await createMetadata({
+    alice,
+    store,
+    args: {
+      metadata: {},
+      price: NEAR(0.01),
+      ft_contract_id: wnear.accountId,
+    },
+  });
+
+  await bob.call(store, "deposit_storage", {}, { attachedDeposit: NEAR(0.1) });
+
+  const getWnearBalance = async (account: NearAccount): Promise<BN> =>
+    new BN(
+      await wnear.view("ft_balance_of", { account_id: account.accountId })
+    );
+  const preAliceWnearBalance = await getWnearBalance(alice);
+
+  const mintOnMetadataCall = await bob.callRaw(
+    wnear,
+    "ft_transfer_call",
+    {
+      receiver_id: store.accountId,
+      amount: NEAR(0.05).toString(),
+      msg: JSON.stringify({
+        metadata_id: "0",
+        num_to_mint: 3,
+        owner_id: bob.accountId,
+      }),
+    },
+    { attachedDeposit: "1", gas: Tgas(300) }
+  );
+
+  assertEventLogs(
+    test,
+    (mintOnMetadataCall as TransactionResult).logs.slice(1, 2),
+    [
+      {
+        standard: "nep171",
+        version: "1.0.0",
+        event: "nft_mint",
+        data: [
+          {
+            owner_id: bob.accountId,
+            token_ids: ["0:0", "0:1", "0:2"],
+            memo: '{"royalty":null,"split_owners":null,"meta_id":null,"meta_extra":null,"minter":"bob.test.near"}',
+          },
+        ],
+      },
+    ],
+    "minting on metadata metadata"
+  );
+
+  // make sure alice got here wnear payout
+  const postAliceWnearBalance = await getWnearBalance(alice);
+  test.is(
+    postAliceWnearBalance.sub(preAliceWnearBalance).toString(),
+    NEAR(0.05).toString()
+  );
+
+  await assertContractPanic(
+    test,
+    async () => {
+      await mintOnMetadata({
+        bob,
+        store,
+        args: {
+          metadata_id: "0",
+          num_to_mint: 1,
+          owner_id: bob.accountId,
+        },
+        deposit: 0.05,
+      });
+    },
+    `This mint is required to be paid via FT: ${wnear.accountId}`,
+    "Minting FT metadata with attached NEAR"
+  );
+
+  const wnear2MintCall = await bob.callRaw(
+    wnear2,
+    "ft_transfer_call",
+    {
+      receiver_id: store.accountId,
+      amount: NEAR(0.05).toString(),
+      msg: JSON.stringify({
+        metadata_id: "0",
+        num_to_mint: 3,
+        owner_id: bob.accountId,
+      }),
+    },
+    { attachedDeposit: "1", gas: Tgas(300) }
+  );
+  test.is(
+    JSON.parse(wnear2MintCall.receiptFailureMessages[0]).ActionError.kind
+      .FunctionCallError.ExecutionError,
+    "Smart contract panicked: You need to use the correct FT to buy this token: wnear.test.near"
   );
 });

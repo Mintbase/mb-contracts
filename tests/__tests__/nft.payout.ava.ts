@@ -41,13 +41,20 @@ const mint = async ({
 
   await alice.call(
     store,
+    "deposit_storage",
+    { metadata_id: "0" },
+    { attachedDeposit: NEAR(0.05) }
+  );
+
+  await alice.call(
+    store,
     "mint_on_metadata",
     {
       metadata_id: "0",
       num_to_mint: 3,
       owner_id: alice.accountId,
     },
-    { attachedDeposit: NEAR(0.05) }
+    { attachedDeposit: NEAR(0.03) }
   );
 
   if (split_owners) {
