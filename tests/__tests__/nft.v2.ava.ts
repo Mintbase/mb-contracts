@@ -284,7 +284,8 @@ test("v2::create_metadata", async (test) => {
           ft_contract_id: null,
           royalty: null,
           max_supply: null,
-          last_possible_mint: null,
+          starts_at: null,
+          expires_at: null,
           is_locked: true,
         },
       },
@@ -318,7 +319,8 @@ test("v2::create_metadata", async (test) => {
           ft_contract_id: null,
           royalty: null,
           max_supply: null,
-          last_possible_mint: null,
+          starts_at: null,
+          expires_at: null,
           is_locked: true,
         },
       },
@@ -475,7 +477,8 @@ test("v2::minters_allowlist", async (test) => {
           ft_contract_id: null,
           royalty: null,
           max_supply: null,
-          last_possible_mint: null,
+          starts_at: null,
+          expires_at: null,
           is_locked: true,
         },
       },
@@ -555,7 +558,8 @@ test("v2::royalties", async (test) => {
             },
           },
           max_supply: null,
-          last_possible_mint: null,
+          starts_at: null,
+          expires_at: null,
           is_locked: true,
         },
       },
@@ -641,7 +645,8 @@ test("v2::per_metadata_max_supply", async (test) => {
           ft_contract_id: null,
           royalty: null,
           max_supply: 1,
-          last_possible_mint: null,
+          starts_at: null,
+          expires_at: null,
           is_locked: true,
         },
       },
@@ -686,14 +691,14 @@ test("v2::metadata_expiry", async (test) => {
     return;
   }
 
-  const last_possible_mint = (Date.now() - 1000).toString();
+  const expires_at = (Date.now() - 1000).toString();
   const { alice, bob, store } = test.context.accounts;
   const createMetadataCall = await createMetadata({
     alice,
     store,
     args: {
       metadata: {},
-      last_possible_mint,
+      expires_at,
       price: NEAR(0.01),
     },
   });
@@ -713,12 +718,13 @@ test("v2::metadata_expiry", async (test) => {
           ft_contract_id: null,
           royalty: null,
           max_supply: null,
-          last_possible_mint,
+          starts_at: null,
+          expires_at,
           is_locked: true,
         },
       },
     ],
-    "creating metadata with royalties"
+    "creating metadata with expiry"
   );
 
   await assertContractPanic(
@@ -737,6 +743,67 @@ test("v2::metadata_expiry", async (test) => {
     },
     "This metadata has expired and can no longer be minted on",
     "Minting after metadata expiry"
+  );
+});
+
+test("v2::metadata_start", async (test) => {
+  if (MB_VERSION == "v1") {
+    test.pass();
+    return;
+  }
+
+  const starts_at = ((Date.now() + 100e3) * 1e6).toString();
+  const { alice, bob, store } = test.context.accounts;
+  const createMetadataCall = await createMetadata({
+    alice,
+    store,
+    args: {
+      metadata: {},
+      starts_at,
+      price: NEAR(0.01),
+    },
+  });
+  assertEventLogs(
+    test,
+    (createMetadataCall as TransactionResult).logs,
+    [
+      {
+        standard: "mb_store",
+        version: "2.0.0",
+        event: "create_metadata",
+        data: {
+          creator: alice.accountId,
+          metadata_id: "0",
+          minters_allowlist: null,
+          price: NEAR(0.01).toString(),
+          ft_contract_id: null,
+          royalty: null,
+          max_supply: null,
+          starts_at,
+          expires_at: null,
+          is_locked: true,
+        },
+      },
+    ],
+    "creating metadata with start time"
+  );
+
+  await assertContractPanic(
+    test,
+    async () => {
+      await mintOnMetadata({
+        bob,
+        store,
+        args: {
+          metadata_id: "0",
+          num_to_mint: 1,
+          owner_id: bob.accountId,
+        },
+        deposit: 0.05,
+      });
+    },
+    "This metadata has not yet started and cannot be minted on",
+    "Minting before metadata start"
   );
 });
 
@@ -780,7 +847,8 @@ test("v2::dynamic_nfts", async (test) => {
           ft_contract_id: null,
           royalty: null,
           max_supply: null,
-          last_possible_mint: null,
+          starts_at: null,
+          expires_at: null,
           is_locked: false,
         },
       },

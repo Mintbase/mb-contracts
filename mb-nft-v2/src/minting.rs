@@ -50,7 +50,8 @@ impl MintbaseStore {
         royalty_args: Option<RoyaltyArgs>,
         minters_allowlist: Option<Vec<AccountId>>,
         max_supply: Option<u32>,
-        last_possible_mint: Option<U64>,
+        starts_at: Option<U64>,
+        expires_at: Option<U64>,
         is_dynamic: Option<bool>,
         price: U128,
         ft_contract_id: Option<AccountId>,
@@ -110,7 +111,8 @@ impl MintbaseStore {
             },
             max_supply,
             allowlist: minters_allowlist.clone(),
-            last_possible_mint: last_possible_mint.map(|t| t.0),
+            starts_at: starts_at.map(|t| t.0),
+            expires_at: expires_at.map(|t| t.0),
             creator: creator.clone(),
             is_locked,
             metadata,
@@ -416,8 +418,15 @@ impl MintbaseStore {
             )
         }
 
+        // must not mint on unstarted metadata
+        if let Some(start) = minting_metadata.starts_at {
+            near_assert!(
+                env::block_timestamp() >= start,
+                "This metadata has not yet started and cannot be minted on"
+            );
+        }
         // must not mint on expired metadata
-        if let Some(expiry) = minting_metadata.last_possible_mint {
+        if let Some(expiry) = minting_metadata.expires_at {
             near_assert!(
                 env::block_timestamp() <= expiry,
                 "This metadata has expired and can no longer be minted on"
@@ -802,9 +811,8 @@ fn log_create_metadata(
                 .map(AccountId::to_owned),
             royalty,
             max_supply: minting_metadata.max_supply,
-            last_possible_mint: minting_metadata
-                .last_possible_mint
-                .map(Into::into),
+            starts_at: minting_metadata.starts_at.map(Into::into),
+            expires_at: minting_metadata.expires_at.map(Into::into),
             is_locked: minting_metadata.is_locked,
         }
         .serialize_event()
