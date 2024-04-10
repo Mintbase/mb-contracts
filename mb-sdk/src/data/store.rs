@@ -261,9 +261,12 @@ pub struct MintingMetadata {
     pub max_supply: Option<u32>,
     /// Accounts allowed to mint on this metadata, no restrictions if `None`
     pub allowlist: Option<Vec<AccountId>>,
+    /// Earliest possible timestamp to mint, no restrictions if `None`. Timestamp
+    /// in number of non-leap nanoseconds since 1970-01-01 00:00:00 UTC.
+    pub starts_at: Option<u64>,
     /// Latest possible timestamp to mint, no restrictions if `None`. Timestamp
     /// in number of non-leap nanoseconds since 1970-01-01 00:00:00 UTC.
-    pub last_possible_mint: Option<u64>,
+    pub expires_at: Option<u64>,
     /// Creator of this metadata
     pub creator: AccountId,
     /// A locked metadata may not be updated. By default all metadata is

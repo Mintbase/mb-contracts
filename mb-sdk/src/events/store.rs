@@ -104,7 +104,8 @@ pub struct CreateMetadataData {
     pub ft_contract_id: Option<AccountId>,
     pub royalty: Option<crate::data::store::Royalty>,
     pub max_supply: Option<u32>,
-    pub last_possible_mint: Option<U64>,
+    pub starts_at: Option<U64>,
+    pub expires_at: Option<U64>,
     pub is_locked: bool,
 }
 
