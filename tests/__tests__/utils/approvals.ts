@@ -1,5 +1,6 @@
 import { NearAccount } from "near-workspaces";
 import { ExecutionContext } from "ava";
+import { MB_VERSION } from "../setup.js";
 
 interface ApprovalSpec {
   token_id: string;
@@ -82,7 +83,10 @@ export async function assertMinter(
   msg: string
 ) {
   test.is(
-    await store.view("check_is_minter", { account_id: account.accountId }),
+    await store.view(
+      MB_VERSION === "v1" ? "check_is_minter" : "check_is_creator",
+      { account_id: account.accountId }
+    ),
     expected,
     msg
   );

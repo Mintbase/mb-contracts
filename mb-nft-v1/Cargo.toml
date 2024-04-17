@@ -1,5 +1,5 @@
 [package]
-name = "mb-store"
+name = "mb-nft-v1"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,3 +8,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 mb-sdk = { path = "../mb-sdk", features = ["store-wasm"] }
+
+[features]
+default = []

@@ -19,6 +19,7 @@ use near_sdk::{
         Serialize,
     },
     AccountId,
+    Balance,
 };
 
 use crate::utils::{
@@ -59,8 +60,8 @@ pub struct Token {
     /// approved loan contract. Mark this field with the address of the loan
     /// contract. See neps::loan for more.
     pub loan: Option<Loan>,
-    /// Composeablility metrics for this token
-    pub composeable_stats: ComposeableStats,
+    /// Composablility metrics for this token
+    pub composable_stats: ComposableStats,
     /// If the token originated on another contract and was `nft_move`d to
     /// this contract, this field will be non-nil.
     pub origin_key: Option<TokenKey>,
@@ -86,7 +87,7 @@ impl Token {
             approvals: HashMap::new(),
             minter,
             loan: None,
-            composeable_stats: ComposeableStats::new(),
+            composable_stats: ComposableStats::new(),
             origin_key: None,
         }
     }
@@ -109,6 +110,14 @@ impl Token {
 
     pub fn is_loaned(&self) -> bool {
         self.loan.is_some()
+    }
+
+    pub fn id_tuple(&self) -> (u64, u64) {
+        (self.metadata_id, self.id)
+    }
+
+    pub fn fmt_id(&self) -> String {
+        format!("{}:{}", self.metadata_id, self.id)
     }
 }
 
@@ -145,7 +154,7 @@ pub struct TokenCompliant {
     /// contract. See neps::loan for more.
     pub loan: Option<Loan>,
     /// Composeablility metrics for this token
-    pub composeable_stats: ComposeableStats,
+    pub composable_stats: ComposableStats,
     /// If the token originated on another contract and was `nft_move`d to
     /// this contract, this field will be non-nil.
     pub origin_key: Option<TokenKey>,
@@ -218,6 +227,90 @@ pub struct TokenMetadataCompliant {
     pub reference_hash: Option<Base64VecU8>,
 }
 
+impl From<TokenMetadata> for TokenMetadataCompliant {
+    fn from(metadata: TokenMetadata) -> TokenMetadataCompliant {
+        TokenMetadataCompliant {
+            title: metadata.title,
+            description: metadata.description,
+            media: metadata.media,
+            media_hash: metadata.media_hash,
+            copies: metadata.copies,
+            issued_at: None,
+            expires_at: metadata.expires_at,
+            starts_at: metadata.starts_at,
+            updated_at: None,
+            extra: metadata.extra,
+            reference: metadata.reference,
+            reference_hash: metadata.reference_hash,
+        }
+    }
+}
+
+/// Metadata and meta-metadata for tokens minted on store v2
+#[derive(Clone, BorshDeserialize, BorshSerialize)]
+pub struct MintingMetadata {
+    /// Number of tokens minted on this metadata
+    pub minted: u32,
+    /// Number of tokens minted on this metadata
+    pub burned: u32,
+    /// Price required to mint on this metadata
+    pub price: near_sdk::Balance,
+    /// How the minting price is to be paid
+    pub payment_method: MintingPayment,
+    /// Maximum amount of tokens allowed to be minted, no restrictions if `None`
+    pub max_supply: Option<u32>,
+    /// Accounts allowed to mint on this metadata, no restrictions if `None`
+    pub allowlist: Option<Vec<AccountId>>,
+    /// Earliest possible timestamp to mint, no restrictions if `None`. Timestamp
+    /// in number of non-leap nanoseconds since 1970-01-01 00:00:00 UTC.
+    pub starts_at: Option<u64>,
+    /// Latest possible timestamp to mint, no restrictions if `None`. Timestamp
+    /// in number of non-leap nanoseconds since 1970-01-01 00:00:00 UTC.
+    pub expires_at: Option<u64>,
+    /// Creator of this metadata
+    pub creator: AccountId,
+    /// A locked metadata may not be updated. By default all metadata is
+    /// locked. To enable dynamic NFTs metadata may be unlocked on mint.
+    /// Locking metadata is irreversible.
+    pub is_locked: bool,
+    /// The actual metadata
+    pub metadata: TokenMetadata,
+}
+
+#[derive(Clone, BorshDeserialize, BorshSerialize)]
+pub enum MintingPayment {
+    Near,
+    Ft(near_sdk::AccountId),
+}
+
+impl MintingPayment {
+    pub fn is_near(&self) -> bool {
+        matches!(self, Self::Near)
+    }
+
+    pub fn get_ft_contract_id(&self) -> Option<&AccountId> {
+        match self {
+            Self::Near => None,
+            Self::Ft(id) => Some(id),
+        }
+    }
+
+    pub fn create_payment_promise(
+        &self,
+        receiver_id: AccountId,
+        amount: Balance,
+    ) -> near_sdk::Promise {
+        match self {
+            Self::Near => near_sdk::Promise::new(receiver_id).transfer(amount),
+            Self::Ft(ft_contract_id) => {
+                crate::interfaces::ext_ft::ext(ft_contract_id.to_owned())
+                    .with_attached_deposit(1)
+                    .ft_transfer(receiver_id, amount.into(), None)
+            }
+        }
+    }
+}
+
 // -------- token owner
 // This is mostly kept here to avoid storage migrations, but this should always
 // be the `Account` variant.
@@ -286,7 +379,7 @@ impl Loan {
 #[derive(
     Clone, Debug, Deserialize, Serialize, BorshDeserialize, BorshSerialize,
 )]
-pub struct ComposeableStats {
+pub struct ComposableStats {
     /// How deep this token is in a chain of composeability on THIS contract.
     /// If this token is cross-composed, it's depth will STILL be 0. `depth`
     /// equal to the parent's `depth`+1. If this is a top level token, this
@@ -299,7 +392,7 @@ pub struct ComposeableStats {
     pub cross_contract_children: u8,
 }
 
-impl ComposeableStats {
+impl ComposableStats {
     pub(super) fn new() -> Self {
         Self {
             local_depth: 0,

@@ -14,8 +14,10 @@ overflow-checks = true # enable safety checks for arithmetic operations
 
 [alias]
 wasm = "rustc --target wasm32-unknown-unknown --profile wasm-release"
-store = "wasm -p mb-store -- --emit link=wasm/store.wasm"
-factory = "wasm -p mb-factory -- --emit link=wasm/factory.wasm"
+mb-nft-v1 = "wasm -p mb-nft-v1 -- --emit link=wasm/mb-nft-v1.wasm"
+mb-nft-v2 = "wasm -p mb-nft-v2 -- --emit link=wasm/mb-nft-v2.wasm"
+factory-v1 = "wasm -p mb-factory-v1 -- --emit link=wasm/factory-v1.wasm"
+factory-v2 = "wasm -p mb-factory-v2 -- --emit link=wasm/factory-v2.wasm"
 legacy-market = "wasm -p mb-legacy-market -- --emit link=wasm/legacy-market.wasm"
 interop-market = "wasm -p mb-interop-market -- --emit link=wasm/interop-market.wasm"
 lint = "clippy -- -D warnings"

@@ -1,10 +1,83 @@
 import avaTest from "ava";
-import { failPromiseRejection, mintingDeposit } from "./utils/index.js";
-import { setup } from "./setup.js";
+import { NEAR, mintingDeposit } from "./utils/index.js";
+import { MB_VERSION, setup } from "./setup.js";
+import { NearAccount } from "near-workspaces";
 
 const test = setup(avaTest);
 
+const mint = async ({
+  alice,
+  store,
+  royalty_args,
+  split_owners,
+}: {
+  alice: NearAccount;
+  store: NearAccount;
+  royalty_args?: { split_between: Record<string, number>; percentage: number };
+  split_owners?: Record<string, number>;
+}): Promise<string> => {
+  if (MB_VERSION == "v1") {
+    await alice.call(
+      store,
+      "nft_batch_mint",
+      {
+        owner_id: alice.accountId,
+        metadata: {},
+        num_to_mint: 1,
+        royalty_args,
+        split_owners,
+      },
+      { attachedDeposit: mintingDeposit({ n_tokens: 1, n_splits: 20 }) }
+    );
+    return "0";
+  }
+
+  await alice.call(
+    store,
+    "create_metadata",
+    { metadata: {}, price: NEAR(0.01), royalty_args },
+    { attachedDeposit: NEAR(0.1) }
+  );
+
+  await alice.call(
+    store,
+    "deposit_storage",
+    { metadata_id: "0" },
+    { attachedDeposit: NEAR(0.05) }
+  );
+
+  await alice.call(
+    store,
+    "mint_on_metadata",
+    {
+      metadata_id: "0",
+      num_to_mint: 3,
+      owner_id: alice.accountId,
+    },
+    { attachedDeposit: NEAR(0.03) }
+  );
+
+  if (split_owners) {
+    await alice.call(
+      store,
+      "set_split_owners",
+      {
+        token_ids: ["0:0"],
+        split_between: split_owners,
+      },
+      { attachedDeposit: NEAR(0.02) }
+    );
+  }
+
+  return "0:0";
+};
+
 test("payout::splits", async (test) => {
+  // slightly different paradigm, this test doesn't make sense for v2
+  if (MB_VERSION === "v2") {
+    test.pass();
+    return;
+  }
   const { alice, store } = test.context.accounts;
 
   const split_owners = (() => {
@@ -14,19 +87,7 @@ test("payout::splits", async (test) => {
     return o;
   })();
 
-  await alice
-    .call(
-      store,
-      "nft_batch_mint",
-      {
-        owner_id: alice.accountId,
-        metadata: {},
-        num_to_mint: 1,
-        split_owners,
-      },
-      { attachedDeposit: mintingDeposit({ n_tokens: 1, n_splits: 2 }) }
-    )
-    .catch(failPromiseRejection(test, "minting"));
+  const tokenId = await mint({ alice, store, split_owners });
 
   const payout = (() => {
     const p: Record<string, string> = {};
@@ -36,7 +97,7 @@ test("payout::splits", async (test) => {
   })();
   test.deepEqual(
     await store.view("nft_payout", {
-      token_id: "0",
+      token_id: tokenId,
       balance: "10000000000000000",
     }),
     { payout }
@@ -44,6 +105,12 @@ test("payout::splits", async (test) => {
 });
 
 test("payout::royalties", async (test) => {
+  // tested via v2 minting
+  if (MB_VERSION === "v2") {
+    test.pass();
+    return;
+  }
+
   const { alice, store } = test.context.accounts;
 
   const split_between = (() => {
@@ -53,19 +120,11 @@ test("payout::royalties", async (test) => {
     return o;
   })();
 
-  await alice
-    .call(
-      store,
-      "nft_batch_mint",
-      {
-        owner_id: alice.accountId,
-        metadata: {},
-        num_to_mint: 1,
-        royalty_args: { split_between, percentage: 4000 },
-      },
-      { attachedDeposit: mintingDeposit({ n_tokens: 1, n_royalties: 2 }) }
-    )
-    .catch(failPromiseRejection(test, "minting"));
+  const tokenId = await mint({
+    alice,
+    store,
+    royalty_args: { split_between, percentage: 4000 },
+  });
 
   const payout = (() => {
     const p: Record<string, string> = {};
@@ -76,7 +135,7 @@ test("payout::royalties", async (test) => {
   })();
   test.deepEqual(
     await store.view("nft_payout", {
-      token_id: "0",
+      token_id: tokenId,
       balance: "10000000000000000",
     }),
     { payout }
@@ -100,26 +159,12 @@ test("payout::royalties_splits", async (test) => {
     return o;
   })();
 
-  await alice
-    .call(
-      store,
-      "nft_batch_mint",
-      {
-        owner_id: alice.accountId,
-        metadata: {},
-        num_to_mint: 1,
-        royalty_args: { split_between, percentage: 2000 },
-        split_owners,
-      },
-      {
-        attachedDeposit: mintingDeposit({
-          n_tokens: 1,
-          n_splits: 2,
-          n_royalties: 2,
-        }),
-      }
-    )
-    .catch(failPromiseRejection(test, "minting"));
+  const tokenId = await mint({
+    alice,
+    store,
+    royalty_args: { split_between, percentage: 2000 },
+    split_owners,
+  });
 
   const payout = (() => {
     const p: Record<string, string> = {};
@@ -131,7 +176,7 @@ test("payout::royalties_splits", async (test) => {
   })();
   test.deepEqual(
     await store.view("nft_payout", {
-      token_id: "0",
+      token_id: tokenId,
       balance: "10000000000000000",
     }),
     { payout }
@@ -141,39 +186,18 @@ test("payout::royalties_splits", async (test) => {
 test("payout::low_balance", async (test) => {
   const { alice, store } = test.context.accounts;
 
-  const split_owners = (() => {
-    const o: Record<string, number> = {};
-    o["a.near"] = 6000;
-    o["b.near"] = 4000;
-    return o;
-  })();
+  const tokenId = await mint({
+    alice,
+    store,
+    split_owners: { "a.near": 6000, "b.near": 4000 },
+  });
 
-  await alice
-    .call(
-      store,
-      "nft_batch_mint",
-      {
-        owner_id: alice.accountId,
-        metadata: {},
-        num_to_mint: 1,
-        split_owners,
-      },
-      { attachedDeposit: mintingDeposit({ n_tokens: 1, n_splits: 2 }) }
-    )
-    .catch(failPromiseRejection(test, "minting"));
-
-  const payout = (() => {
-    const p: Record<string, string> = {};
-    p["a.near"] = "6000";
-    p["b.near"] = "4000";
-    return p;
-  })();
   test.deepEqual(
     await store.view("nft_payout", {
-      token_id: "0",
+      token_id: tokenId,
       balance: "10000",
     }),
-    { payout }
+    { payout: { "a.near": "6000", "b.near": "4000" } }
   );
 });
 
@@ -201,19 +225,11 @@ test("payout::max_len", async (test) => {
     return o;
   })();
 
-  await alice
-    .call(
-      store,
-      "nft_batch_mint",
-      {
-        owner_id: alice.accountId,
-        metadata: {},
-        num_to_mint: 1,
-        split_owners,
-      },
-      { attachedDeposit: mintingDeposit({ n_tokens: 1, n_splits: 16 }) }
-    )
-    .catch(failPromiseRejection(test, "minting"));
+  const tokenId = await mint({
+    alice,
+    store,
+    split_owners,
+  });
 
   // FIXME: should work with lower number
   const payout = (() => {
@@ -232,7 +248,7 @@ test("payout::max_len", async (test) => {
   })();
   test.deepEqual(
     await store.view("nft_payout", {
-      token_id: "0",
+      token_id: tokenId,
       balance: "10000000000000000",
       max_len_payout: 10,
     }),

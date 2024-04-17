@@ -9,8 +9,9 @@ import {
   failPromiseRejection,
   assertMinters,
   assertContractPanics,
+  changeSettingsData,
 } from "./utils/index.js";
-import { setup } from "./setup.js";
+import { CHANGE_SETTING_VERSION, MB_VERSION, setup } from "./setup.js";
 
 const test = setup(avaTest);
 
@@ -21,22 +22,6 @@ avaTest("util tests", (test) => {
   test.is(uNEAR(1.5).toString(), "1500000000000000000");
   test.is(nNEAR(1.5).toString(), "1500000000000000");
 });
-
-const changeSettingsData = (subset: Record<string, string>) => {
-  const data: Record<string, string | null> = {
-    granted_minter: null,
-    revoked_minter: null,
-    new_icon_base64: null,
-    new_owner: null,
-    new_base_uri: null,
-  };
-
-  Object.keys(subset).forEach((k) => {
-    data[k] = subset[k];
-  });
-
-  return data;
-};
 
 // // As this tests deployment, we do it in a clean-state environment
 // Workspace.init().test("deployment", async (test, { root }) => {
@@ -86,10 +71,17 @@ const changeSettingsData = (subset: Record<string, string>) => {
 test("ownership::transfer-store", async (test) => {
   const { alice, bob, carol, store } = test.context.accounts;
 
+  const CHANGE_MINTERS_METHOD =
+    MB_VERSION === "v1" ? "batch_change_minters" : "batch_change_creators";
+  const keepMinters = (keep: boolean) =>
+    MB_VERSION === "v1"
+      ? { keep_old_minters: keep }
+      : { keep_old_creators: keep };
+
   await alice
     .call(
       store,
-      "batch_change_minters",
+      CHANGE_MINTERS_METHOD,
       { grant: [bob] },
       { attachedDeposit: "1" }
     )
@@ -100,7 +92,10 @@ test("ownership::transfer-store", async (test) => {
     .callRaw(
       store,
       "transfer_store_ownership",
-      { new_owner: carol.accountId, keep_old_minters: false },
+      {
+        new_owner: carol.accountId,
+        ...keepMinters(false),
+      },
       { attachedDeposit: "1" }
     )
     .catch(
@@ -117,7 +112,7 @@ test("ownership::transfer-store", async (test) => {
     [
       {
         standard: "mb_store",
-        version: "0.1.0",
+        version: CHANGE_SETTING_VERSION,
         event: "change_setting",
         data: changeSettingsData({
           revoked_minter: alice.accountId,
@@ -125,7 +120,7 @@ test("ownership::transfer-store", async (test) => {
       },
       {
         standard: "mb_store",
-        version: "0.1.0",
+        version: CHANGE_SETTING_VERSION,
         event: "change_setting",
         data: changeSettingsData({
           revoked_minter: bob.accountId,
@@ -133,7 +128,7 @@ test("ownership::transfer-store", async (test) => {
       },
       {
         standard: "mb_store",
-        version: "0.1.0",
+        version: CHANGE_SETTING_VERSION,
         event: "change_setting",
         data: changeSettingsData({
           granted_minter: carol.accountId,
@@ -141,7 +136,7 @@ test("ownership::transfer-store", async (test) => {
       },
       {
         standard: "mb_store",
-        version: "0.1.0",
+        version: CHANGE_SETTING_VERSION,
         event: "change_setting",
         data: changeSettingsData({
           new_owner: carol.accountId,
@@ -171,7 +166,10 @@ test("ownership::transfer-store", async (test) => {
         await alice.call(
           store,
           "transfer_store_ownership",
-          { new_owner: alice.accountId, keep_old_minters: false },
+          {
+            new_owner: alice.accountId,
+            ...keepMinters(false),
+          },
           { attachedDeposit: "1" }
         );
       },
@@ -183,7 +181,7 @@ test("ownership::transfer-store", async (test) => {
       async () => {
         await carol.call(store, "transfer_store_ownership", {
           new_owner: alice.accountId,
-          keep_old_minters: false,
+          ...keepMinters(false),
         });
       },
       "Requires attached deposit of exactly 1 yoctoNEAR",
@@ -196,7 +194,10 @@ test("ownership::transfer-store", async (test) => {
     .callRaw(
       store,
       "transfer_store_ownership",
-      { new_owner: alice.accountId, keep_old_minters: true },
+      {
+        new_owner: alice.accountId,
+        ...keepMinters(true),
+      },
       { attachedDeposit: "1" }
     )
     .catch(
@@ -210,7 +211,7 @@ test("ownership::transfer-store", async (test) => {
     [
       {
         standard: "mb_store",
-        version: "0.1.0",
+        version: CHANGE_SETTING_VERSION,
         event: "change_setting",
         data: changeSettingsData({
           granted_minter: alice.accountId,
@@ -218,7 +219,7 @@ test("ownership::transfer-store", async (test) => {
       },
       {
         standard: "mb_store",
-        version: "0.1.0",
+        version: CHANGE_SETTING_VERSION,
         event: "change_setting",
         data: changeSettingsData({
           new_owner: alice.accountId,

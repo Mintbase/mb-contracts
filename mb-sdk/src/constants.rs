@@ -22,6 +22,9 @@ pub const NO_DEPOSIT: Balance = 0;
 /// Miniscule minting fee (1 milliNEAR) to allow tracking by DappRadar
 pub const MINTING_FEE: Balance = 1_000_000_000_000_000_000_000;
 
+/// Maximum number of tokens to be minted on unlocked (dynamic) metadata
+pub const DYNAMIC_METADATA_MAX_TOKENS: u32 = 1000;
+
 /// This module holds gas costs for common operations
 pub mod gas {
     use near_sdk::Gas;
@@ -60,8 +63,9 @@ pub mod gas {
 
 pub mod storage_bytes {
     use near_sdk::StorageUsage;
+    // FIXME: make a difference between store v1 and store v2
     /// Storage bytes that a raw store occupies, about 350 KB.
-    pub const STORE: StorageUsage = 350_000;
+    pub const STORE: StorageUsage = 400_000;
 
     /// Storage bytes for a maximum size token without any metadata and without
     /// any royalties.
@@ -72,7 +76,7 @@ pub mod storage_bytes {
     /// - a single royalty
     /// - a single approval
     /// - an entry in the `tokens_per_account` map
-    /// - an entry in the `composeables` map
+    /// - an entry in the `composables` map
     pub const COMMON: StorageUsage = 80;
 }
 
@@ -97,7 +101,7 @@ pub mod storage_stake {
     /// - adding a single royalty
     /// - adding a single approval
     /// - adding a new entry to the `tokens_per_account` map
-    /// - adding a new entry to the `composeables` map
+    /// - adding a new entry to the `composables` map
     pub const COMMON: Balance = bytes_to_stake(super::storage_bytes::COMMON);
 
     /// Require 0.1 NEAR of storage stake to remain unused.
@@ -107,8 +111,14 @@ pub mod storage_stake {
 /// Royalty upper limit is 50%.
 pub const ROYALTY_UPPER_LIMIT: u32 = 5000;
 
-/// Maximum payout (royalties + splits) participants to process
+/// Maximum payout (royalties + splits) participants to process (NFT v1)
 pub const MAX_LEN_PAYOUT: u32 = 50;
+
+/// Maximum royalties participants to process (NFT v2)
+pub const MAX_LEN_ROYALTIES: u32 = 25;
+
+/// Maximum splits participants to process (NFT v2)
+pub const MAX_LEN_SPLITS: u32 = 25;
 
 /// Maximum allowed approvals per token to prevent panics on revoking all, most
 /// notably during transfers.
@@ -127,8 +137,9 @@ pub struct StorageCosts {
     /// - a single royalty
     /// - a single approval
     /// - adding a new entry to the `tokens_per_account` map
-    /// - adding a new entry to the `composeables` map
+    /// - adding a new entry to the `composables` map
     pub common: u128,
+    /// base cost of storing a single NFT
     pub token: u128,
 }
 
@@ -154,8 +165,9 @@ pub struct StorageCostsJson {
     /// - a single royalty
     /// - a single approval
     /// - adding a new entry to the `tokens_per_account` map
-    /// - adding a new entry to the `composeables` map
+    /// - adding a new entry to the `composables` map
     pub common: U128,
+    /// base cost of storing a single NFT
     pub token: U128,
 }
 

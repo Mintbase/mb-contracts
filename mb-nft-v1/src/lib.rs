@@ -87,7 +87,7 @@ pub struct MintbaseStore {
     /// that may be on ANY contract. If the owned-token is on this contract,
     /// the id will have format "<u64>". If the token is on another contract,
     /// the token will have format "<u64>:account_id"
-    pub composeables: LookupMap<String, UnorderedSet<String>>,
+    pub composables: LookupMap<String, UnorderedSet<String>>,
     /// The number of tokens this `Store` has minted. Used to generate
     /// `TokenId`s.
     pub tokens_minted: u64,
@@ -132,7 +132,7 @@ impl MintbaseStore {
             token_royalty: LookupMap::new(b"c".to_vec()),
             tokens: LookupMap::new(b"d".to_vec()),
             tokens_per_owner: LookupMap::new(b"e".to_vec()),
-            composeables: LookupMap::new(b"f".to_vec()),
+            composables: LookupMap::new(b"f".to_vec()),
             tokens_minted: 0,
             tokens_burned: 0,
             num_approved: 0,
@@ -187,9 +187,41 @@ impl MintbaseStore {
     /// Factory.
     #[private]
     #[init(ignore_state)]
-    pub fn migrate(metadata: NFTContractMetadata) -> Self {
+    pub fn migrate_metadata(metadata: NFTContractMetadata) -> Self {
         let old = env::state_read().expect("ohno ohno state");
         Self { metadata, ..old }
+    }
+
+    // Required because storage has been botched at some point with different
+    // structures for `StorageCosts`
+    #[private]
+    #[init(ignore_state)]
+    pub fn migrate_storage_costs() -> Self {
+        // retrieve the current state from the contract
+        let old_state: MintbaseStoreV2 = env::state_read().expect("failed");
+        let storage_costs = StorageCosts {
+            storage_price_per_byte: old_state
+                .storage_costs
+                .storage_price_per_byte,
+            common: old_state.storage_costs.common,
+            token: old_state.storage_costs.token,
+        };
+
+        Self {
+            minters: old_state.minters,
+            metadata: old_state.metadata,
+            token_metadata: old_state.token_metadata,
+            token_royalty: old_state.token_royalty,
+            tokens: old_state.tokens,
+            tokens_per_owner: old_state.tokens_per_owner,
+            composables: old_state.composables,
+            tokens_minted: old_state.tokens_minted,
+            tokens_burned: old_state.tokens_burned,
+            num_approved: old_state.num_approved,
+            owner_id: old_state.owner_id,
+            storage_costs,
+            allow_moves: old_state.allow_moves,
+        }
     }
 
     // -------------------------- internal methods -------------------------
@@ -283,4 +315,34 @@ pub trait NonFungibleResolveTransfer {
         approved_account_ids: std::collections::HashMap<AccountId, u64>,
         split_owners: Option<SplitOwners>,
     );
+}
+
+// Required because storage has been botched at some point with different
+// structures for `StorageCosts`
+#[derive(BorshDeserialize)]
+struct MintbaseStoreV2 {
+    pub minters: UnorderedSet<AccountId>,
+    pub metadata: NFTContractMetadata,
+    pub token_metadata: LookupMap<u64, (u16, TokenMetadata)>,
+    pub token_royalty: LookupMap<u64, (u16, Royalty)>,
+    pub tokens: LookupMap<u64, Token>,
+    pub tokens_per_owner: LookupMap<AccountId, UnorderedSet<u64>>,
+    pub composables: LookupMap<String, UnorderedSet<String>>,
+    pub tokens_minted: u64,
+    pub tokens_burned: u64,
+    pub num_approved: u64,
+    pub owner_id: AccountId,
+    pub storage_costs: StorageCostsV2,
+    pub allow_moves: bool,
+}
+
+#[derive(BorshDeserialize)]
+struct StorageCostsV2 {
+    pub storage_price_per_byte: u128,
+    pub common: u128,
+    pub token: u128,
+    #[allow(dead_code)]
+    pub account_id: u128,
+    #[allow(dead_code)]
+    pub balance: u128,
 }

@@ -12,11 +12,16 @@ import {
   assertBalanceChange,
   mintingDeposit,
 } from "./utils/index.js";
-import { setup } from "./setup.js";
+import { MB_VERSION, setup } from "./setup.js";
 
 const test = setup(avaTest);
 
 test("market::royalties", async (test) => {
+  if (MB_VERSION !== "v1") {
+    test.pass();
+    return;
+  }
+
   const {
     factory,
     store,
