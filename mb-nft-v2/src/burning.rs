@@ -45,9 +45,6 @@ impl MintbaseStore {
             if count > 1 {
                 minting_metadata.burned += 1;
                 self.token_metadata.insert(&metadata_id, &minting_metadata);
-            } else {
-                self.token_metadata.remove(&metadata_id);
-                self.token_royalty.remove(&metadata_id);
             }
 
             set_owned.remove(&token_id_tuple);
