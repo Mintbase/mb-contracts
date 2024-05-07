@@ -53,7 +53,7 @@ impl MintbaseStore {
                 .tokens
                 .get(&metadata_id)
                 .expect("This metadata does not yet exist in storage!");
-            metadata_tokens.remove(&token_id);
+            metadata_tokens.insert(&token_id, &None);
             self.tokens.insert(&metadata_id, &metadata_tokens);
         });
 

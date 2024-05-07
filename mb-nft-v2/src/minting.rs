@@ -663,6 +663,7 @@ impl MintbaseStore {
         num_to_mint: Option<u16>,
         token_ids: Option<Vec<U64>>,
     ) -> (u16, Vec<u64>) {
+        // FIXME: should never reuse a token ID!
         let metadata_tokens = self
             .tokens
             .get(&metadata_id)
@@ -707,7 +708,7 @@ impl MintbaseStore {
     fn process_tokens_ids_arg(
         &self,
         metadata_id: u64,
-        metadata_tokens: &TreeMap<u64, Token>,
+        metadata_tokens: &TreeMap<u64, Option<Token>>,
         token_ids: Vec<U64>,
     ) -> Vec<u64> {
         token_ids
