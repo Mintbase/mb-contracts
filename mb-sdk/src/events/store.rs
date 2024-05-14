@@ -100,6 +100,7 @@ pub struct CreateMetadataData {
     pub metadata_id: U64,
     pub creator: AccountId,
     pub minters_allowlist: Option<Vec<AccountId>>,
+    pub unique_minters: bool,
     pub price: near_sdk::json_types::U128,
     pub ft_contract_id: Option<AccountId>,
     pub royalty: Option<crate::data::store::Royalty>,

@@ -280,6 +280,7 @@ test("v2::create_metadata", async (test) => {
           creator: alice.accountId,
           metadata_id: "0",
           minters_allowlist: null,
+          unique_minters: false,
           price: NEAR(0.01).toString(),
           ft_contract_id: null,
           royalty: null,
@@ -315,6 +316,7 @@ test("v2::create_metadata", async (test) => {
           creator: alice.accountId,
           metadata_id: "12",
           minters_allowlist: null,
+          unique_minters: false,
           price: NEAR(0.01).toString(),
           ft_contract_id: null,
           royalty: null,
@@ -473,6 +475,7 @@ test("v2::minters_allowlist", async (test) => {
           creator: alice.accountId,
           metadata_id: "0",
           minters_allowlist: [bob.accountId],
+          unique_minters: false,
           price: NEAR(0.01).toString(),
           ft_contract_id: null,
           royalty: null,
@@ -512,8 +515,83 @@ test("v2::minters_allowlist", async (test) => {
         deposit: 0.05,
       });
     },
-    `${alice.accountId} is not allowed to mint this metadata`,
-    "Minting token ID twice"
+    `${alice.accountId} is not allowed to mint or has already minted this metadata`,
+    "Non-allowlisted account could mint"
+  );
+});
+
+test("v2::minters_allowlist_unique_minters", async (test) => {
+  if (MB_VERSION == "v1") {
+    test.pass();
+    return;
+  }
+
+  const { alice, bob, store } = test.context.accounts;
+
+  const createMetadataCall = await createMetadata({
+    alice,
+    store,
+    args: {
+      metadata: {},
+      minters_allowlist: [bob.accountId],
+      unique_minters: true,
+      price: NEAR(0.01),
+    },
+  });
+  assertEventLogs(
+    test,
+    (createMetadataCall as TransactionResult).logs,
+    [
+      {
+        standard: "mb_store",
+        version: "2.0.0",
+        event: "create_metadata",
+        data: {
+          creator: alice.accountId,
+          metadata_id: "0",
+          minters_allowlist: [bob.accountId],
+          unique_minters: true,
+          price: NEAR(0.01).toString(),
+          ft_contract_id: null,
+          royalty: null,
+          max_supply: null,
+          starts_at: null,
+          expires_at: null,
+          is_locked: true,
+        },
+      },
+    ],
+    "creating metadata with unique minters"
+  );
+
+  // bob can mint
+  await mintOnMetadata({
+    bob,
+    store,
+    args: {
+      metadata_id: "0",
+      num_to_mint: 1,
+      owner_id: bob.accountId,
+    },
+    deposit: 0.05,
+  });
+
+  await assertContractPanic(
+    test,
+    async () => {
+      await mintOnMetadata({
+        bob,
+        store,
+        args: {
+          metadata_id: "0",
+          num_to_mint: 1,
+          owner_id: bob.accountId,
+        },
+        deposit: 0.05,
+      });
+    },
+    `${bob.accountId} is not allowed to mint or has already minted this metadata`,
+    "Minting twice with same account"
   );
 });
 
@@ -548,6 +626,7 @@ test("v2::royalties", async (test) => {
           creator: alice.accountId,
           metadata_id: "0",
           minters_allowlist: null,
+          unique_minters: false,
           price: NEAR(0.01).toString(),
           ft_contract_id: null,
           royalty: {
@@ -641,6 +720,7 @@ test("v2::per_metadata_max_supply", async (test) => {
           creator: alice.accountId,
           metadata_id: "0",
           minters_allowlist: null,
+          unique_minters: false,
           price: NEAR(0.01).toString(),
           ft_contract_id: null,
           royalty: null,
@@ -714,6 +794,7 @@ test("v2::metadata_expiry", async (test) => {
           creator: alice.accountId,
           metadata_id: "0",
           minters_allowlist: null,
+          unique_minters: false,
           price: NEAR(0.01).toString(),
           ft_contract_id: null,
           royalty: null,
@@ -775,6 +856,7 @@ test("v2::metadata_start", async (test) => {
           creator: alice.accountId,
           metadata_id: "0",
           minters_allowlist: null,
+          unique_minters: false,
           price: NEAR(0.01).toString(),
           ft_contract_id: null,
           royalty: null,
@@ -843,6 +925,7 @@ test("v2::dynamic_nfts", async (test) => {
           creator: alice.accountId,
           metadata_id: "0",
           minters_allowlist: null,
+          unique_minters: false,
           price: NEAR(0.01).toString(),
           ft_contract_id: null,
           royalty: null,
