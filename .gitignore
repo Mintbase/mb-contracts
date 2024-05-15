@@ -4,4 +4,6 @@ tests/node_modules
 tests/downloads
 target
 
+*.sh
+
 .DS_Store

@@ -311,6 +311,9 @@ impl MintbaseStore {
             .unwrap_or_else(|| {
                 panic!("token: {}:{} doesn't exist", token_id.0, token_id.1)
             })
+            .unwrap_or_else(|| {
+                panic!("token: {}:{} was burned", token_id.0, token_id.1)
+            })
     }
 
     /// Gets the token as specified by relevant NEPs.
@@ -321,6 +324,7 @@ impl MintbaseStore {
         self.tokens
             .get(&token_id.0)
             .and_then(|metadata_tokens| metadata_tokens.get(&token_id.1))
+            .and_then(|x| x)
             .map(|x| {
                 let token_id_string = fmt_token_id(*token_id);
                 let metadata = self.nft_token_metadata(token_id_string.clone());

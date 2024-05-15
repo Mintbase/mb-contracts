@@ -49,6 +49,7 @@ impl MintbaseStore {
         metadata_id: Option<U64>,
         royalty_args: Option<RoyaltyArgs>,
         minters_allowlist: Option<Vec<AccountId>>,
+        unique_minters: Option<bool>,
         max_supply: Option<u32>,
         starts_at: Option<U64>,
         expires_at: Option<U64>,
@@ -64,7 +65,11 @@ impl MintbaseStore {
 
         // creator needs to be allowed to create metadata on this smart contract
         let creator = env::predecessor_account_id();
-        near_assert!(self.creators.contains(&creator), "{}", creator);
+        near_assert!(
+            self.creators.is_empty() || self.creators.contains(&creator),
+            "{} is not allowed to create metadata",
+            creator
+        );
 
         // validate metadata
         validate_metadata(&metadata);
@@ -100,6 +105,10 @@ impl MintbaseStore {
             expected_storage_consumption + MINTING_FEE
         );
 
+        if let Some(true) = unique_minters {
+            near_assert!(minters_allowlist.is_some(), "`unique_minters` may only be used along with `minters_allowlist`")
+        }
+
         // insert metadata and royalties
         let minting_metadata = MintingMetadata {
             minted: 0,
@@ -110,7 +119,10 @@ impl MintbaseStore {
                 None => MintingPayment::Near,
             },
             max_supply,
-            allowlist: minters_allowlist.clone(),
+            allowlist: minters_allowlist.map(|accounts| {
+                accounts.into_iter().map(|acc| (acc, false)).collect()
+            }),
+            unique_minters: unique_minters.unwrap_or(false),
             starts_at: starts_at.map(|t| t.0),
             expires_at: expires_at.map(|t| t.0),
             creator: creator.clone(),
@@ -412,10 +424,10 @@ impl MintbaseStore {
         // check if this account is allowed to mint this metadata
         if let Some(ref allowlist) = minting_metadata.allowlist {
             near_assert!(
-                allowlist.contains(&minter_id),
-                "{} is not allowed to mint this metadata",
+                allowlist.contains(&(minter_id.clone(), false)),
+                "{} is not allowed to mint or has already minted this metadata",
                 minter_id
-            )
+            );
         }
 
         // must not mint on unstarted metadata
@@ -529,6 +541,17 @@ impl MintbaseStore {
             owned_set.insert(&(args.metadata_id, id));
         }
         args.minting_metadata.minted += args.num_to_mint as u32;
+        if args.minting_metadata.unique_minters {
+            let mut allowlist: Vec<_> = args
+                .minting_metadata
+                .allowlist
+                .unwrap()
+                .into_iter()
+                .filter(|(acc, _)| acc != &args.minter_id)
+                .collect();
+            allowlist.push((args.minter_id.clone(), true));
+            args.minting_metadata.allowlist = Some(allowlist);
+        }
         self.token_metadata
             .insert(&args.metadata_id, &args.minting_metadata);
         self.tokens_per_owner.insert(&args.owner_id, &owned_set);
@@ -663,6 +686,7 @@ impl MintbaseStore {
         num_to_mint: Option<u16>,
         token_ids: Option<Vec<U64>>,
     ) -> (u16, Vec<u64>) {
+        // FIXME: should never reuse a token ID!
         let metadata_tokens = self
             .tokens
             .get(&metadata_id)
@@ -707,7 +731,7 @@ impl MintbaseStore {
     fn process_tokens_ids_arg(
         &self,
         metadata_id: u64,
-        metadata_tokens: &TreeMap<u64, Token>,
+        metadata_tokens: &TreeMap<u64, Option<Token>>,
         token_ids: Vec<U64>,
     ) -> Vec<u64> {
         token_ids
@@ -803,7 +827,10 @@ fn log_create_metadata(
         CreateMetadataData {
             metadata_id: metadata_id.into(),
             creator: minting_metadata.creator,
-            minters_allowlist: minting_metadata.allowlist,
+            minters_allowlist: minting_metadata.allowlist.map(|accounts| {
+                accounts.into_iter().map(|(acc, _)| acc).collect()
+            }),
+            unique_minters: minting_metadata.unique_minters,
             price: minting_metadata.price.into(),
             ft_contract_id: minting_metadata
                 .payment_method

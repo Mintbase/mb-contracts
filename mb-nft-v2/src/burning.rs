@@ -45,9 +45,6 @@ impl MintbaseStore {
             if count > 1 {
                 minting_metadata.burned += 1;
                 self.token_metadata.insert(&metadata_id, &minting_metadata);
-            } else {
-                self.token_metadata.remove(&metadata_id);
-                self.token_royalty.remove(&metadata_id);
             }
 
             set_owned.remove(&token_id_tuple);
@@ -56,7 +53,7 @@ impl MintbaseStore {
                 .tokens
                 .get(&metadata_id)
                 .expect("This metadata does not yet exist in storage!");
-            metadata_tokens.remove(&token_id);
+            metadata_tokens.insert(&token_id, &None);
             self.tokens.insert(&metadata_id, &metadata_tokens);
         });
 

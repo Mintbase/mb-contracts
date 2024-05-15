@@ -259,8 +259,12 @@ pub struct MintingMetadata {
     pub payment_method: MintingPayment,
     /// Maximum amount of tokens allowed to be minted, no restrictions if `None`
     pub max_supply: Option<u32>,
-    /// Accounts allowed to mint on this metadata, no restrictions if `None`
-    pub allowlist: Option<Vec<AccountId>>,
+    /// Accounts allowed to mint on this metadata, no restrictions if `None`,
+    /// the boolean is used to indicate if an account has already minted their
+    /// token in case that `unique_minters` is true.
+    pub allowlist: Option<Vec<(AccountId, bool)>>,
+    /// Are the allowed accounts
+    pub unique_minters: bool,
     /// Earliest possible timestamp to mint, no restrictions if `None`. Timestamp
     /// in number of non-leap nanoseconds since 1970-01-01 00:00:00 UTC.
     pub starts_at: Option<u64>,
