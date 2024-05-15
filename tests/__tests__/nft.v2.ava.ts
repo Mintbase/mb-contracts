@@ -1278,3 +1278,88 @@ test("v2::ft_minting", async (test) => {
     "Smart contract panicked: You need to use the correct FT to buy this token: wnear.test.near"
   );
 });
+
+test("v2::no_token_id_reuse", async (test) => {
+  if (MB_VERSION == "v1") {
+    test.pass();
+    return;
+  }
+
+  const { alice, bob, store } = test.context.accounts;
+  await createMetadata({
+    alice,
+    store,
+    args: {
+      metadata: {},
+      price: NEAR(0.01),
+    },
+  });
+
+  const mintOnMetadataCall = await mintOnMetadata({
+    bob,
+    store,
+    args: {
+      metadata_id: "0",
+      num_to_mint: 1,
+      owner_id: bob.accountId,
+    },
+    deposit: 0.05,
+  });
+
+  assertEventLogs(
+    test,
+    (mintOnMetadataCall as TransactionResult).logs,
+    [
+      {
+        standard: "nep171",
+        version: "1.0.0",
+        event: "nft_mint",
+        data: [
+          {
+            owner_id: bob.accountId,
+            token_ids: ["0:0"],
+            memo: '{"royalty":null,"split_owners":null,"meta_id":null,"meta_extra":null,"minter":"bob.test.near"}',
+          },
+        ],
+      },
+    ],
+    "minting on metadata metadata"
+  );
+
+  await bob.call(
+    store,
+    "nft_batch_burn",
+    { token_ids: ["0:0"] },
+    { attachedDeposit: "1" }
+  );
+
+  const mintOnMetadataCall1 = await mintOnMetadata({
+    bob,
+    store,
+    args: {
+      metadata_id: "0",
+      num_to_mint: 1,
+      owner_id: bob.accountId,
+    },
+    deposit: 0.05,
+  });
+  assertEventLogs(
+    test,
+    (mintOnMetadataCall1 as TransactionResult).logs,
+    [
+      {
+        standard: "nep171",
+        version: "1.0.0",
+        event: "nft_mint",
+        data: [
+          {
+            owner_id: bob.accountId,
+            token_ids: ["0:1"],
+            memo: '{"royalty":null,"split_owners":null,"meta_id":null,"meta_extra":null,"minter":"bob.test.near"}',
+          },
+        ],
+      },
+    ],
+    "minting on metadata metadata"
+  );
+});
